@@ -1,0 +1,74 @@
+{
+    "deno.enable": true,
+    "files.autoSave": "off",
+    "editor.formatOnSave": true,
+    "editor.minimap.enabled": false,
+    "explorer.openEditors.visible": 8,
+    "prettier.tabWidth": 4,
+    "prettier.printWidth": 100,
+    "prettier.singleQuote": true,
+
+    "[javascript]": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[json]": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[markdown]": {
+        "editor.quickSuggestions": {
+            "comments": "off",
+            "other": "off",
+            "strings": "off"
+        },
+        "editor.formatOnSave": true,
+        "editor.wordWrap": "wordWrapColumn",
+        "editor.wordWrapColumn": 80
+    },
+    "[mdx]": {
+        "editor.quickSuggestions": {
+            "comments": "off",
+            "other": "off",
+            "strings": "off"
+        },
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.wordWrap": "wordWrapColumn",
+        "editor.wordWrapColumn": 80
+    },
+
+    "emojisense.languages": {
+        "markdown": true,
+        "javascript": true,
+        "javascriptreact": true,
+        "typescript": true,
+        "typescriptreact": true,
+        "deno": true,
+        "golang": true,
+        "go": true,
+        "rust": true,
+        "plaintext": {
+            "markupCompletionsEnabled": false,
+            "emojiDecoratorsEnabled": false
+        },
+        "scminput": true,
+        "git-commit": true
+    },
+
+    "explorer.incrementalNaming": "smart",
+    "explorer.excludeGitIgnore": false,
+    "workbench.colorCustomizations": {
+        "tab.activeBackground": "#555",
+        "editor.background": "#111",
+        "titleBar.activeBackground": "#359",
+        "titleBar.activeForeground": "#ddd",
+        "titleBar.inactiveBackground": "#359"
+    },
+    "editor.tokenColorCustomizations": {
+        "comments": "#2c9da1"
+    },
+    "editor.defaultColorDecorators": true,
+    "workbench.editor.editorActionsLocation": "default",
+    "window.commandCenter": true
+}
