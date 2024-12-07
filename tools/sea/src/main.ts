@@ -1,38 +1,11 @@
-import { rgb24 } from 'jsr:@gnome/ansi@0.2';
-
-import { Shell } from './shell.ts';
-const sh = new Shell();
-
-function cprintln(color?: string, msg?: string) {
-    if (!msg) {
-        console.log();
-        return;
-    }
-
-    function parseColor(color: string): { r: number; g: number; b: number } {
-        // Convert 6 or 3 digit hex to RGB
-        color = color.trim().replace(/^#/, '');
-        if (color.length === 6) {
-            const r = parseInt(color.slice(0, 2), 16);
-            const g = parseInt(color.slice(2, 4), 16);
-            const b = parseInt(color.slice(4, 6), 16);
-            return { r, g, b };
-        } else if (color.length === 3) {
-            const r = parseInt(color[0] + color[0], 16);
-            const g = parseInt(color[1] + color[1], 16);
-            const b = parseInt(color[2] + color[2], 16);
-            return { r, g, b };
-        } else {
-            return { r: 255, g: 200, b: 100 };
-        }
-    }
-
-    let s = rgb24(msg, parseColor(color));
-    console.log(s);
-}
+import { shell } from './shell.ts';
+import { cprintln, rgb } from './cprint.ts';
+import { command_validate_commit_msg } from './commands/validate_commit_msg.ts';
 
 async function main(args: string[]) {
     switch (args[0]) {
+        case 'validate-commit-msg':
+            return await command_validate_commit_msg(args[1]);
         case 'system':
             return await command_system();
         case 'upgrade-tools':
@@ -44,7 +17,7 @@ async function main(args: string[]) {
 
 async function command_system() {
     cprintln();
-    cprintln('#3b23d7', `❄️ snowfall development environment`);
+    cprintln('key', `❄️ snowfall development environment`);
     cprintln('#555', '~'.repeat(80));
     cprintln();
 
@@ -58,7 +31,7 @@ async function command_system() {
             linux: 'Linux',
             windows: 'Windows',
         }[os as string] ?? 'unknown';
-    cprintln('#3b23d7', `System: ${os_name} ${arch} ${mem.total / Math.pow(1024, 3)} GiB`);
+    cprintln('key', `System: ${os_name} ${arch} ${mem.total / Math.pow(1024, 3)} GiB`);
 }
 
 async function upgrade_tools() {
@@ -117,11 +90,11 @@ async function ensure_tool_versions(tool_versions: Record<string, string>): Prom
 
         console.log(
             '  ',
-            rgb24(`${tool}`.padEnd(8, ' '), parseColor('#3b23d7')), //
-            rgb24(`v${version}`.padEnd(12, ' '), parseColor('#acaacc')),
-            !match
-                ? rgb24(`${actual_version} != ${actual_version}`, parseColor('#f00'))
-                : rgb24('✓', parseColor('#0c0'))
+            rgb('key', `${tool}`.padEnd(8, ' ')), //
+            rgb('#acaacc', `v${version}`.padEnd(12, ' ')),
+            !match //
+                ? rgb('#f00', `${actual_version} != ${actual_version}`)
+                : rgb('#0c0', '✓')
         );
     }
 
@@ -136,7 +109,7 @@ async function get_version(cmd: string) {
     try {
         switch (cmd) {
             case 'golang': {
-                const s = (await sh.spawn('go', ['version'])).stdout.split('\n')[0];
+                const s = (await shell.spawn('go', ['version'])).stdout.split('\n')[0];
                 const m = s.match(/(\d+\.\d+\.\d+)/);
                 if (!m) {
                     console.error('Could not read version for', cmd);
@@ -146,19 +119,19 @@ async function get_version(cmd: string) {
             }
             case 'zig': {
                 try {
-                    return (await sh.spawn(cmd, ['version'])).stdout.split('\n')[0];
+                    return (await shell.spawn(cmd, ['version'])).stdout.split('\n')[0];
                 } catch (e) {
                     return '';
                 }
             }
             case 'rust': {
-                const s = (await sh.spawn('rustc', ['--version'])).stdout.split('\n')[0];
+                const s = (await shell.spawn('rustc', ['--version'])).stdout.split('\n')[0];
                 const m = s.match(/(\d+\.\d+\.\d+)/);
                 return m![1];
             }
 
             default: {
-                const s = (await sh.spawn(cmd, ['--version'])).stdout.split('\n')[0];
+                const s = (await shell.spawn(cmd, ['--version'])).stdout.split('\n')[0];
                 const m = s.match(/(\d+\.\d+\.\d+)/);
                 return m![1];
             }
@@ -169,21 +142,3 @@ async function get_version(cmd: string) {
 }
 
 main(Deno.args);
-
-function parseColor(color: string): { r: number; g: number; b: number } {
-    // Convert 6 or 3 digit hex to RGB
-    color = color.trim().replace(/^#/, '');
-    if (color.length === 6) {
-        const r = parseInt(color.slice(0, 2), 16);
-        const g = parseInt(color.slice(2, 4), 16);
-        const b = parseInt(color.slice(4, 6), 16);
-        return { r, g, b };
-    } else if (color.length === 3) {
-        const r = parseInt(color[0] + color[0], 16);
-        const g = parseInt(color[1] + color[1], 16);
-        const b = parseInt(color[2] + color[2], 16);
-        return { r, g, b };
-    } else {
-        return { r: 255, g: 200, b: 100 };
-    }
-}

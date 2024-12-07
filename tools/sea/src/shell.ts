@@ -37,3 +37,5 @@ export class Shell {
         };
     }
 }
+
+export const shell = new Shell();

@@ -44,6 +44,17 @@ function sea() {
     rm $MONOREPO_ROOT/temp/__output.sh
 }
 
+# For each file in $MONOREPO_ROOT/config/git-hooks, link to local hooks
+for source in $MONOREPO_ROOT/config/git-hooks/*; do
+    hook=$(basename $file)
+    target=$MONOREPO_ROOT/.git/hooks/$hook    
+    rm -f $target
+    ln -s $source $target
+    chmod +x $target
+done
+
+
+
 sea system
 sea versions
 
