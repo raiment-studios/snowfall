@@ -27,8 +27,10 @@ source "$HOME/.asdf/completions/asdf.bash"
 source /opt/homebrew/opt/asdf/libexec/asdf.sh
 
 # -----------------------------------------------------------------------------
-# git hooks
+# git setup
 # -----------------------------------------------------------------------------
+
+git lfs install > /dev/null
 
 # For each file in $MONOREPO_ROOT/config/git-hooks, link to local hooks
 for source in $MONOREPO_ROOT/config/git-hooks/*; do
