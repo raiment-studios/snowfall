@@ -1,0 +1,20 @@
+
+# Rust related
+target/
+
+# Deno related
+node_modules/
+
+
+# Misc logs
+mprocs.log
+
+# Various backup files
+*~
+*.blend1
+
+
+
+# OS related
+**/.DS_Store
+**/*:Zone.Identifier
