@@ -1,9 +1,12 @@
 import { shell } from './shell.ts';
 import { cprintln, rgb } from './cprint.ts';
 import { command_validate_commit_msg } from './commands/validate_commit_msg.ts';
+import { change_directory } from './commands/change_directory.ts';
 
 async function main(args: string[]) {
     switch (args[0]) {
+        case 'cd':
+            return await change_directory(args.slice(1));
         case 'validate-commit-msg':
             return await command_validate_commit_msg(args[1]);
         case 'system':
@@ -38,6 +41,9 @@ async function upgrade_tools() {
     console.error(
         `
 #!/bin/env bash
+echo "Refreshing asdf plugins..."
+asdf plugin list all > /dev/null
+
 asdf plugin-add deno https://github.com/asdf-community/asdf-deno.git
 asdf install deno latest
 asdf local deno latest
@@ -62,6 +68,15 @@ asdf local starship latest
 asdf plugin-add zellij
 asdf install zellij latest
 asdf local zellij latest
+
+asdf plugin-add bat
+asdf install bat latest
+asdf local bat latest
+
+asdf plugin-add just
+asdf install just latest
+asdf local just latest
+
 `.trim() + '\n'
     );
 }
@@ -72,7 +87,7 @@ async function command_ensure_tools() {
     // repository expects.
     const tool_versions: Record<string, string> = {};
     const s = (await Deno.readTextFile('.tool-versions')).trim();
-    for (const line of s.split('\n')) {
+    for (const line of s.split('\n').filter((s) => !!s.trim())) {
         const [tool, version] = line.split(' ');
         tool_versions[tool] = version;
     }

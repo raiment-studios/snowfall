@@ -7,12 +7,11 @@ export async function command_validate_commit_msg(filename: string) {
     const validTypeDescs = {
         feat: 'a new feature or improvement in user experience',
         fix: 'a bug fix',
-        docs: 'documentation only changes',
+        docs: 'documentation changes',
         arch: 'refactor or internal architectural improvements',
         perf: 'a code change that improves performance',
         test: 'add or improve tests',
         build: 'changes to the build or deployment system',
-        note: 'internal notes',
         misc: 'escape hatch for anything that does not fit into the above',
     };
     const printValidTypes = () => {
@@ -51,5 +50,6 @@ export async function command_validate_commit_msg(filename: string) {
         Deno.exit(1);
     }
 
-    Deno.exit(1);
+    // All good!
+    Deno.exit(0);
 }

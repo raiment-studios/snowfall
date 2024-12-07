@@ -4,3 +4,5 @@ golang 1.23.4
 starship 1.21.1
 zellij 0.41.2
 rust 1.83.0
+just 1.37.0
+bat 0.24.0

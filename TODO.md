@@ -1,0 +1,1 @@
+-   [ ] Update `sea` to display available commands if no args provided
