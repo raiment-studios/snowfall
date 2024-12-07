@@ -1,0 +1,6 @@
+[package]
+name = "snowglobe"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]

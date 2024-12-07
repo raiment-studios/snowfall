@@ -1,2 +1,2 @@
 [workspace]
-members = []
+members = [ "cmd/snowglobe","cmd/snowtale"]

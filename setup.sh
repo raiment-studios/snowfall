@@ -64,8 +64,18 @@ function sea() {
     rm $MONOREPO_ROOT/temp/__output.sh
 }
 
+# Git Status (gs)
 function gs() {
     git status
+}
+
+# Git Commit And Push (gcap)
+function gcap() {
+    pushd $MONOREPO_ROOT
+    git add .
+    git commit -m "$*"
+    git push
+    popd
 }
 
 function scd() {
