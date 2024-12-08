@@ -34,7 +34,7 @@ git lfs install > /dev/null
 
 # For each file in $MONOREPO_ROOT/config/git-hooks, link to local hooks
 for source in $MONOREPO_ROOT/config/git-hooks/*; do
-    hook=$(basename $file)
+    hook=$(basename $source)
     target=$MONOREPO_ROOT/.git/hooks/$hook    
     rm -f $target
     ln -s $source $target
@@ -93,6 +93,10 @@ function gcap() {
 function scd() {
     sea cd $*
 }
+
+if [ -f "$HOME/.config/snowfall-dev/profile.sh" ]; then
+    source "$HOME/.config/snowfall-dev/profile.sh"
+fi
 
 sea system
 sea versions

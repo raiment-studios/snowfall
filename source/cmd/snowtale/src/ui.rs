@@ -22,6 +22,11 @@ pub fn parse_color(hex: &str) -> (u8, u8, u8) {
     }
 }
 
+pub fn cprintln(color: &str, text: &str) {
+    let (r, g, b) = parse_color(color);
+    println!("{}", text.truecolor(r, g, b));
+}
+
 pub fn print_paragraph(color: &str, text: &str) {
     // Split the text into lines of at most 80 characters, splitting at word boundaries.
     let (r, g, b) = parse_color(color);

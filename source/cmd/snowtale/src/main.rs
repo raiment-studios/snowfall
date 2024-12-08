@@ -1,6 +1,6 @@
 mod openai;
 mod ui;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use colored::Colorize;
 use openai::*;
@@ -12,17 +12,69 @@ struct ActionLog {
     entries: Vec<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+enum UseCondition {
+    PlayerHas { item_id: String },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+enum UseEffects {
+    GrantKnowledge { amount: i32 },
+    SingleUse,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct Decor {
+    id: String,
+    aliases: Vec<String>,
+    description: String,
+    use_conditions: Vec<UseCondition>,
+    use_effects: Vec<UseEffects>,
+}
+
+impl Decor {
+    fn new(id: &str) -> Self {
+        Decor {
+            id: id.to_string(),
+            aliases: Vec::new(),
+            description: "".to_string(),
+            use_conditions: Vec::new(),
+            use_effects: Vec::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct Item {
+    id: String,
+    aliases: Vec<String>,
+    description: String,
+}
+
+impl Item {
+    fn new(id: &str) -> Self {
+        Item {
+            id: id.to_string(),
+            aliases: Vec::new(),
+            description: "".to_string(),
+        }
+    }
+}
+
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 struct Player {
     position: (i32, i32),
-    inventory: (),
+    inventory: Vec<Item>,
+
+    knownledge: i32,
 }
 
 impl Player {
     fn new() -> Player {
         Player {
             position: (0, 0),
-            inventory: (),
+            inventory: Vec::new(),
+            knownledge: 0,
         }
     }
 }
@@ -30,6 +82,13 @@ impl Player {
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 struct Room {
     description: String,
+    items: Vec<Item>,
+    decor: Vec<Decor>,
+}
+
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+struct Encyclopedia {
+    markers: HashSet<String>,
 }
 
 #[derive(Default)]
@@ -47,27 +106,36 @@ async fn main() {
     let mut actions = ActionLog::default();
     let mut world = World::default();
     let mut player = read_player();
+    let mut encyclopedia = read_encyclopedia();
 
     loop {
         println!("POS: {},{}", player.position.0, player.position.1);
         println!();
 
-        let room = ensure_room(player.position, &mut world, &actions).await;
+        let room_position = player.position;
+        let mut room = ensure_room(room_position, &mut encyclopedia, &mut world, &actions).await;
         print_paragraph("eee", room.description.as_str());
+
+        println!();
+        for item in &room.items {
+            cprintln("77f", item.description.as_str());
+        }
+        for decor in &room.decor {
+            cprintln("7f7", decor.description.as_str());
+        }
 
         // Process the input
         let input = prompt().await;
         let input = input.trim().to_lowercase();
-        let input = regex::Regex::new(r"\s+")
-            .unwrap()
-            .replace_all(&input, " ")
-            .to_string();
+
+        // Split input by whitespace
+        let words: Vec<&str> = input.split_whitespace().collect();
         let action = {
-            match input.as_str() {
-                "n" | "north" | "move n" => "move north",
-                "s" | "south" | "move s" => "move south",
-                "e" | "east" | "move e" => "move east",
-                "w" | "west" | "move w" => "move west",
+            match *words.get(0).unwrap_or(&"") {
+                "n" => "north",
+                "s" => "south",
+                "e" => "east",
+                "w" => "west",
                 "q" => "quit",
                 s => s,
             }
@@ -79,12 +147,24 @@ async fn main() {
 
         let mut handled = true;
         match action.trim() {
-            "move north" => player.position.1 += 1,
-            "move south" => player.position.1 -= 1,
-            "move east" => player.position.0 += 1,
-            "move west" => player.position.0 -= 1,
+            "north" => player.position.1 += 1,
+            "south" => player.position.1 -= 1,
+            "east" => player.position.0 += 1,
+            "west" => player.position.0 -= 1,
             "regen" => {
-                create_room(player.position, &mut world, &actions).await;
+                // TODO: this can break the encyclopedia markers as the prior
+                // room may have set the marker and the new room may not have
+                // the same items
+                create_room(player.position, &mut encyclopedia, &mut world, &actions).await;
+            }
+            "get" => {
+                if let Some(item) = room.items.pop() {
+                    println!("You picked up: {}", item.description);
+                    player.inventory.push(item);
+                    write_room(&mut world, room_position, &room);
+                } else {
+                    println!("There is nothing to pick up here.");
+                }
             }
             "quit" => break,
             _ => {
@@ -96,7 +176,21 @@ async fn main() {
             actions.entries.push(action.clone());
         }
         write_player(&player);
+        write_encyclopedia(&encyclopedia);
     }
+}
+
+fn read_encyclopedia() -> Encyclopedia {
+    let contents = std::fs::read_to_string("store/_default/encyclopedia.yaml").ok();
+    match contents {
+        Some(contents) => serde_yaml::from_str(&contents).unwrap(),
+        None => Encyclopedia::default(),
+    }
+}
+
+fn write_encyclopedia(encyclopedia: &Encyclopedia) {
+    let contents = serde_yaml::to_string(encyclopedia).unwrap();
+    std::fs::write("store/_default/encyclopedia.yaml", contents).unwrap();
 }
 
 fn read_player() -> Player {
@@ -131,7 +225,10 @@ fn read_room(position: (i32, i32)) -> Option<Room> {
     Some(room)
 }
 
-fn write_room(position: (i32, i32), room: &Room) {
+fn write_room(world: &mut World, position: (i32, i32), room: &Room) {
+    // Ensure the memory-copy is in sync with the file
+    world.rooms.insert(position, room.clone());
+
     let fullpath = get_room_filename(position);
 
     let dirname = std::path::Path::new(&fullpath).parent().unwrap();
@@ -154,17 +251,19 @@ fn peek_room(position: (i32, i32), world: &mut World) -> Option<Room> {
 
 async fn ensure_room(
     position: (i32, i32),
+    encyclopedia: &mut Encyclopedia,
     world: &mut World, //
     actions: &ActionLog,
 ) -> Room {
     if let Some(room) = peek_room(position, world) {
         return room;
     }
-    create_room(position, world, actions).await
+    create_room(position, encyclopedia, world, actions).await
 }
 
 async fn create_room(
     position: (i32, i32), //
+    encyclopedia: &mut Encyclopedia,
     world: &mut World,
     actions: &ActionLog,
 ) -> Room {
@@ -261,11 +360,57 @@ Describe the current room or scene.
 
     let d = open_ai2(p.as_str()).await.unwrap_or_default();
     if !d.is_empty() {
-        let room = Room {
-            description: d.clone(),
-        };
-        world.rooms.insert(position, room.clone());
-        write_room(position, &room);
+        let mut room = Room::default();
+        room.description = d.clone();
+
+        // Randomly add a key to the room
+        let r = rand::random::<u8>() % 100;
+        if r < 50 {
+            let colors = vec![
+                "red", "green", "blue", "yellow", "purple", "orange", "cyan", "magenta",
+            ];
+            let color = colors[rand::random::<usize>() % colors.len()];
+            let id = format!("key_{}", color);
+            let desc = format!("A {} key", color);
+
+            if !encyclopedia.markers.contains(id.as_str()) {
+                let mut item = Item::new(id.as_str());
+                item.description = desc.clone();
+                item.aliases.push("key".to_string());
+                item.aliases.push(format!("{} key", color));
+                room.items.push(item);
+                encyclopedia.markers.insert(id);
+            }
+        }
+
+        // Randomly add a chest to the room
+        let r = rand::random::<u8>() % 100;
+        if r < 50 {
+            let colors = vec![
+                "red", "green", "blue", "yellow", "purple", "orange", "cyan", "magenta",
+            ];
+            let color = colors[rand::random::<usize>() % colors.len()];
+            let id = format!("chest_{}", color);
+            let desc = format!("A {} chest", color);
+
+            let mut decor = Decor::new(id.as_str());
+            decor.description = desc.clone();
+            decor.aliases = vec![
+                "chest".to_string(), //
+                format!("{} chest", color),
+            ];
+            decor.use_conditions.push(UseCondition::PlayerHas {
+                item_id: format!("key_{}", color),
+            });
+            decor
+                .use_effects
+                .push(UseEffects::GrantKnowledge { amount: 10 });
+            decor.use_effects.push(UseEffects::SingleUse);
+
+            room.decor.push(decor);
+        }
+
+        write_room(world, position, &room);
         return room;
     } else {
         // TODO: need to implement so sort of retry with different
