@@ -65,8 +65,19 @@ function sea() {
     rm $MONOREPO_ROOT/temp/__output.sh
 }
 
+function cprint() {
+    $MONOREPO_ROOT/tools/sea/sea cprintln "$@"
+}
+
+# Git Log (gslog)
+alias gslog='git log -n 12 --pretty="%C(auto)%h %C(#3fc9b4)%ad %as %C(green)%s%C(reset)" --color --date=format:"%a"'
+
 # Git Status (gs)
 function gs() {
+    cprint "{999:● Recent commits}"
+    gslog
+    echo
+    cprint "{999:● Current git status}"
     git status
 }
 
@@ -79,10 +90,6 @@ function gcap() {
     popd
 }
 
-function cprint() {
-    $MONOREPO_ROOT/tools/sea/sea cprintln "$@"
-}
-
 function scd() {
     sea cd $*
 }
@@ -90,12 +97,12 @@ function scd() {
 sea system
 sea versions
 
-
 cprint
 cprint "Aliases:"
-cprint "  {FC3:gs}   {555:-} {557:alias for 'git status'}"
-cprint "  {FC3:gcap} {555:-} {557:alias for git add, commit, and push}"
-cprint "  {FC3:scd}  {555:-} {557:change directory to best match in repo}"
+cprint "  {FC3:gs}    {555:-} {557:alias for 'git status'}"
+cprint "  {FC3:gcap}  {555:-} {557:alias for git add, commit, and push}"
+cprint "  {FC3:gslog} {555:-} {557:recent git commits}"
+cprint "  {FC3:scd}   {555:-} {557:change directory to best match in repo}"
 
 
 
