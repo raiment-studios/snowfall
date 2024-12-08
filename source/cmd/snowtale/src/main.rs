@@ -1,13 +1,18 @@
-use std::{
-    collections::HashMap,
-    io::{self, Write},
-};
+mod openai;
+mod ui;
+use std::collections::HashMap;
+
+use colored::Colorize;
+use openai::*;
+use serde::{Deserialize, Serialize};
+use ui::*;
 
 #[derive(Debug, Default)]
 struct ActionLog {
     entries: Vec<String>,
 }
 
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 struct Player {
     position: (i32, i32),
     inventory: (),
@@ -22,7 +27,7 @@ impl Player {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 struct Room {
     description: String,
 }
@@ -34,66 +39,194 @@ struct World {
 
 #[tokio::main]
 async fn main() {
+    println!();
+    println!("{}", "Welcome to snowtale!".truecolor(64, 192, 220));
+    println!("{}", "~".repeat(80).truecolor(128, 128, 160));
+    println!();
+
     let mut actions = ActionLog::default();
     let mut world = World::default();
-    let mut player = Player::new();
+    let mut player = read_player();
 
     loop {
-        let room = get_room(player.position, &mut world, &actions).await;
-        cpara(room.as_str());
+        println!("POS: {},{}", player.position.0, player.position.1);
+        println!();
+
+        let room = ensure_room(player.position, &mut world, &actions).await;
+        print_paragraph("eee", room.description.as_str());
 
         // Process the input
         let input = prompt().await;
-        actions.entries.push(input.clone());
-        println!("You entered: {}", input.trim());
+        let input = input.trim().to_lowercase();
+        let input = regex::Regex::new(r"\s+")
+            .unwrap()
+            .replace_all(&input, " ")
+            .to_string();
+        let action = {
+            match input.as_str() {
+                "n" | "north" | "move n" => "move north",
+                "s" | "south" | "move s" => "move south",
+                "e" | "east" | "move e" => "move east",
+                "w" | "west" | "move w" => "move west",
+                "q" => "quit",
+                s => s,
+            }
+            .to_string()
+        };
+
+        println!("You entered: {}", input);
         println!();
 
-        match input.trim() {
-            "n" | "north" => player.position.1 += 1,
-            "s" | "south" => player.position.1 -= 1,
-            "e" | "east" => player.position.0 += 1,
-            "w" | "west" => player.position.0 -= 1,
-            "exit" | "quit" => break,
-            _ => {}
+        let mut handled = true;
+        match action.trim() {
+            "move north" => player.position.1 += 1,
+            "move south" => player.position.1 -= 1,
+            "move east" => player.position.0 += 1,
+            "move west" => player.position.0 -= 1,
+            "regen" => {
+                create_room(player.position, &mut world, &actions).await;
+            }
+            "quit" => break,
+            _ => {
+                println!("I don't understand that command.");
+                handled = false;
+            }
         }
+        if handled {
+            actions.entries.push(action.clone());
+        }
+        write_player(&player);
     }
 }
 
-fn cpara(text: &str) {
-    // Split the text into lines of at most 80 characters, splitting at word boundaries.
-    let regex = regex::Regex::new(r".{1,78}(?:\s|$)").unwrap();
-    let lines = regex
-        .find_iter(text)
-        .map(|m| m.as_str().trim()) // Trim any trailing whitespace
-        .collect::<Vec<_>>();
-
-    for line in lines {
-        println!("  {}", line);
+fn read_player() -> Player {
+    let contents = std::fs::read_to_string("store/_default/player.yaml").ok();
+    match contents {
+        Some(contents) => serde_yaml::from_str(&contents).unwrap(),
+        None => Player::new(),
     }
-    println!();
 }
 
-async fn prompt() -> String {
-    print!("> ");
-    io::stdout().flush().unwrap(); // Flush to show the prompt immediately
-
-    let mut input = String::new();
-    if io::stdin().read_line(&mut input).is_err() {
-        return "".into();
-    }
-    input
+fn write_player(player: &Player) {
+    let contents = serde_yaml::to_string(player).unwrap();
+    std::fs::write("store/_default/player.yaml", contents).unwrap();
 }
 
-async fn get_room(
+fn get_room_filename(position: (i32, i32)) -> String {
+    let dirname = "store/_default/rooms";
+    let filename = format!(
+        "room-{}{:03}-{}{:03}.yaml",
+        if position.0 >= 0 { "e" } else { "w" },
+        position.0.abs(),
+        if position.1 >= 0 { "n" } else { "s" },
+        position.1.abs(),
+    );
+    format!("{}/{}", dirname, filename)
+}
+
+fn read_room(position: (i32, i32)) -> Option<Room> {
+    let fullpath = get_room_filename(position);
+    let contents = std::fs::read_to_string(fullpath).ok()?;
+    let room: Room = serde_yaml::from_str(&contents).ok()?;
+    Some(room)
+}
+
+fn write_room(position: (i32, i32), room: &Room) {
+    let fullpath = get_room_filename(position);
+
+    let dirname = std::path::Path::new(&fullpath).parent().unwrap();
+    std::fs::create_dir_all(dirname).unwrap();
+
+    let contents = serde_yaml::to_string(room).unwrap();
+    std::fs::write(fullpath, contents).unwrap();
+}
+
+fn peek_room(position: (i32, i32), world: &mut World) -> Option<Room> {
+    if world.rooms.contains_key(&position) {
+        Some(world.rooms[&position].clone())
+    } else if let Some(room) = read_room(position) {
+        world.rooms.insert(position, room.clone());
+        Some(room)
+    } else {
+        None
+    }
+}
+
+async fn ensure_room(
     position: (i32, i32),
     world: &mut World, //
     actions: &ActionLog,
-) -> String {
-    if world.rooms.contains_key(&position) {
-        return world.rooms[&position].description.clone();
+) -> Room {
+    if let Some(room) = peek_room(position, world) {
+        return room;
     }
+    create_room(position, world, actions).await
+}
 
-    let recent_actions = actions.entries.join("\n");
+async fn create_room(
+    position: (i32, i32), //
+    world: &mut World,
+    actions: &ActionLog,
+) -> Room {
+    let sys_nearby = {
+        let mut nearby = Vec::new();
+        for dx in -1..=1 {
+            for dy in -1..=1 {
+                if dx == 0 && dy == 0 {
+                    continue;
+                }
+                let neighbor = (position.0 + dx, position.1 + dy);
+                if let Some(room) = peek_room(neighbor, world) {
+                    nearby.push(format!(
+                        "To the {} is a room with this description:\n {}\n\n",
+                        if dx > 0 {
+                            "east"
+                        } else if dx < 0 {
+                            "west"
+                        } else if dy > 0 {
+                            "north"
+                        } else if dy < 0 {
+                            "south"
+                        } else {
+                            "???"
+                        },
+                        room.description.trim()
+                    ));
+                }
+            }
+        }
+        if nearby.is_empty() {
+            "".to_string()
+        } else {
+            format!(
+                r#"
+When describing the new room, please make sure it follows naturally
+and logically from the nearby rooms.  Here are the descriptions of 
+the nearby rooms:
+
+{}
+
+Please include a small, subtle reference to one of the neighboring rooms
+when describing this new room.
+"#,
+                nearby.join("\n")
+            )
+        }
+    };
+
+    let sys_recent_actions = {
+        if actions.entries.is_empty() {
+            "".to_string()
+        } else {
+            format!(
+                r#"
+Please remember that these are the recent actions of the player:
+- {}
+"#,
+                actions.entries.join("\n- ")
+            )
+        }
+    };
 
     let p = format!(
         r#"
@@ -103,20 +236,22 @@ async fn get_room(
 You are the mind behind a text adventure game and need to describe scenes and
 rooms that the player enters.  Describe them in the fashion of a text adventure
 like King's Quest or Zork or Daggerfall.  Be specific but also concise.
+This is a world of low-fantasy with magical elements and mythical creatures, but
+they are rare and the majority of the story is based on humans and their struggles.
 
-Please provide single, specific answers in plain English.  Do not provide multiple
-options.  Describe the room itself in an objective way.  Do not explicitly include what
-the player or group recently did.  In general, use high-fantasy as the setting such as 
-elves, dwarves, dragons, etc. Use imaginary from Tolkien, Jack Vance, and generic 
-D&D-esque settings.
+Please provide single, specific answers in plain English. Do not provide multiple
+options.  Describe the room itself objectively and without any preface.  
+Do not reference the player or group or any of their recent actions.  Use a writing 
+style that reminds the reader of some combination of Jack Vance and JRR Tolkien.  
+Use third-person and describe only the room and surroundings.
 
 Ensure answers are no more than 4 sentences long.
 
 ## SYSTEM
 
-Please remember that these are the recent actions of the player:
+{sys_nearby}
 
-{recent_actions}
+{sys_recent_actions}
 
 ## USER
 
@@ -126,138 +261,15 @@ Describe the current room or scene.
 
     let d = open_ai2(p.as_str()).await.unwrap_or_default();
     if !d.is_empty() {
-        world.rooms.insert(
-            position,
-            Room {
-                description: d.clone(),
-            },
-        );
+        let room = Room {
+            description: d.clone(),
+        };
+        world.rooms.insert(position, room.clone());
+        write_room(position, &room);
+        return room;
+    } else {
+        // TODO: need to implement so sort of retry with different
+        // variations...and some fallback if N retries fail
+        panic!("No description returned from OpenAI");
     }
-    d
-}
-
-use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Serialize)]
-struct OpenAIRequest<'a> {
-    model: &'a str,
-    messages: Vec<OpenAIMessage>,
-    max_tokens: u32,
-}
-
-#[derive(Debug, Serialize)]
-struct OpenAIMessage {
-    role: String,
-    content: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct OpenAIResponse {
-    choices: Vec<OpenAIChoice>,
-}
-
-#[derive(Debug, Deserialize)]
-struct OpenAIChoice {
-    message: OpenAIMessageContent,
-}
-
-#[derive(Debug, Deserialize)]
-struct OpenAIMessageContent {
-    content: String,
-}
-
-async fn open_ai(messages: Option<Vec<OpenAIMessage>>) -> Option<String> {
-    let api_url = "https://api.openai.com/v1/chat/completions";
-    let api_key = std::env::var("OPENAI_API_KEY").unwrap();
-
-    // Default messages if none are provided
-    let default_messages = vec![OpenAIMessage {
-        role: "user".to_string(),
-        content: "Hello, how can I use the OpenAI API?".to_string(),
-    }];
-
-    let request_body = OpenAIRequest {
-        model: "gpt-4",
-        messages: messages.unwrap_or(default_messages),
-        max_tokens: 5000,
-    };
-
-    let mut headers = HeaderMap::new();
-    headers.insert(
-        AUTHORIZATION,
-        HeaderValue::from_str(&format!("Bearer {}", api_key)).unwrap(),
-    );
-    headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
-
-    let client = reqwest::Client::new();
-    let response = client
-        .post(api_url)
-        .headers(headers)
-        .json(&request_body)
-        .send()
-        .await
-        .unwrap();
-
-    if !response.status().is_success() {
-        println!("Error: {}", response.status());
-        return None;
-    }
-
-    let data: OpenAIResponse = response.json().await.unwrap();
-    let content = data.choices.get(0);
-
-    match content {
-        Some(content) => Some(content.message.content.clone()),
-        None => None,
-    }
-}
-
-async fn open_ai2(text: &str) -> Option<String> {
-    #[derive(Debug, Clone)]
-    struct Message {
-        role: String,
-        content: Vec<String>,
-    }
-
-    let mut messages: Vec<Message> = Vec::new();
-    let mut current: Option<Message> = Some(Message {
-        role: "system".to_string(),
-        content: Vec::new(),
-    });
-
-    for line in text.trim().lines() {
-        let line = line.trim();
-
-        if line == "## SYSTEM" {
-            messages.push(current.clone().unwrap());
-            current = Some(Message {
-                role: "system".to_string(),
-                content: Vec::new(),
-            });
-        } else if line == "## USER" {
-            messages.push(current.clone().unwrap());
-            current = Some(Message {
-                role: "user".to_string(),
-                content: Vec::new(),
-            });
-        } else if let Some(ref mut msg) = current {
-            msg.content.push(line.to_string());
-        } else if line.is_empty() {
-            // Ignore empty lines
-        } else {
-            eprintln!("Ignoring line: {}", line);
-        }
-    }
-
-    let input_messages: Vec<OpenAIMessage> = messages
-        .into_iter()
-        .map(|m| OpenAIMessage {
-            role: m.role,
-            content: m.content.join("\n"),
-        })
-        .collect();
-
-    let s = open_ai(Some(input_messages)).await;
-    s
 }
