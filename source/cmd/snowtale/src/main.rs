@@ -21,27 +21,7 @@ enum UseCondition {
 enum UseEffects {
     GrantKnowledge { amount: i32 },
     SingleUse,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct Decor {
-    id: String,
-    aliases: Vec<String>,
-    description: String,
-    use_conditions: Vec<UseCondition>,
-    use_effects: Vec<UseEffects>,
-}
-
-impl Decor {
-    fn new(id: &str) -> Self {
-        Decor {
-            id: id.to_string(),
-            aliases: Vec::new(),
-            description: "".to_string(),
-            use_conditions: Vec::new(),
-            use_effects: Vec::new(),
-        }
-    }
+    Stationary,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -49,6 +29,8 @@ struct Item {
     id: String,
     aliases: Vec<String>,
     description: String,
+    use_conditions: Vec<UseCondition>,
+    use_effects: Vec<UseEffects>,
 }
 
 impl Item {
@@ -57,6 +39,8 @@ impl Item {
             id: id.to_string(),
             aliases: Vec::new(),
             description: "".to_string(),
+            use_conditions: Vec::new(),
+            use_effects: Vec::new(),
         }
     }
 }
@@ -81,9 +65,9 @@ impl Player {
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 struct Room {
+    name: String,
     description: String,
     items: Vec<Item>,
-    decor: Vec<Decor>,
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -114,14 +98,12 @@ async fn main() {
 
         let room_position = player.position;
         let mut room = ensure_room(room_position, &mut encyclopedia, &mut world, &actions).await;
+        cprintln("3ff", room.name.as_str());
         print_paragraph("eee", room.description.as_str());
 
         println!();
         for item in &room.items {
             cprintln("77f", item.description.as_str());
-        }
-        for decor in &room.decor {
-            cprintln("7f7", decor.description.as_str());
         }
 
         // Process the input
@@ -338,13 +320,13 @@ like King's Quest or Zork or Daggerfall.  Be specific but also concise.
 This is a world of low-fantasy with magical elements and mythical creatures, but
 they are rare and the majority of the story is based on humans and their struggles.
 
-Please provide single, specific answers in plain English. Do not provide multiple
+When writing text provide single, specific answers in plain English. Do not provide multiple
 options.  Describe the room itself objectively and without any preface.  
 Do not reference the player or group or any of their recent actions.  Use a writing 
 style that reminds the reader of some combination of Jack Vance and JRR Tolkien.  
 Use third-person and describe only the room and surroundings.
 
-Ensure answers are no more than 4 sentences long.
+Always response in JSON format according to the schema provided in the question.
 
 ## SYSTEM
 
@@ -354,14 +336,42 @@ Ensure answers are no more than 4 sentences long.
 
 ## USER
 
-Describe the current room or scene.
+Please return a room object in JSON with exactly two fields: 
+one called "name" and one called "description".  The "name" field should be
+a short name for the room, at most 4 words in length.  The "description" field
+should be a description of the room, at most 4 sentences in length.
+Always, always provide a "name" field for the room in the JSON response.
+
     "#
     );
 
     let d = open_ai2(p.as_str()).await.unwrap_or_default();
     if !d.is_empty() {
+        #[derive(Debug, Clone, Serialize, Deserialize)]
+        struct Resp {
+            // OpenAPI *insists* on returning a "title" rather than "name" field
+            title: Option<String>,
+            name: Option<String>,
+            description: Option<String>,
+            room_description: Option<String>,
+        }
+
         let mut room = Room::default();
-        room.description = d.clone();
+        room.description = "<undefined>".to_string();
+
+        cprintln("555", &d);
+
+        let resp = serde_json::from_str::<Resp>(d.as_str()).unwrap();
+        if let Some(name) = resp.name {
+            room.name = name;
+        } else {
+            room.name = resp.title.unwrap_or_default();
+        }
+        if let Some(desc) = resp.room_description {
+            room.description = desc;
+        } else if let Some(desc) = resp.description {
+            room.description = desc;
+        }
 
         // Randomly add a key to the room
         let r = rand::random::<u8>() % 100;
@@ -393,21 +403,20 @@ Describe the current room or scene.
             let id = format!("chest_{}", color);
             let desc = format!("A {} chest", color);
 
-            let mut decor = Decor::new(id.as_str());
-            decor.description = desc.clone();
-            decor.aliases = vec![
+            let mut item = Item::new(id.as_str());
+            item.description = desc.clone();
+            item.aliases = vec![
                 "chest".to_string(), //
                 format!("{} chest", color),
             ];
-            decor.use_conditions.push(UseCondition::PlayerHas {
+            item.use_conditions.push(UseCondition::PlayerHas {
                 item_id: format!("key_{}", color),
             });
-            decor
-                .use_effects
+            item.use_effects
                 .push(UseEffects::GrantKnowledge { amount: 10 });
-            decor.use_effects.push(UseEffects::SingleUse);
+            item.use_effects.push(UseEffects::SingleUse);
 
-            room.decor.push(decor);
+            room.items.push(item);
         }
 
         write_room(world, position, &room);
