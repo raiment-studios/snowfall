@@ -16,5 +16,8 @@ export async function command_system() {
             linux: 'Linux',
             windows: 'Windows',
         }[os as string] ?? 'unknown';
-    cprintln('key', `System: ${os_name} ${arch} ${mem.total / Math.pow(1024, 3)} GiB`);
+    cprintln('fff', 'System:');
+    cprintln('key', `  ${os_name} ${arch}`);
+    cprintln('key', `  ${mem.total / Math.pow(1024, 3)} GiB`);
+    cprintln();
 }

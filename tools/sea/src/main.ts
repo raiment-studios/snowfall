@@ -82,6 +82,19 @@ async function command_ensure_tools() {
 }
 
 async function ensure_tool_versions(tool_versions: Record<string, string>): Promise<boolean> {
+    const unchecked_tools = ['bash', 'asdf', 'git', 'git-lfs'];
+
+    console.log(rgb('fff', 'Binaries:'));
+    for (const tool of unchecked_tools) {
+        const version = await get_version(tool);
+        console.log(
+            ' ',
+            rgb('key', `${tool}`.padEnd(12, ' ')), //
+            rgb('#acaacc', `v${version}`.padEnd(12, ' ')),
+            rgb('#555', '-')
+        );
+    }
+
     let all_match = true;
     for (const [tool, version] of Object.entries(tool_versions)) {
         const actual_version = await get_version(tool);
@@ -89,9 +102,9 @@ async function ensure_tool_versions(tool_versions: Record<string, string>): Prom
         all_match &&= match;
 
         console.log(
-            '  ',
-            rgb('key', `${tool}`.padEnd(8, ' ')), //
-            rgb('#acaacc', `v${version}`.padEnd(12, ' ')),
+            ' ',
+            rgb('key', `${tool}`.padEnd(12, ' ')), //
+            rgb('#acaacc', `v${actual_version}`.padEnd(12, ' ')),
             !match //
                 ? rgb('#f00', `${actual_version} != ${actual_version}`)
                 : rgb('#0c0', '✓')

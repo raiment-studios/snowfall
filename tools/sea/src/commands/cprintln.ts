@@ -1,4 +1,4 @@
-import { cprintln, rgb } from '../cprint.ts';
+import { rgb } from '../cprint.ts';
 
 export function command_cprintln(args: string[]) {
     const fmt = args.join(' ');

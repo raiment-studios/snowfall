@@ -17,6 +17,18 @@ Ensuring participating in _development and evolution_ of Snowfall is enjoyable i
 
 In very, very early development!
 
+If you're looking to contribute see [TODO.md](TODO.md).
+
+## Development
+
+Clone the repository and **source `setup.sh`** to set up the development environment with all the necessary dependencies.
+
+```bash
+git clone git@github.com:raiment-studios/snowfall.git
+cd snowfall
+source setup.sh
+```
+
 ## Components
 
 ### snowglobe
