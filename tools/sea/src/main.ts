@@ -1,10 +1,14 @@
 import { shell } from './shell.ts';
-import { cprintln, rgb } from './cprint.ts';
+import { rgb } from './cprint.ts';
 import { command_validate_commit_msg } from './commands/validate_commit_msg.ts';
 import { change_directory } from './commands/change_directory.ts';
+import { command_cprintln } from './commands/cprintln.ts';
+import { command_system } from './commands/command_system.ts';
 
 async function main(args: string[]) {
     switch (args[0]) {
+        case 'cprintln':
+            return command_cprintln(args.slice(1));
         case 'cd':
             return await change_directory(args.slice(1));
         case 'validate-commit-msg':
@@ -16,25 +20,6 @@ async function main(args: string[]) {
         case 'versions':
             return await command_ensure_tools();
     }
-}
-
-async function command_system() {
-    cprintln();
-    cprintln('key', `❄️ snowfall development environment`);
-    cprintln('#555', '~'.repeat(80));
-    cprintln();
-
-    const os = Deno.build.os;
-    const arch = Deno.build.arch;
-    const mem = Deno.systemMemoryInfo();
-
-    const os_name =
-        {
-            darwin: 'Mac',
-            linux: 'Linux',
-            windows: 'Windows',
-        }[os as string] ?? 'unknown';
-    cprintln('key', `System: ${os_name} ${arch} ${mem.total / Math.pow(1024, 3)} GiB`);
 }
 
 async function upgrade_tools() {

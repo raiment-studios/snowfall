@@ -55,12 +55,11 @@ eval "$(starship init bash)"
 
 add_to_path "$MONOREPO_ROOT/bin"
 rm -f "$MONOREPO_ROOT/bin/sea"
-ln -s "$MONOREPO_ROOT/tools/sea/sea" "$MONOREPO_ROOT/bin/sea"
 
 # Alias to give "sea" access to the source environment.  All stderr output from
 # sea is treated as a script that is executed at the end of the command.
 function sea() {
-    eval "$MONOREPO_ROOT/tools/sea/sea $*" 2> $MONOREPO_ROOT/temp/__output.sh
+    eval $MONOREPO_ROOT/tools/sea/sea $@ 2> $MONOREPO_ROOT/temp/__output.sh
     cat $MONOREPO_ROOT/temp/__output.sh
     source $MONOREPO_ROOT/temp/__output.sh
     rm $MONOREPO_ROOT/temp/__output.sh
@@ -80,12 +79,24 @@ function gcap() {
     popd
 }
 
+function cprint() {
+    $MONOREPO_ROOT/tools/sea/sea cprintln "$@"
+}
+
 function scd() {
     sea cd $*
 }
 
 sea system
 sea versions
+
+
+cprint
+cprint "Aliases:"
+cprint "  {FC3:gs}   {555:-} {557:alias for 'git status'}"
+cprint "  {FC3:gcap} {555:-} {557:alias for git add, commit, and push}"
+cprint "  {FC3:scd}  {555:-} {557:change directory to best match in repo}"
+
 
 
 
