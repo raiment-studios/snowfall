@@ -1,2 +1,7 @@
+# Run in development mode
+dev:
+    RUST_BACKTRACE=full cargo run
+
+# Run in release mode
 run:
     cargo run --release

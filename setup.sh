@@ -98,6 +98,11 @@ sea system
 sea versions
 
 cprint
+cprint "Environment:"
+cprint "  {FC3:MONOREPO_ROOT}  {555:-} {557:$MONOREPO_ROOT}"
+cprint "  {FC3:OPENAI_API_KEY} {555:-} {557:$OPENAI_API_KEY}"
+
+cprint
 cprint "Aliases:"
 cprint "  {FC3:gs}    {555:-} {557:alias for 'git status'}"
 cprint "  {FC3:gcap}  {555:-} {557:alias for git add, commit, and push}"
