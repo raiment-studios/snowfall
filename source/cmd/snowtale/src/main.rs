@@ -12,6 +12,11 @@ struct ActionLog {
     entries: Vec<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+enum ItemStatus {
+    Immovable,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 enum UseCondition {
     PlayerHas { item_id: String },
@@ -29,6 +34,7 @@ struct Item {
     id: String,
     aliases: Vec<String>,
     description: String,
+    status: Vec<ItemStatus>,
     use_conditions: Vec<UseCondition>,
     use_effects: Vec<UseEffects>,
 }
@@ -39,6 +45,7 @@ impl Item {
             id: id.to_string(),
             aliases: Vec::new(),
             description: "".to_string(),
+            status: Vec::new(),
             use_conditions: Vec::new(),
             use_effects: Vec::new(),
         }
@@ -93,7 +100,14 @@ async fn main() {
     let mut encyclopedia = read_encyclopedia();
 
     loop {
-        println!("POS: {},{}", player.position.0, player.position.1);
+        cprintln(
+            "#3AC",
+            format!(
+                "POS: {},{}  KNOW: {}",
+                player.position.0, player.position.1, player.knownledge
+            )
+            .as_str(),
+        );
         println!();
 
         let room_position = player.position;
@@ -119,9 +133,15 @@ async fn main() {
                 "e" => "east",
                 "w" => "west",
                 "q" => "quit",
+                "i" => "inventory",
                 s => s,
             }
             .to_string()
+        };
+        let subject = if words.len() > 1 {
+            words[1..].join(" ")
+        } else {
+            "".to_string()
         };
 
         println!("You entered: {}", input);
@@ -139,13 +159,11 @@ async fn main() {
                 // the same items
                 create_room(player.position, &mut encyclopedia, &mut world, &actions).await;
             }
-            "get" => {
-                if let Some(item) = room.items.pop() {
-                    println!("You picked up: {}", item.description);
-                    player.inventory.push(item);
-                    write_room(&mut world, room_position, &room);
-                } else {
-                    println!("There is nothing to pick up here.");
+            "get" => command_get(subject, &mut player, &mut world, &mut encyclopedia),
+            "use" => command_use(subject, &mut player, &mut world, &mut encyclopedia),
+            "inventory" => {
+                for item in &player.inventory {
+                    cprintln("0F5", item.description.as_str());
                 }
             }
             "quit" => break,
@@ -160,6 +178,87 @@ async fn main() {
         write_player(&player);
         write_encyclopedia(&encyclopedia);
     }
+}
+
+fn command_get(
+    subject: String,
+    player: &mut Player,
+    world: &mut World,
+    encyclopedia: &mut Encyclopedia,
+) {
+    let mut room = world.rooms.get_mut(&player.position).unwrap().clone();
+    let item = room
+        .items
+        .iter()
+        .find(|item| item.aliases.contains(&subject));
+
+    let Some(item) = item else {
+        println!("You don't see that item here.");
+        return;
+    };
+    let item = item.clone();
+
+    if item.status.contains(&ItemStatus::Immovable) {
+        cprintln("F50", "You can't take that item.");
+        return;
+    }
+
+    // Remove the item from the room and add it to the player inventory
+    room.items.retain(|i| i.id != item.id);
+    player.inventory.push(item.clone());
+    write_room(world, player.position, &room);
+}
+
+fn command_use(
+    subject: String,
+    player: &mut Player,
+    world: &mut World,
+    encyclopedia: &mut Encyclopedia,
+) {
+    cprintln("#FC3", format!("You used: {}", subject).as_str());
+
+    let mut room = world.rooms.get_mut(&player.position).unwrap().clone();
+
+    let item = room
+        .items
+        .iter()
+        .find(|item| item.aliases.contains(&subject));
+
+    let Some(item) = item else {
+        println!("You don't see that item here.");
+        return;
+    };
+    let item = item.clone();
+
+    // Check the pre-conditions
+    for condition in &item.use_conditions {
+        match condition {
+            UseCondition::PlayerHas { item_id } => {
+                if !player.inventory.iter().any(|item| item.id == *item_id) {
+                    cprintln("F50", "You don't have the required item to use this.");
+                    return;
+                }
+            }
+        }
+    }
+
+    cprintln("0F5", "You used the item!");
+
+    for effect in &item.use_effects {
+        match effect {
+            UseEffects::GrantKnowledge { amount } => {
+                player.knownledge += amount;
+                cprintln("0F5", format!("You gained {} knowledge!", amount).as_str());
+            }
+            UseEffects::SingleUse => {
+                room.items.retain(|i| i.id != item.id);
+                cprintln("0F5", "The item was consumed.");
+            }
+            UseEffects::Stationary => {}
+        }
+    }
+
+    write_room(world, player.position, &room);
 }
 
 fn read_encyclopedia() -> Encyclopedia {
@@ -339,7 +438,7 @@ Always response in JSON format according to the schema provided in the question.
 Please return a room object in JSON with exactly two fields: 
 one called "name" and one called "description".  The "name" field should be
 a short name for the room, at most 4 words in length.  The "description" field
-should be a description of the room, at most 4 sentences in length.
+should be a description of the room, at most 3 sentences in length.
 Always, always provide a "name" field for the room in the JSON response.
 
     "#
@@ -409,6 +508,7 @@ Always, always provide a "name" field for the room in the JSON response.
                 "chest".to_string(), //
                 format!("{} chest", color),
             ];
+            item.status.push(ItemStatus::Immovable);
             item.use_conditions.push(UseCondition::PlayerHas {
                 item_id: format!("key_{}", color),
             });
