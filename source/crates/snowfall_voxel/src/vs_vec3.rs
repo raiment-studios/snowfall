@@ -7,10 +7,11 @@ use crate::internal::*;
 /// it is likely the snowfall engine **should** be built on top of Bevy and thus
 /// not hesitate to use Bevy dependencies when it makes sense.
 ///
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct VSVec3 {
-    x: i32,
-    y: i32,
-    z: i32,
+    pub x: i32,
+    pub y: i32,
+    pub z: i32,
 }
 
 impl VSVec3 {
