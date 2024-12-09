@@ -4,8 +4,9 @@
 
 ## P2 (should do soon)
 
--   [ ] Add `use` command for chests #snowtale
--   [ ] Add `look` command to #snowtale
+-   [ ] `Painter` struct for snowfall_voxel
+-   [ ] Some way to quickly preview generated voxel models
+-   [ ] Voxel generators in snowfall_voxel
 
 ## P3 (nice to have)
 
