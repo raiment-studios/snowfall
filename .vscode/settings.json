@@ -38,24 +38,6 @@
         "editor.wordWrapColumn": 80
     },
 
-    "emojisense.languages": {
-        "markdown": true,
-        "javascript": true,
-        "javascriptreact": true,
-        "typescript": true,
-        "typescriptreact": true,
-        "deno": true,
-        "golang": true,
-        "go": true,
-        "rust": true,
-        "plaintext": {
-            "markupCompletionsEnabled": false,
-            "emojiDecoratorsEnabled": false
-        },
-        "scminput": true,
-        "git-commit": true
-    },
-
     "explorer.incrementalNaming": "smart",
     "explorer.excludeGitIgnore": false,
     "workbench.colorCustomizations": {

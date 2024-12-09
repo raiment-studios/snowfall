@@ -1,14 +1,17 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+mod block;
+mod voxel_grid;
+mod voxel_set;
+mod vs_vec3;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+mod prelude {}
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
+mod internal {
+    pub use std::collections::HashMap;
+
+    pub use crate::prelude::*;
+
+    pub use super::block::*;
+    pub use super::voxel_grid::*;
+    pub use super::voxel_set::*;
+    pub use super::vs_vec3::*;
 }

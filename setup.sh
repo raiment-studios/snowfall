@@ -58,6 +58,8 @@ rm -f "$MONOREPO_ROOT/bin/sea"
 
 # Alias to give "sea" access to the source environment.  All stderr output from
 # sea is treated as a script that is executed at the end of the command.
+unalias sea 2> /dev/null
+unset -f sea
 function sea() {
     eval $MONOREPO_ROOT/tools/sea/sea $@ 2> $MONOREPO_ROOT/temp/__output.sh
     cat $MONOREPO_ROOT/temp/__output.sh
@@ -70,18 +72,24 @@ function cprint() {
 }
 
 # Git Log (gslog)
+unalias gslog 2> /dev/null
+unset -f gslog
 alias gslog='git log -n 12 --pretty="%C(auto)%h %C(#3fc9b4)%ad %as %C(green)%s%C(reset)" --color --date=format:"%a"'
 
 # Git Status (gs)
+unalias gs 2> /dev/null
+unset -f gs
 function gs() {
-    cprint "{999:● Recent commits}"
+    cprint "{999:● Recent commits ●}"
     gslog
     echo
-    cprint "{999:● Current git status}"
+    cprint "{999:● Current git status ●}"
     git status
 }
 
 # Git Commit And Push (gcap)
+unalias gcap 2> /dev/null
+unset -f gcap
 function gcap() {
     pushd $MONOREPO_ROOT
     git add .
@@ -90,6 +98,8 @@ function gcap() {
     popd
 }
 
+unalias scd 2> /dev/null
+unset -f scd
 function scd() {
     sea cd $*
 }
