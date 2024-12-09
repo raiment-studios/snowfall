@@ -1,0 +1,17 @@
+name: Sunlit Glade
+description: Emerging from the luminescent emerald canopy, the path ahead opens into a warm and inviting glade. Delicate beams of sunlight pierce the leafy ceiling above, casting playful shadows that dance on the soft, wild grass beneath. Off to the west, obscured slightly by the forest's veil, is the fey trail that has guided you thus far, its quirky mushrooms appearing almost like breadcrumbs strewn backwards along the winding path.
+items:
+- id: chest_cyan
+  aliases:
+  - chest
+  - cyan chest
+  description: A cyan chest
+  status:
+  - Immovable
+  use_conditions:
+  - !PlayerHas
+    item_id: key_cyan
+  use_effects:
+  - !GrantKnowledge
+    amount: 10
+  - SingleUse

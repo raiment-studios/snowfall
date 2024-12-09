@@ -1,6 +1,56 @@
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Default, Clone)]
+pub struct AIDialogBuilder {
+    lines: Vec<String>,
+}
+
+impl AIDialogBuilder {
+    pub fn new() -> Self {
+        AIDialogBuilder { lines: Vec::new() }
+    }
+
+    pub fn with_string<T>(&mut self, mode: &str, message: T) -> Self
+    where
+        T: Into<String>,
+    {
+        let s = message.into();
+        let s = s.trim();
+        if !s.is_empty() {
+            self.lines.push(format!("## {}", mode.to_uppercase()));
+            self.lines.push(format!("{}\n", s));
+        }
+        self.clone()
+    }
+
+    pub fn with_file<T>(&mut self, mode: &str, filename: T) -> Self
+    where
+        T: Into<String>,
+    {
+        let content = std::fs::read_to_string(filename.into()).unwrap();
+        self.with_string(mode, content)
+    }
+
+    pub fn with_user<T>(&mut self, message: T) -> Self
+    where
+        T: Into<String>,
+    {
+        self.with_string("USER", message)
+    }
+
+    pub fn with_system<T>(&mut self, message: T) -> Self
+    where
+        T: Into<String>,
+    {
+        self.with_string("SYSTEM", message)
+    }
+
+    pub fn build(&self) -> String {
+        self.lines.join("\n")
+    }
+}
+
 #[derive(Debug, Serialize)]
 struct OpenAIRequest<'a> {
     model: &'a str,
@@ -29,7 +79,7 @@ struct OpenAIMessageContent {
     content: String,
 }
 
-async fn open_ai(messages: Option<Vec<OpenAIMessage>>) -> Option<String> {
+async fn open_ai(count: u32, messages: Option<Vec<OpenAIMessage>>) -> Option<String> {
     let api_url = "https://api.openai.com/v1/chat/completions";
     let api_key = std::env::var("OPENAI_API_KEY").unwrap();
 
@@ -42,8 +92,10 @@ async fn open_ai(messages: Option<Vec<OpenAIMessage>>) -> Option<String> {
     let request_body = OpenAIRequest {
         model: "gpt-4",
         messages: messages.unwrap_or(default_messages),
-        max_tokens: 5000,
+        max_tokens: count,
     };
+
+    // println!("{:#?}", request_body);
 
     let mut headers = HeaderMap::new();
     headers.insert(
@@ -75,7 +127,7 @@ async fn open_ai(messages: Option<Vec<OpenAIMessage>>) -> Option<String> {
     }
 }
 
-pub async fn open_ai2(text: &str) -> Option<String> {
+pub async fn open_ai2(count: u32, text: &str) -> Option<String> {
     #[derive(Debug, Clone)]
     struct Message {
         role: String,
@@ -111,6 +163,11 @@ pub async fn open_ai2(text: &str) -> Option<String> {
             eprintln!("Ignoring line: {}", line);
         }
     }
+    if let Some(current) = current {
+        if !current.content.is_empty() {
+            messages.push(current);
+        }
+    }
 
     let input_messages: Vec<OpenAIMessage> = messages
         .into_iter()
@@ -120,6 +177,6 @@ pub async fn open_ai2(text: &str) -> Option<String> {
         })
         .collect();
 
-    let s = open_ai(Some(input_messages)).await;
+    let s = open_ai(count, Some(input_messages)).await;
     s
 }

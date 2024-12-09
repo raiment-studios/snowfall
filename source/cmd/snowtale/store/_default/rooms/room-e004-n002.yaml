@@ -1,0 +1,11 @@
+name: Cottage Hillside
+description: The ascent up the small hill brings you to a modest and quaint cottage, nestled snug against the curve of the hillside. Its walls are skillfully constructed from stones gathered from the meadow, and a tiny chimney pokes out from its moss-covered roof, puffing out gentle wafts of smoke. A lone lamppost stands guard near a weather-worn wooden door, bathed in the warm glow of twilight and painting a picture of homely tranquility so far from the magical turmoil of the fey trail.
+items:
+- id: key_red
+  aliases:
+  - key
+  - red key
+  description: A red key
+  status: []
+  use_conditions: []
+  use_effects: []

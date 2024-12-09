@@ -1,0 +1,17 @@
+name: Enchanted Forest
+description: Venturing further away from the heartening warmth of the cabin's hearth, the player enters a towering, enchanted forest. The scent of rich, burgeoning earth and a stunning array of vibrant greenery engulfs them, providing a sanctuary-like ambiance. Somewhere amidst the dense growth of emerald leaves and majestic tree trunks stretches an unpaved path leading to the east, clustered with a tableau of whimsically shaped mushrooms and ferns, hinting at a well-trodden trail.
+items:
+- id: chest_orange
+  aliases:
+  - chest
+  - orange chest
+  description: A orange chest
+  status:
+  - Immovable
+  use_conditions:
+  - !PlayerHas
+    item_id: key_orange
+  use_effects:
+  - !GrantKnowledge
+    amount: 10
+  - SingleUse

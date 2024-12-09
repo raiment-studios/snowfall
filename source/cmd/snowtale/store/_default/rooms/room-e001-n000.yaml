@@ -1,0 +1,17 @@
+name: Meadow Crossing
+description: Leaving the confines of the rustic cabin, the player steps into a lush, idyllic meadow, where wildflowers carpet the ground in a breathtaking panorama of colours. Ahead, there's a babbling brook, trailing through the verdant grass, its water reflecting the blue sky above. A stone bridge arches across the waterway, leading towards more dense woodlands. The firelight from the cabin's hearth glows warmly against the vivid landscape, cast in stark contrast with the open wilderness before them.
+items:
+    - id: chest_red
+      aliases:
+          - chest
+          - red chest
+      description: A red chest
+      status:
+          - Immovable
+      use_conditions:
+          - !PlayerHas
+            item_id: key_red
+      use_effects:
+          - !GrantKnowledge
+            amount: 10
+          - SingleUse

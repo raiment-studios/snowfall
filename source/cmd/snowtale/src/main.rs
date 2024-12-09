@@ -1,6 +1,6 @@
 mod openai;
 mod ui;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 use colored::Colorize;
 use openai::*;
@@ -99,29 +99,28 @@ async fn main() {
     let mut player = read_player();
     let mut encyclopedia = read_encyclopedia();
 
+    let mut buffer = VecDeque::<&str>::new();
+    buffer.push_back("look");
+
     loop {
-        cprintln(
-            "#3AC",
-            format!(
-                "POS: {},{}  KNOW: {}",
-                player.position.0, player.position.1, player.knownledge
-            )
-            .as_str(),
-        );
-        println!();
-
         let room_position = player.position;
-        let mut room = ensure_room(room_position, &mut encyclopedia, &mut world, &actions).await;
-        cprintln("3ff", room.name.as_str());
-        print_paragraph("eee", room.description.as_str());
-
-        println!();
-        for item in &room.items {
-            cprintln("77f", item.description.as_str());
-        }
+        let room = ensure_room(room_position, &mut encyclopedia, &mut world, &actions).await;
 
         // Process the input
-        let input = prompt().await;
+        let input = if buffer.is_empty() {
+            cprintln(
+                "#3AC",
+                format!(
+                    "POS: {},{}  KNOW: {}",
+                    player.position.0, player.position.1, player.knownledge
+                )
+                .as_str(),
+            );
+            prompt().await
+        } else {
+            buffer.pop_front().unwrap().to_string()
+        };
+
         let input = input.trim().to_lowercase();
 
         // Split input by whitespace
@@ -144,28 +143,45 @@ async fn main() {
             "".to_string()
         };
 
-        println!("You entered: {}", input);
         println!();
 
         let mut handled = true;
         match action.trim() {
-            "north" => player.position.1 += 1,
-            "south" => player.position.1 -= 1,
-            "east" => player.position.0 += 1,
-            "west" => player.position.0 -= 1,
+            "look" => {
+                cprintln("8cc", format!("  ## {}", room.name.as_str()).as_str());
+                print_paragraph("eee", room.description.as_str());
+
+                println!();
+                for item in &room.items {
+                    cprintln("77f", item.description.as_str());
+                }
+            }
+            "north" => {
+                player.position.1 += 1;
+                buffer.push_back("look");
+            }
+            "south" => {
+                player.position.1 -= 1;
+                buffer.push_back("look");
+            }
+            "east" => {
+                player.position.0 += 1;
+                buffer.push_back("look");
+            }
+            "west" => {
+                player.position.0 -= 1;
+                buffer.push_back("look");
+            }
             "regen" => {
                 // TODO: this can break the encyclopedia markers as the prior
                 // room may have set the marker and the new room may not have
                 // the same items
                 create_room(player.position, &mut encyclopedia, &mut world, &actions).await;
+                buffer.push_back("look");
             }
             "get" => command_get(subject, &mut player, &mut world, &mut encyclopedia),
             "use" => command_use(subject, &mut player, &mut world, &mut encyclopedia),
-            "inventory" => {
-                for item in &player.inventory {
-                    cprintln("0F5", item.description.as_str());
-                }
-            }
+            "inventory" => command_inventory(&player),
             "quit" => break,
             _ => {
                 println!("I don't understand that command.");
@@ -177,6 +193,13 @@ async fn main() {
         }
         write_player(&player);
         write_encyclopedia(&encyclopedia);
+    }
+}
+
+fn command_inventory(player: &Player) {
+    cprintln("0F5", "You are carrying:");
+    for item in &player.inventory {
+        cprintln("0F5", format!("  {}", item.description.as_str()).as_str());
     }
 }
 
@@ -207,6 +230,11 @@ fn command_get(
     room.items.retain(|i| i.id != item.id);
     player.inventory.push(item.clone());
     write_room(world, player.position, &room);
+
+    cprintln(
+        "0F5",
+        format!("You picked up: {}", item.description).as_str(),
+    );
 }
 
 fn command_use(
@@ -380,9 +408,8 @@ async fn create_room(
         } else {
             format!(
                 r#"
-When describing the new room, please make sure it follows naturally
-and logically from the nearby rooms.  Here are the descriptions of 
-the nearby rooms:
+When describing the new room, please make sure it fits with the nearby rooms.  
+Here are the descriptions of the nearby rooms:
 
 {}
 
@@ -408,122 +435,89 @@ Please remember that these are the recent actions of the player:
         }
     };
 
-    let p = format!(
-        r#"
+    let dialog = AIDialogBuilder::new()
+        .with_file("system", "packs/base/preface.md")
+        .with_system(&sys_nearby)
+        .with_system(&sys_recent_actions)
+        .with_user(
+            vec![
+                "Please provide description of the current room.  Please ensure ",
+                "the description is at most one paragraph long and no more than 3 sentences.",
+            ]
+            .join("\n"),
+        )
+        .build();
 
-## SYSTEM
+    let d = open_ai2(2000, dialog.as_str()).await.unwrap_or_default();
+    let mut room = Room::default();
+    room.description = d.clone();
 
-You are the mind behind a text adventure game and need to describe scenes and
-rooms that the player enters.  Describe them in the fashion of a text adventure
-like King's Quest or Zork or Daggerfall.  Be specific but also concise.
-This is a world of low-fantasy with magical elements and mythical creatures, but
-they are rare and the majority of the story is based on humans and their struggles.
+    let dialog = AIDialogBuilder::new()
+    .with_file("system", "packs/base/preface.md")
+    .with_system(&sys_nearby)
+    .with_system(&sys_recent_actions)
+    .with_user(
+        vec![
+            "Please provide a brief title for the current room based on this description of the room:",
+            "",
+            room.description.as_str(),
+            "",
+            "The title should be one or two words at most.  Do not provide a description of the",
+            "room. Only provide a name or title by which we can refer to the room henceforth.",
+        ]
+        .join("\n"),
+    )
+    .build();
 
-When writing text provide single, specific answers in plain English. Do not provide multiple
-options.  Describe the room itself objectively and without any preface.  
-Do not reference the player or group or any of their recent actions.  Use a writing 
-style that reminds the reader of some combination of Jack Vance and JRR Tolkien.  
-Use third-person and describe only the room and surroundings.
+    room.name = open_ai2(200, dialog.as_str()).await.unwrap_or_default();
 
-Always response in JSON format according to the schema provided in the question.
+    // Randomly add a key to the room
+    let r = rand::random::<u8>() % 100;
+    if r < 50 {
+        let colors = vec![
+            "red", "green", "blue", "yellow", "purple", "orange", "cyan", "magenta",
+        ];
+        let color = colors[rand::random::<usize>() % colors.len()];
+        let id = format!("key_{}", color);
+        let desc = format!("A {} key", color);
 
-## SYSTEM
-
-{sys_nearby}
-
-{sys_recent_actions}
-
-## USER
-
-Please return a room object in JSON with exactly two fields: 
-one called "name" and one called "description".  The "name" field should be
-a short name for the room, at most 4 words in length.  The "description" field
-should be a description of the room, at most 3 sentences in length.
-Always, always provide a "name" field for the room in the JSON response.
-
-    "#
-    );
-
-    let d = open_ai2(p.as_str()).await.unwrap_or_default();
-    if !d.is_empty() {
-        #[derive(Debug, Clone, Serialize, Deserialize)]
-        struct Resp {
-            // OpenAPI *insists* on returning a "title" rather than "name" field
-            title: Option<String>,
-            name: Option<String>,
-            description: Option<String>,
-            room_description: Option<String>,
-        }
-
-        let mut room = Room::default();
-        room.description = "<undefined>".to_string();
-
-        cprintln("555", &d);
-
-        let resp = serde_json::from_str::<Resp>(d.as_str()).unwrap();
-        if let Some(name) = resp.name {
-            room.name = name;
-        } else {
-            room.name = resp.title.unwrap_or_default();
-        }
-        if let Some(desc) = resp.room_description {
-            room.description = desc;
-        } else if let Some(desc) = resp.description {
-            room.description = desc;
-        }
-
-        // Randomly add a key to the room
-        let r = rand::random::<u8>() % 100;
-        if r < 50 {
-            let colors = vec![
-                "red", "green", "blue", "yellow", "purple", "orange", "cyan", "magenta",
-            ];
-            let color = colors[rand::random::<usize>() % colors.len()];
-            let id = format!("key_{}", color);
-            let desc = format!("A {} key", color);
-
-            if !encyclopedia.markers.contains(id.as_str()) {
-                let mut item = Item::new(id.as_str());
-                item.description = desc.clone();
-                item.aliases.push("key".to_string());
-                item.aliases.push(format!("{} key", color));
-                room.items.push(item);
-                encyclopedia.markers.insert(id);
-            }
-        }
-
-        // Randomly add a chest to the room
-        let r = rand::random::<u8>() % 100;
-        if r < 50 {
-            let colors = vec![
-                "red", "green", "blue", "yellow", "purple", "orange", "cyan", "magenta",
-            ];
-            let color = colors[rand::random::<usize>() % colors.len()];
-            let id = format!("chest_{}", color);
-            let desc = format!("A {} chest", color);
-
+        if !encyclopedia.markers.contains(id.as_str()) {
             let mut item = Item::new(id.as_str());
             item.description = desc.clone();
-            item.aliases = vec![
-                "chest".to_string(), //
-                format!("{} chest", color),
-            ];
-            item.status.push(ItemStatus::Immovable);
-            item.use_conditions.push(UseCondition::PlayerHas {
-                item_id: format!("key_{}", color),
-            });
-            item.use_effects
-                .push(UseEffects::GrantKnowledge { amount: 10 });
-            item.use_effects.push(UseEffects::SingleUse);
-
+            item.aliases.push("key".to_string());
+            item.aliases.push(format!("{} key", color));
             room.items.push(item);
+            encyclopedia.markers.insert(id);
         }
-
-        write_room(world, position, &room);
-        return room;
-    } else {
-        // TODO: need to implement so sort of retry with different
-        // variations...and some fallback if N retries fail
-        panic!("No description returned from OpenAI");
     }
+
+    // Randomly add a chest to the room
+    let r = rand::random::<u8>() % 100;
+    if r < 50 {
+        let colors = vec![
+            "red", "green", "blue", "yellow", "purple", "orange", "cyan", "magenta",
+        ];
+        let color = colors[rand::random::<usize>() % colors.len()];
+        let id = format!("chest_{}", color);
+        let desc = format!("A {} chest", color);
+
+        let mut item = Item::new(id.as_str());
+        item.description = desc.clone();
+        item.aliases = vec![
+            "chest".to_string(), //
+            format!("{} chest", color),
+        ];
+        item.status.push(ItemStatus::Immovable);
+        item.use_conditions.push(UseCondition::PlayerHas {
+            item_id: format!("key_{}", color),
+        });
+        item.use_effects
+            .push(UseEffects::GrantKnowledge { amount: 10 });
+        item.use_effects.push(UseEffects::SingleUse);
+
+        room.items.push(item);
+    }
+
+    write_room(world, position, &room);
+    return room;
 }

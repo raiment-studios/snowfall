@@ -1,0 +1,17 @@
+name: Sage's Nook
+description: In the heart of an ancient, enchanting forest, there's a rustic wooden cabin filled with whimsy. Ornately carved bookshelves stretch to the ceiling, filled to the brim with ancient tomes, trinkets, and curiosities casting odd shadows around the room. A warm, hearty fire crackles in a stone fireplace, illuminating a worn parchment map of Galthea spread on a sturdy oak table, daubed with spots of coloured ink.
+items:
+- id: chest_purple
+  aliases:
+  - chest
+  - purple chest
+  description: A purple chest
+  status:
+  - Immovable
+  use_conditions:
+  - !PlayerHas
+    item_id: key_purple
+  use_effects:
+  - !GrantKnowledge
+    amount: 10
+  - SingleUse

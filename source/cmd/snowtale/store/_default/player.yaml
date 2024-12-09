@@ -1,0 +1,29 @@
+position:
+- 4
+- 2
+inventory:
+- id: key_magenta
+  aliases:
+  - key
+  - magenta key
+  description: A magenta key
+  status: []
+  use_conditions: []
+  use_effects: []
+- id: key_yellow
+  aliases:
+  - key
+  - yellow key
+  description: A yellow key
+  status: []
+  use_conditions: []
+  use_effects: []
+- id: key_cyan
+  aliases:
+  - key
+  - cyan key
+  description: A cyan key
+  status: []
+  use_conditions: []
+  use_effects: []
+knownledge: 10

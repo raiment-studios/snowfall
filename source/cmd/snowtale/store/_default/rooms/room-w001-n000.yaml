@@ -1,0 +1,17 @@
+name: Whimsical Glade
+description: Emerging from the seclusion of the forest, the sight that greets the senses is the calm expanse of an idyllic glade. Verdant moss blankets the woodland floor, punctuated by whimsical toadstool clusters and the occasional fallen leaf. In stark contrast to the cozy atmosphere of the nearby cabin, the open sky here is a canvas of azure and pearl, with distant bird song as the only hint of other creatures' presence, capturing the essence of quiet solitude.
+items:
+- id: chest_yellow
+  aliases:
+  - chest
+  - yellow chest
+  description: A yellow chest
+  status:
+  - Immovable
+  use_conditions:
+  - !PlayerHas
+    item_id: key_yellow
+  use_effects:
+  - !GrantKnowledge
+    amount: 10
+  - SingleUse

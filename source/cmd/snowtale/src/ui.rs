@@ -22,24 +22,31 @@ pub fn parse_color(hex: &str) -> (u8, u8, u8) {
     }
 }
 
-pub fn cprintln(color: &str, text: &str) {
+pub fn cprintln<T>(color: &str, text: T)
+where
+    T: Into<String>,
+{
     let (r, g, b) = parse_color(color);
-    println!("{}", text.truecolor(r, g, b));
+    println!("{}", text.into().truecolor(r, g, b));
 }
 
 pub fn print_paragraph(color: &str, text: &str) {
     // Split the text into lines of at most 80 characters, splitting at word boundaries.
     let (r, g, b) = parse_color(color);
-    let regex = regex::Regex::new(r".{1,78}(?:\s|$)").unwrap();
-    let lines = regex
-        .find_iter(text)
-        .map(|m| m.as_str().trim()) // Trim any trailing whitespace
-        .collect::<Vec<_>>();
 
-    for line in lines {
-        println!("  {}", line.truecolor(r, g, b));
+    // Split text by newline and process each line separately
+    for line in text.lines() {
+        let regex = regex::Regex::new(r".{1,78}(?:\s|$)").unwrap();
+        let lines = regex
+            .find_iter(line)
+            .map(|m| m.as_str().trim()) // Trim any trailing whitespace
+            .collect::<Vec<_>>();
+
+        for line in lines {
+            println!("  {}", line.truecolor(r, g, b));
+        }
+        println!();
     }
-    println!();
 }
 
 pub async fn prompt() -> String {
