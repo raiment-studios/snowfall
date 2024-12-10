@@ -31,9 +31,14 @@ impl VoxelSet {
     // Block palette
     // ------------------------------------------------------------------------
 
+    /// Adds the block to the palette for this voxel set.  If a block with the
+    /// same name already exists, it will **replace** that definition.
     pub fn register_block(&mut self, block: Block) {
-        let id = self.palette.len() as u16;
-        self.palette.push(block);
+        if let Some(index) = self.palette.iter().position(|b| b.id == block.id) {
+            self.palette[index] = block;
+        } else {
+            self.palette.push(block);
+        }
     }
 
     // ------------------------------------------------------------------------

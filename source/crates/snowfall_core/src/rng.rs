@@ -1,3 +1,4 @@
+use noise::{NoiseFn, OpenSimplex};
 use rand::{
     distributions::{
         uniform::{SampleRange, SampleUniform},
@@ -17,7 +18,7 @@ impl RNG {
         rand::random()
     }
 
-    pub fn new_from_time() -> Self {
+    pub fn new_random() -> Self {
         let seed = rand::random();
         Self::new(seed)
     }
@@ -28,6 +29,11 @@ impl RNG {
 
     pub fn fork(&mut self) -> Self {
         Self::new(self.gen())
+    }
+
+    pub fn open_simplex(&mut self) -> NoiseGeneratorBuilder {
+        let seed: u32 = self.gen();
+        NoiseGeneratorBuilder::new(seed)
     }
 
     pub fn gen<T>(&mut self) -> T
@@ -64,5 +70,54 @@ impl RNG {
             index -= weight;
         }
         panic!("select_weighted: unreachable");
+    }
+}
+
+#[derive(Debug)]
+pub struct NoiseGen {
+    generator: OpenSimplex,
+    scale: f32,
+}
+
+impl NoiseGen {
+    pub fn gen_2d(&self, u: f32, v: f32) -> f32 {
+        let u = u / self.scale;
+        let v = v / self.scale;
+        let n = self.generator.get([u as f64, v as f64]) / 2.0 + 0.5;
+        n as f32
+    }
+
+    pub fn gen_3d(&self, u: f32, v: f32, w: f32) -> f32 {
+        let u = u / self.scale;
+        let v = v / self.scale;
+        let w = w / self.scale;
+        let n = self.generator.get([u as f64, v as f64, w as f64]) / 2.0 + 0.5;
+        n as f32
+    }
+}
+
+pub struct NoiseGeneratorBuilder {
+    seed: u32,
+    scale: f32,
+}
+
+impl NoiseGeneratorBuilder {
+    fn new(seed: u32) -> Self {
+        Self { seed, scale: 1.0 }
+    }
+
+    pub fn seed(mut self, seed: u32) -> Self {
+        self.seed = seed;
+        self
+    }
+    pub fn scale(mut self, scale: f32) -> Self {
+        self.scale = scale;
+        self
+    }
+    pub fn build(self) -> NoiseGen {
+        NoiseGen {
+            generator: OpenSimplex::new(self.seed),
+            scale: self.scale,
+        }
     }
 }
