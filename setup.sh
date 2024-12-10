@@ -121,7 +121,7 @@ cprint "Aliases:"
 cprint "  {FC3:gs}    {555:-} {557:alias for 'git status'}"
 cprint "  {FC3:gcap}  {555:-} {557:alias for git add, commit, and push}"
 cprint "  {FC3:gslog} {555:-} {557:recent git commits}"
-cprint "  {FC3:scd}   {555:-} {557:change directory to best match in repo}"
+cprint "  {FC3:scd}   {555:-} {557:change directory to closest match in repo}"
 
 
 

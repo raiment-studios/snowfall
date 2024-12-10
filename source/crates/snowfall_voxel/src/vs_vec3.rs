@@ -27,6 +27,18 @@ impl VSVec3 {
             z: wz.floor() as i32,
         }
     }
+
+    pub fn to_ws(&self) -> (f32, f32, f32) {
+        (
+            self.x as f32 + 0.5,
+            self.y as f32 + 0.5,
+            self.z as f32 + 0.5,
+        )
+    }
+
+    pub fn midpoint(a: &VSVec3, b: &VSVec3) -> Self {
+        VSVec3::new((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2)
+    }
 }
 
 impl From<(i32, i32, i32)> for VSVec3 {

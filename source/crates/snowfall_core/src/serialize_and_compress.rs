@@ -1,5 +1,20 @@
+use crate::internal::*;
 use flate2::{write::DeflateEncoder, Compression};
 use std::io::{Read, Write};
+
+pub fn serialize_to_bytes<T>(data: &T) -> Result<Vec<u8>, Error>
+where
+    T: serde::Serialize,
+{
+    Ok(bincode::serialize(data)?)
+}
+
+pub fn deserialize_from_bytes<T>(data: &[u8]) -> Result<T, Error>
+where
+    T: serde::de::DeserializeOwned,
+{
+    Ok(bincode::deserialize(data)?)
+}
 
 pub fn serialize_and_compress<T>(data: &T) -> Vec<u8>
 where
