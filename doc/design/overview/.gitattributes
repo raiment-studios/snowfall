@@ -1,2 +1,2 @@
 * text=auto
-*.png filter= diff= merge= -text
+*.png !filter=lfs !diff=lfs !merge=lfs -text
