@@ -39,7 +39,7 @@ This presentation is intended to use Marp https://marp.app/ and specifically the
 
 # Snowfall
 
-## An open source, open-world, voxel-based adventure and exploration game encouraging contributions to be easy and enjoyable
+## An open source, open-world, voxel-based adventure and exploration game where sharing even small contributions is easy and enjoyable
 
 ---
 
@@ -64,9 +64,7 @@ Snowfall is an **exploration** game where the player is rewarded for discovering
 
 #### **Contribution** is how to stay engaged
 
-Models, characters, locations, everything -- is intended to be editable and exportable from within the game. Creating a "mod" is as easy as curating and tweaking a collection of in-game experiences.
-
-The intention is that the "official" distribution lives alongside a set of quality-assured distributions and personal mods that are easy to use & share.
+Models, characters, locations, everything is intended to be editable and exportable from within the game. Creating a "mod" is as easy as curating and tweaking a collection of in-game experiences. The "official" distribution lives alongside a set of quality-assured forked distributions and personal mods that are easy to use & share.
 
 ---
 
@@ -83,3 +81,7 @@ The game engine voxel-based and aiming for a level of visual fidelity and perfor
 -   [Lay of the Land](https://store.steampowered.com/app/2776090/Lay_of_the_Land/)
 
 > Note: the above regards visual fidelity, not gameplay!
+
+---
+
+# Story
