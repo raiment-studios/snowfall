@@ -1,11 +1,10 @@
 mod internal {
+    pub use bevy::core::FrameCount;
     pub use bevy::prelude::*;
     pub use std::collections::HashMap;
 
     pub use snowfall_voxel::prelude::*;
 }
-
-use bevy::{core::FrameCount, ecs::entity};
 
 use crate::internal::*;
 
@@ -16,13 +15,7 @@ fn main() {
             level: bevy::log::Level::WARN,
             ..default()
         }))
-        .add_systems(
-            Startup,
-            (
-                startup, //
-                startup_model,
-            ),
-        )
+        .add_systems(Startup, startup)
         .add_systems(Update, update)
         .run();
 }
@@ -34,18 +27,20 @@ fn update(
     query: Query<&mut NaiveVoxelComponent>,
     frame_count: Res<FrameCount>,
 ) {
-    if frame_count.0 != 100 {
-        return;
-    }
+    match frame_count.0 % 240 {
+        60 => instanciate_model(commands, meshes, materials),
+        180 => {
+            for entity in query.iter() {
+                println!("Removing entity: {:?}", entity);
+                commands.entity(entity.parent_id).despawn_recursive();
 
-    for (entity) in query.iter() {
-        println!("Removing entity: {:?}", entity);
-        commands.entity(entity.parent_id).despawn_recursive();
-
-        meshes.remove(&entity.cube_mesh);
-        for handle in entity.materials.values() {
-            materials.remove(handle);
+                meshes.remove(&entity.cube_mesh);
+                for handle in entity.materials.values() {
+                    materials.remove(handle);
+                }
+            }
         }
+        _ => {}
     }
 }
 
@@ -79,7 +74,7 @@ struct NaiveVoxelComponent {
     pub materials: HashMap<String, Handle<StandardMaterial>>,
 }
 
-fn startup_model(
+fn instanciate_model(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -94,15 +89,12 @@ fn startup_model(
         let material = match cache.get(&block.id) {
             Some(m) => m.clone(),
             None => {
-                let rgb = match block.shader {
+                let (r, g, b) = match block.shader {
                     BlockShader::RGB(ref rgb) => rgb.clone(),
                     _ => BlockRGB { r: 0, g: 0, b: 0 },
-                };
-                let material = materials.add(Color::srgb(
-                    rgb.r as f32 / 255.0,
-                    rgb.g as f32 / 255.0,
-                    rgb.b as f32 / 255.0,
-                ));
+                }
+                .to_srgb();
+                let material = materials.add(Color::srgb(r, g, b));
                 cache.insert(block.id.clone(), material.clone());
                 material
             }

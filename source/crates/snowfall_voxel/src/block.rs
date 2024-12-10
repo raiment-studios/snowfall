@@ -31,6 +31,16 @@ pub struct BlockRGB {
     pub b: u8,
 }
 
+impl BlockRGB {
+    pub fn to_srgb(&self) -> (f32, f32, f32) {
+        (
+            self.r as f32 / 255.0,
+            self.g as f32 / 255.0,
+            self.b as f32 / 255.0,
+        )
+    }
+}
+
 pub enum BlockShader {
     Empty,
     RGB(BlockRGB),
