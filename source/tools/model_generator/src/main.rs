@@ -4,9 +4,10 @@ use snowfall_voxel::prelude::*;
 fn main() {
     let seed = RNG::generate_seed() % 8192;
     let table = vec![
-        ("tree1", generate_tree1(seed)),         //
-        ("tree2", generate_tree2(seed)),         //
-        ("pine_tree", generate_pine_tree(seed)), //
+        ("tree1", generate_tree1(seed)),           //
+        ("tree2", generate_tree2(seed)),           //
+        ("pine_tree", generate_pine_tree(seed)),   //
+        ("small_hill", generate_small_hill(seed)), //
     ];
 
     println!("Generating models (seed={})...", seed);
@@ -15,6 +16,44 @@ fn main() {
         println!("  generated: {}", name);
     }
     println!("done.")
+}
+
+fn generate_small_hill(seed: u64) -> VoxelSet {
+    let mut rng = RNG::new(seed);
+
+    let mut model = VoxelSet::new();
+    model.register_block(Block::color("dirt", 50, 40, 20));
+    model.register_block(Block::color("dirt2", 60, 40, 20));
+
+    let cos01 = |x: f32| (x.cos() + 1.0) / 2.0;
+
+    const SIZE: f32 = 16.0;
+
+    let size_x = (SIZE * rng.range(0.75..=1.25)).ceil() as i32;
+    let size_y = (SIZE * rng.range(0.75..=1.25)).ceil() as i32;
+    let power = rng.range(0.45..=0.55);
+    let angle = rng.range(0.0..std::f32::consts::PI * 2.0);
+    let mut dirt_block = rng.select_fn(vec!["dirt", "dirt2"]);
+
+    for y in -size_y..=size_y {
+        for x in -size_x..=size_x {
+            let u = (x as f32) / (size_x as f32);
+            let v = (y as f32) / (size_y as f32);
+            let u2 = u * angle.cos() - v * angle.sin();
+            let v2 = u * angle.sin() + v * angle.cos();
+            let u = u2 * 4.0;
+            let v = v2 * 4.0;
+
+            let h = 16.0 * cos01(u * 0.5).powf(power) * cos01(v * 0.5).powf(power) - 8.25;
+            let zh = h.floor() as i32;
+
+            for z in 0..=zh {
+                model.set_voxel((x, y, z), dirt_block());
+            }
+        }
+    }
+
+    model
 }
 
 fn generate_pine_tree(seed: u64) -> VoxelSet {
@@ -33,15 +72,8 @@ fn generate_pine_tree(seed: u64) -> VoxelSet {
     let cone_height: i32 = (base_height + rng.range(1..=6)).max(8);
     let girth: f32 = rng.range(0.5..=0.75);
 
-    let mut leaf_select = {
-        let mut rng = rng.fork();
-        move || *rng.select(&vec!["leaves", "leaves2", "leaves3"])
-    };
-
-    let mut wood_select = {
-        let mut rng = rng.fork();
-        move || *rng.select(&vec!["wood", "wood2", "wood3"])
-    };
+    let mut leaf_select = rng.select_fn(vec!["leaves", "leaves2", "leaves3"]);
+    let mut wood_select = rng.select_fn(vec!["wood", "wood2", "wood3"]);
 
     for z in 0..=base_height {
         model.set_voxel((0, 0, z), wood_select());
@@ -56,9 +88,8 @@ fn generate_pine_tree(seed: u64) -> VoxelSet {
                 if d > r as f32 * r as f32 {
                     continue;
                 }
-
-                let p = ((x.abs() % 2) + (y.abs() % 2)) % 2;
-                if p == (z.abs() % 2) {
+                let p = ((x.abs() % 2) + (y.abs() % 2)) == 1;
+                if p == ((z.abs() % 2) == 1) {
                     continue;
                 }
 

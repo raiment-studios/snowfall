@@ -60,6 +60,17 @@ impl RNG {
         &v[index]
     }
 
+    pub fn select_fn<T>(&mut self, v: Vec<T>) -> impl FnMut() -> T
+    where
+        T: Clone,
+    {
+        let mut rng = self.fork();
+        move || {
+            let index: usize = rng.range(0..v.len());
+            v[index].clone()
+        }
+    }
+
     pub fn select_weighted<'a, T>(&mut self, v: &'a Vec<(u32, T)>) -> &'a T {
         let total_weight: u32 = v.iter().map(|(w, _)| *w).sum();
         let mut index = self.range(0..total_weight);
