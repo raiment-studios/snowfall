@@ -58,13 +58,15 @@ Combine the fun, whimsical mix of fairy tale, legend, and mythology akin to the 
 
 <style scoped>section > * { width : 60% }</style>
 
-#### Exploration is key
+#### **Exploration** is where to start
 
 Snowfall is an **exploration** game where the player is rewarded for discovering new characters, locations, history, and making connections in the world.
 
-#### Contribution is key
+#### **Contribution** is how to stay engaged
 
-The game world of Galthea is intended to be a constantly evolving one. Making it trivial to modify the world _in-game_ and share those assets to use in their own worlds is essential. A constantly evolving "official" distribution along with forks of verifiable quality are core to the success of the game.
+Models, characters, locations, everything -- is intended to be editable and exportable from within the game. Creating a "mod" is as easy as curating and tweaking a collection of in-game experiences.
+
+The intention is that the "official" distribution lives alongside a set of quality-assured distributions and personal mods that are easy to use & share.
 
 ---
 
