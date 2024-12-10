@@ -12,6 +12,7 @@ pub mod prelude {
 }
 
 mod internal {
+    pub use serde::{Deserialize, Serialize};
     pub use std::collections::HashMap;
 
     pub use crate::prelude::*;

@@ -1,4 +1,5 @@
 use crate::internal::*;
+use snowfall_core::prelude::*;
 
 /// VoxelSet is simplified voxel representation designed for smaller models
 /// that are bounded and can have all chunks loaded into memory at once.
@@ -7,6 +8,7 @@ use crate::internal::*;
 /// models or small scenes rather than unbounded terrain data.  It priorities
 /// ease-of-use for small models over performance and scalability.
 ///
+#[derive(Serialize, Deserialize)]
 pub struct VoxelSet {
     generation: u64,     // Generation number used to track changes
     palette: Vec<Block>, // Palette of blocks used in the set
@@ -23,6 +25,18 @@ impl VoxelSet {
             palette,
             data: HashMap::new(),
         }
+    }
+
+    pub fn serialize_to_file(&self, path: &str) {
+        let bytes = serialize_and_compress(&self);
+        std::fs::write(path, &bytes).expect("Failed to write file");
+    }
+
+    pub fn deserialize_from_file(path: &str) -> Self {
+        // Read the file at path as a byte array
+        let bytes = std::fs::read(path).unwrap();
+        let voxel_set = decompress_and_deserialize(&bytes);
+        voxel_set
     }
 
     pub fn register_block(&mut self, block: Block) {

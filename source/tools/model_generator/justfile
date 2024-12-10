@@ -1,0 +1,3 @@
+
+dev:
+    cargo watch --ignore content -x run

@@ -1,5 +1,8 @@
+use crate::internal::*;
+
 /// A Block is a definition of a "type" of voxel, where as voxel is a
 /// specific instance of a block in a model.
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Block {
     pub id: String, // unique identifier for the block (e.g. "grass", "sand")
     pub shader: BlockShader,
@@ -31,7 +34,7 @@ impl Block {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BlockRGB {
     pub r: u8,
     pub g: u8,
@@ -49,6 +52,7 @@ impl BlockRGB {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BlockShader {
     Empty,
     RGB(BlockRGB),
