@@ -1,1 +1,2 @@
-*.png filter= diff= merge= text
+* text=auto
+*.png filter= diff= merge= -text
