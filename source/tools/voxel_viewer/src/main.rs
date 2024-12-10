@@ -5,6 +5,8 @@ mod internal {
     pub use snowfall_voxel::prelude::*;
 }
 
+use bevy::{core::FrameCount, ecs::entity};
+
 use crate::internal::*;
 
 fn main() {
@@ -21,7 +23,30 @@ fn main() {
                 startup_model,
             ),
         )
+        .add_systems(Update, update)
         .run();
+}
+
+fn update(
+    mut commands: Commands, //
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    query: Query<&mut NaiveVoxelComponent>,
+    frame_count: Res<FrameCount>,
+) {
+    if frame_count.0 != 100 {
+        return;
+    }
+
+    for (entity) in query.iter() {
+        println!("Removing entity: {:?}", entity);
+        commands.entity(entity.parent_id).despawn_recursive();
+
+        meshes.remove(&entity.cube_mesh);
+        for handle in entity.materials.values() {
+            materials.remove(handle);
+        }
+    }
 }
 
 fn generate_model() -> VoxelSet {
@@ -47,12 +72,22 @@ fn generate_model() -> VoxelSet {
     model
 }
 
+#[derive(Component, Debug)]
+struct NaiveVoxelComponent {
+    pub parent_id: Entity,
+    pub cube_mesh: Handle<Mesh>,
+    pub materials: HashMap<String, Handle<StandardMaterial>>,
+}
+
 fn startup_model(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     let model = generate_model();
+
+    let parent = commands.spawn(Transform::from_xyz(0.0, 0.0, 0.0)).id();
+    let cube = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
 
     let mut cache = HashMap::<String, Handle<StandardMaterial>>::new();
     for (VSVec3 { x, y, z }, block) in model.voxel_iter() {
@@ -73,12 +108,21 @@ fn startup_model(
             }
         };
 
-        commands.spawn((
-            Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
-            MeshMaterial3d(material),
-            Transform::from_xyz(x as f32 + 0.5, y as f32 + 0.5, z as f32 + 0.5),
-        ));
+        let child = commands
+            .spawn((
+                Mesh3d(cube.clone()),
+                MeshMaterial3d(material),
+                Transform::from_xyz(x as f32 + 0.5, y as f32 + 0.5, z as f32 + 0.5),
+            ))
+            .id();
+        commands.entity(parent).add_child(child);
     }
+
+    commands.entity(parent).insert(NaiveVoxelComponent {
+        parent_id: parent,
+        cube_mesh: cube,
+        materials: cache,
+    });
 }
 
 fn startup(
