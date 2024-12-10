@@ -43,10 +43,13 @@ impl VoxelSet {
         self.data.insert(vc.into(), index);
     }
 
-    pub fn voxel_iter(&self) -> impl Iterator<Item = (VSVec3, &Block)> {
-        self.data.iter().map(move |(vc, &index)| {
-            let block = &self.palette[index as usize];
-            (*vc, block)
-        })
+    pub fn voxel_iter(&self, include_empty: bool) -> impl Iterator<Item = (VSVec3, &Block)> {
+        self.data
+            .iter()
+            .filter(move |(_, &index)| include_empty || index != 0)
+            .map(move |(vc, &index)| {
+                let block = &self.palette[index as usize];
+                (*vc, block)
+            })
     }
 }

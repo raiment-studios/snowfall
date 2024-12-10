@@ -1,7 +1,7 @@
 [workspace]
 members = [
     "source/cmd/snowglobe",         #
-    "source/cmd/snowtale",
+    "source/cmd/snowtale", "source/crates/snowfall_bevy",
     "source/crates/snowfall_core",
     "source/crates/snowfall_voxel",
     "source/tools/voxel_viewer",

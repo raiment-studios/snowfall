@@ -22,6 +22,13 @@ impl Block {
             shader: BlockShader::RGB(BlockRGB { r, g, b }),
         }
     }
+
+    pub fn is_empty(&self) -> bool {
+        match self.shader {
+            BlockShader::Empty => true,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -32,6 +39,7 @@ pub struct BlockRGB {
 }
 
 impl BlockRGB {
+    /// Useful for conversion to a Bevy srgb color
     pub fn to_srgb(&self) -> (f32, f32, f32) {
         (
             self.r as f32 / 255.0,

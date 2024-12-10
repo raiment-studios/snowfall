@@ -1,0 +1,9 @@
+[package]
+name = "snowfall_bevy"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+snowfall_voxel = { path = "../../crates/snowfall_voxel" }
+bevy = "0.15.0"
+rand = "0.8.5"

@@ -4268,6 +4268,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "snowfall_bevy"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "rand",
+ "snowfall_voxel",
+]
+
+[[package]]
 name = "snowfall_core"
 version = "0.1.0"
 
@@ -4874,6 +4883,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "snowfall_bevy",
  "snowfall_voxel",
 ]
 
