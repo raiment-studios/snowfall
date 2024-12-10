@@ -1,8 +1,10 @@
 
 # Unfortunately deno does not run marp-cli and we need to use npx
 # deno run -A --unstable npm:@marp-team/marp-cli@latest overview.md -o overview.html
-
+#
+# Also, we export to PDF since it's currently difficult to view HTML directly from
+# GitHub. Once a static site is in place, we can copy it there.
 
 # Generate HTML for the markdown presentation
 build:
-    npx --yes @marp-team/marp-cli@latest overview.md -o overview.html
+    npx --yes @marp-team/marp-cli@latest overview.md -o overview.pdf
