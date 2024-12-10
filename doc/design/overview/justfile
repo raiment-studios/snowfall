@@ -1,0 +1,8 @@
+
+# Unfortunately deno does not run marp-cli and we need to use npx
+# deno run -A --unstable npm:@marp-team/marp-cli@latest overview.md -o overview.html
+
+
+# Generate HTML for the markdown presentation
+build:
+    npx --yes @marp-team/marp-cli@latest overview.md -o overview.html
