@@ -39,7 +39,7 @@ This presentation is intended to use Marp https://marp.app/ and specifically the
 
 # Snowfall
 
-## An open source, open-world, voxel-based adventure and exploration game where sharing even small contributions is easy and enjoyable
+## An open source, open-world, voxel-based adventure and exploration game where publishing even small contributions is easy and enjoyable
 
 ---
 
@@ -65,6 +65,20 @@ Snowfall is an **exploration** game where the player is rewarded for discovering
 #### **Contribution** is how to stay engaged
 
 Models, characters, locations, everything is intended to be editable and exportable from within the game. Creating a "mod" is as easy as curating and tweaking a collection of in-game experiences. The "official" distribution lives alongside a set of quality-assured forked distributions and personal mods that are easy to use & share.
+
+---
+
+## Premise
+
+In the fictional universe of **Galthea**, the player adopts the role of **Kestrel**.
+
+TODO: Kestrel as an android that looks human. Hostility towards androids. Tristan, the last great artificial intelligence gone missing. The Maelstrom getting worse and causing more rifts in reality.
+
+## Game loop
+
+In the game world of Galthea, a mysterious cosmic force known as **the Maelstrom** is rapidly ripping apart reality. There is a unseen countdown where the player, who takes the role of Kestrel, must discover the whereabouts of Tristan - the artificial intelligence who created her. Whether she succeeds or fails in the effort, the end of the universe is inevitable.
+
+But with each incarnation of the game, what was generated before influences the next incarnation, making each playthrough a chance to expand, transform, and change the game world...
 
 ---
 
