@@ -6,3 +6,7 @@ edition = "2021"
 [dependencies]
 snowfall_voxel = { path = "../../crates/snowfall_voxel" }
 snowfall_core = { path = "../../crates/snowfall_core" }
+clap = { version = "4.5.23", features = ["derive", "env"] }
+serde_yaml = "0.9.34"
+serde = { version = "1.0.216", features = ["derive"] }
+bevy_math = { version = "0.15.0", features = ["serialize"] }

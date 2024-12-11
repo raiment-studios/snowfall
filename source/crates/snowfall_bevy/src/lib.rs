@@ -101,9 +101,10 @@ pub struct VoxelMeshComponent {
 impl VoxelMeshComponent {
     pub fn spawn_from_model(
         model: &VoxelSet,
-        mut commands: Commands,
-        mut meshes: ResMut<Assets<Mesh>>,
-        mut materials: ResMut<Assets<StandardMaterial>>,
+        commands: &mut Commands,
+        meshes: &mut ResMut<Assets<Mesh>>,
+        materials: &mut ResMut<Assets<StandardMaterial>>,
+        translation: Vec3,
     ) {
         let arrays = build_mesh_arrays(model);
 
@@ -128,6 +129,7 @@ impl VoxelMeshComponent {
                 mesh,
                 material,
             },
+            Transform::from_translation(translation),
         ));
     }
 

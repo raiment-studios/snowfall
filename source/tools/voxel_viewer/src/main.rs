@@ -45,7 +45,13 @@ fn main() {
             ..default()
         }))
         .insert_resource(AppState::new(args.filename))
-        .add_systems(Startup, startup)
+        .add_systems(
+            Startup,
+            (
+                startup, //
+                startup_init_model.after(startup),
+            ),
+        )
         .add_systems(
             Update,
             (
@@ -89,10 +95,43 @@ fn startup(
     ));
 
     commands.spawn((
-        Mesh3d(meshes.add(Plane3d::default().mesh().size(50.0, 50.0))),
+        Mesh3d(meshes.add(Plane3d::default().mesh().size(100.0, 100.0))),
         MeshMaterial3d(materials.add(Color::srgb(0.25, 0.25, 0.25))),
         Transform::from_rotation(Quat::from_rotation_x(FRAC_PI_2)),
     ));
+}
+
+fn startup_init_model(state: Res<AppState>) {
+    let filename = state.filename.clone();
+
+    // Get the basename
+    let basename = std::path::Path::new(&filename)
+        .file_stem()
+        .expect("Failed to get basename")
+        .to_str()
+        .expect("Failed to convert to string")
+        .to_string();
+
+    // Split the extension
+    let mut parts = basename.split('-').collect::<Vec<&str>>().clone();
+    let seed = parts
+        .pop()
+        .expect("Failed to get seed")
+        .parse::<u64>()
+        .unwrap();
+    let model = parts.pop().expect("Failed to get model");
+
+    regenerate_model(model.to_string(), seed);
+}
+
+fn regenerate_model(model: String, seed: u64) {
+    // Run the process model_generator with the args model and seed
+    let output = std::process::Command::new("cargo")
+        .current_dir("../model_generator")
+        .args(&["run", "--release", "--", &model, &seed.to_string()])
+        .output()
+        .expect("Failed to run model_generator");
+    println!("{:#?}", output)
 }
 
 fn update_camera_rotation(
@@ -140,19 +179,92 @@ fn update_model(
         entity.despawn(&mut commands, &mut meshes, &mut materials);
     }
 
-    let Ok(model) = VoxelSet::deserialize_from_file(&filename) else {
-        error!("Failed to deserialize voxel set");
-        return;
+    // Get extension of filename
+    let extension = filename
+        .split('.')
+        .last()
+        .expect("Failed to get extension")
+        .to_lowercase();
+    match extension.as_str() {
+        "yaml" => {
+            let file: VoxelSceneFile =
+                serde_yaml::from_str(&std::fs::read_to_string(&filename).unwrap()).unwrap();
+
+            let mut min = VSVec3::new(i32::MAX, i32::MAX, i32::MAX);
+            let mut max = VSVec3::new(i32::MIN, i32::MIN, i32::MIN);
+            for layer in &file.scene.layers {
+                for object in &layer.objects {
+                    println!("{}", &object.model_id);
+                    regenerate_model(object.model_id.clone(), object.seed);
+
+                    // TODO: this assumes it's a .bin file
+                    let filename = format!(
+                        "../model_generator/content/{}-{}.bin",
+                        object.model_id, object.seed
+                    );
+                    let Ok(model) = VoxelSet::deserialize_from_file(&filename) else {
+                        error!("Failed to deserialize voxel set");
+                        return;
+                    };
+
+                    let bounds = model.bounds();
+                    min.x = min.x.min(bounds.0.x);
+                    min.y = min.y.min(bounds.0.y);
+                    min.z = min.z.min(bounds.0.z);
+                    max.x = max.x.max(bounds.1.x);
+                    max.y = max.y.max(bounds.1.y);
+                    max.z = max.z.max(bounds.1.z);
+
+                    VoxelMeshComponent::spawn_from_model(
+                        &model,
+                        &mut commands,
+                        &mut meshes,
+                        &mut materials,
+                        Vec3::new(
+                            object.position.x as f32,
+                            object.position.y as f32,
+                            object.position.z as f32,
+                        ),
+                    );
+                }
+            }
+
+            let bounds = (min, max);
+            let max_extent = (((bounds.1.x - bounds.0.x + 1).pow(2)
+                + (bounds.1.y - bounds.0.y + 1).pow(2)
+                + (bounds.1.z - bounds.0.z + 1).pow(2)) as f32)
+                .sqrt();
+            let center_point = VSVec3::midpoint(&bounds.0, &bounds.1).to_ws();
+
+            state.look_at = center_point.into();
+            state.view_radius = max_extent as f32 * 2.0;
+        }
+        "bin" => {
+            let Ok(model) = VoxelSet::deserialize_from_file(&filename) else {
+                error!("Failed to deserialize voxel set");
+                return;
+            };
+
+            let bounds = model.bounds();
+            let max_extent = (bounds.1.x - bounds.0.x + 1)
+                .max(bounds.1.y - bounds.0.y + 1)
+                .max(bounds.1.z - bounds.0.z + 1);
+            let center_point = VSVec3::midpoint(&bounds.0, &bounds.1).to_ws();
+
+            state.look_at = center_point.into();
+            state.view_radius = max_extent as f32 * 1.5;
+
+            VoxelMeshComponent::spawn_from_model(
+                &model,
+                &mut commands,
+                &mut meshes,
+                &mut materials,
+                Vec3::new(0.0, 0.0, 0.0),
+            );
+        }
+        _ => {
+            error!("Unknown file extension: {}", extension);
+            std::process::exit(1);
+        }
     };
-
-    let bounds = model.bounds();
-    let max_extent = (bounds.1.x - bounds.0.x + 1)
-        .max(bounds.1.y - bounds.0.y + 1)
-        .max(bounds.1.z - bounds.0.z + 1);
-    let center_point = VSVec3::midpoint(&bounds.0, &bounds.1).to_ws();
-
-    state.look_at = center_point.into();
-    state.view_radius = max_extent as f32 * 1.5;
-
-    VoxelMeshComponent::spawn_from_model(&model, commands, meshes, materials);
 }

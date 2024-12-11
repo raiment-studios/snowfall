@@ -1,5 +1,5 @@
 run model:
-    cargo run --release -- "../model_generator/content/{{model}}.bin"
+    cargo run --release -- "../model_generator/content/{{model}}"
 
 dev:
     cargo watch -s "just run"

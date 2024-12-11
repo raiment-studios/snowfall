@@ -1,3 +1,5 @@
-
 dev:
     cargo watch --ignore content -x run
+
+run generator seed:
+    cargo run --release -- {{generator}} {{seed}}

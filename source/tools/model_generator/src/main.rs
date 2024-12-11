@@ -1,21 +1,88 @@
+use bevy_math::prelude::*;
 use snowfall_core::prelude::*;
 use snowfall_voxel::prelude::*;
 
-fn main() {
-    let seed = RNG::generate_seed() % 8192;
-    let table = vec![
-        ("tree1", generate_tree1(seed)),           //
-        ("tree2", generate_tree2(seed)),           //
-        ("pine_tree", generate_pine_tree(seed)),   //
-        ("small_hill", generate_small_hill(seed)), //
-    ];
+use clap::Parser;
 
-    println!("Generating models (seed={})...", seed);
-    for (name, model) in table {
-        model.serialize_to_file(&format!("content/{}.bin", name));
-        println!("  generated: {}", name);
+#[derive(Parser, Debug)]
+struct ProcessArgs {
+    /// Name of the generator to use
+    generator: String,
+    /// Seed to use for generation
+    seed: u64,
+}
+
+fn main() {
+    let ProcessArgs { generator, seed } = ProcessArgs::parse();
+
+    let model: ModelType = match generator.as_str() {
+        "tree1" => generate_tree1(seed).into(),
+        "tree2" => generate_tree2(seed).into(),
+        "pine_tree" => generate_pine_tree(seed).into(),
+        "small_hill" => generate_small_hill(seed).into(),
+
+        "tree_cluster" => generate_tree_cluster(seed).into(),
+
+        _ => ModelType::Empty,
+    };
+
+    match model {
+        ModelType::Empty => {
+            eprintln!("Unknown generator: {}", generator);
+            std::process::exit(1);
+        }
+        ModelType::VoxelSet(model) => {
+            model.serialize_to_file(&format!("content/{}-{}.bin", generator, seed));
+        }
+        ModelType::VoxelScene(model) => {
+            let filename = format!("content/{}-{}.yaml", generator, seed);
+            let file = VoxelSceneFile::new(model);
+            serde_yaml::to_writer(std::fs::File::create(&filename).unwrap(), &file).unwrap();
+        }
     }
-    println!("done.")
+    println!("Generated model {} (seed={})", generator, seed);
+}
+
+enum ModelType {
+    Empty,
+    VoxelSet(VoxelSet),
+    VoxelScene(VoxelScene),
+}
+
+impl Into<ModelType> for VoxelSet {
+    fn into(self) -> ModelType {
+        ModelType::VoxelSet(self)
+    }
+}
+
+impl Into<ModelType> for VoxelScene {
+    fn into(self) -> ModelType {
+        ModelType::VoxelScene(self)
+    }
+}
+
+fn generate_tree_cluster(seed: u64) -> VoxelScene {
+    let mut rng = RNG::new(seed);
+
+    const RANGE: i32 = 48;
+    let count = rng.range(6..=18);
+
+    let mut scene = VoxelScene::new();
+    for _ in 0..count {
+        let model_id = *rng.select(&vec!["tree1", "tree2", "pine_tree"]);
+        let seed = rng.range(1..8192);
+        let position = IVec3::new(rng.range(-RANGE..=RANGE), rng.range(-RANGE..=RANGE), 0);
+
+        scene.add_object(
+            0,
+            Object {
+                model_id: model_id.to_string(),
+                seed,
+                position,
+            },
+        );
+    }
+    scene
 }
 
 fn generate_small_hill(seed: u64) -> VoxelSet {

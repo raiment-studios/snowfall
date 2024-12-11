@@ -8,6 +8,7 @@ pub mod prelude {
     // TODO: tidy up the wildcard exports once this crate stabilizes a bit
     pub use crate::block::*;
     pub use crate::voxel_grid::*;
+    pub use crate::voxel_scene::*;
     pub use crate::voxel_set::*;
     pub use crate::vs_vec3::*;
 }
