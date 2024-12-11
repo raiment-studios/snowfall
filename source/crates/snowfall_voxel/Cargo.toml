@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 snowfall_core = { path = "../../crates/snowfall_core" }
 serde = { version = "1.0.215", features = ["derive"] }
+bevy_math = { version = "0.15.0", features = ["serialize"] }

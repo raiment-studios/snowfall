@@ -115,7 +115,7 @@ fn update_model(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut state: ResMut<AppState>,
-    mut voxel_query: Query<&mut NaiveVoxelComponent>,
+    mut voxel_query: Query<&mut VoxelMeshComponent>,
     frame_count: Res<FrameCount>,
 ) {
     if frame_count.0 % 20 != 0 {
@@ -154,5 +154,5 @@ fn update_model(
     state.look_at = center_point.into();
     state.view_radius = max_extent as f32 * 1.5;
 
-    NaiveVoxelComponent::spawn_from_model(&model, commands, meshes, materials);
+    VoxelMeshComponent::spawn_from_model(&model, commands, meshes, materials);
 }

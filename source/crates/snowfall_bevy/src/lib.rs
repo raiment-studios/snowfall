@@ -1,6 +1,6 @@
 pub mod prelude {
-
     pub use crate::NaiveVoxelComponent;
+    pub use crate::VoxelMeshComponent;
 }
 
 mod internal {
@@ -13,6 +13,8 @@ mod internal {
 }
 
 use crate::internal::*;
+
+use bevy::render::{render_asset::RenderAssetUsages, render_resource::PrimitiveTopology};
 
 /// NaiveVoxelComponent is an intentionally simple Bevy component for rendering
 /// a mesh mesh.  It is **not** efficient and is intended to be as simple as
@@ -86,5 +88,57 @@ impl NaiveVoxelComponent {
         for handle in self.materials.values() {
             materials.remove(handle);
         }
+    }
+}
+
+#[derive(Component, Debug)]
+pub struct VoxelMeshComponent {
+    id: Entity,
+    mesh: Handle<Mesh>,
+    material: Handle<StandardMaterial>,
+}
+
+impl VoxelMeshComponent {
+    pub fn spawn_from_model(
+        model: &VoxelSet,
+        mut commands: Commands,
+        mut meshes: ResMut<Assets<Mesh>>,
+        mut materials: ResMut<Assets<StandardMaterial>>,
+    ) {
+        let arrays = build_mesh_arrays(model);
+
+        let mut mesh = Mesh::new(
+            PrimitiveTopology::TriangleList,
+            RenderAssetUsages::default(),
+        );
+
+        mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, arrays.positions);
+        mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, arrays.normals);
+        mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, arrays.colors);
+        let mesh = meshes.add(mesh);
+
+        let material = materials.add(Color::WHITE);
+
+        let parent = commands.spawn(()).id();
+        commands.entity(parent).insert((
+            Mesh3d(mesh.clone()), //
+            MeshMaterial3d(material.clone()),
+            VoxelMeshComponent {
+                id: parent,
+                mesh,
+                material,
+            },
+        ));
+    }
+
+    pub fn despawn(
+        &mut self,
+        commands: &mut Commands, //
+        meshes: &mut ResMut<Assets<Mesh>>,
+        materials: &mut ResMut<Assets<StandardMaterial>>,
+    ) {
+        commands.entity(self.id).despawn();
+        meshes.remove(&self.mesh);
+        materials.remove(&self.material);
     }
 }

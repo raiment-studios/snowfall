@@ -1,4 +1,5 @@
 use crate::internal::*;
+use bevy_math::{Vec2, Vec3};
 use snowfall_core::prelude::*;
 
 /// VoxelSet is simplified voxel representation designed for smaller models
@@ -63,6 +64,15 @@ impl VoxelSet {
     // ------------------------------------------------------------------------
     // Voxel manipulation
     // ------------------------------------------------------------------------
+
+    pub fn is_empty(&self, vc: VSVec3) -> bool {
+        let entry = *self.data.get(&vc).unwrap_or(&0);
+        entry == 0
+    }
+
+    pub fn is_empty_f32(&self, x: f32, y: f32, z: f32) -> bool {
+        self.is_empty(VSVec3::from_ws(x, y, z))
+    }
 
     pub fn set_voxel<S, T>(&mut self, vc: S, id: T)
     where
@@ -130,4 +140,140 @@ struct VoxelSetFile {
     identifier: [u8; 8],
     version: [u8; 4],
     compressed_voxel_set: Vec<u8>,
+}
+
+pub struct VoxelMesh {
+    pub positions: Vec<[f32; 3]>,
+    pub normals: Vec<[f32; 3]>,
+    pub colors: Vec<[f32; 4]>,
+}
+
+pub fn build_mesh_arrays(voxel_set: &VoxelSet) -> VoxelMesh {
+    let bounds = voxel_set.bounds();
+    let max_voxel_count = (bounds.1.x - bounds.0.x + 1)
+        * (bounds.1.y - bounds.0.y + 1)
+        * (bounds.1.z - bounds.0.z + 1);
+    let count = max_voxel_count as usize;
+
+    // Over-allocate (and shrink when we're done)
+    let mut positions: Vec<[f32; 3]> = Vec::with_capacity(8 * count);
+    let mut normals: Vec<[f32; 3]> = Vec::with_capacity(8 * count);
+    let mut colors: Vec<[f32; 4]> = Vec::with_capacity(8 * count);
+
+    // Downward facing triangles on Z = 0
+    let tri_points = [
+        Vec3::new(0.0, 0.0, 0.0),
+        Vec3::new(0.0, 1.0, 0.0),
+        Vec3::new(1.0, 1.0, 0.0),
+        Vec3::new(1.0, 1.0, 0.0),
+        Vec3::new(1.0, 0.0, 0.0),
+        Vec3::new(0.0, 0.0, 0.0),
+    ];
+
+    let face_normals = [
+        Vec3::new(0.0, 0.0, -1.0),
+        Vec3::new(0.0, 0.0, 1.0),
+        Vec3::new(-1.0, 0.0, 0.0),
+        Vec3::new(1.0, 0.0, 0.0),
+        Vec3::new(0.0, -1.0, 0.0),
+        Vec3::new(0.0, 1.0, 0.0),
+    ];
+
+    for (position, voxel) in voxel_set.voxel_iter(false) {
+        let offset: Vec3 = position.to_ws().into();
+        if voxel.is_empty() {
+            continue;
+        }
+
+        let rgba = match voxel.shader {
+            BlockShader::RGB(ref rgb) => [
+                rgb.r as f32 / 255.0,
+                rgb.g as f32 / 255.0,
+                rgb.b as f32 / 255.0,
+                1.0,
+            ],
+            _ => [1.0, 1.0, 1.0, 1.0],
+        };
+
+        //
+        // Build the six faces of the cube
+        //
+        for face_index in 0..6 {
+            let normal = face_normals[face_index];
+
+            // Can skip the face if the voxel in the direction of the normal is
+            // verifiably solid
+            let neighbor = offset + normal;
+            if !voxel_set.is_empty_f32(neighbor.x, neighbor.y, neighbor.z) {
+                continue;
+            }
+
+            let mut face_color = Vec3::new(0.0, 0.0, 0.0);
+            face_color = Vec3::new(rgba[0], rgba[1], rgba[2]);
+
+            let mut face_uvs = Vec::new();
+            match face_index {
+                0 => {
+                    for p in tri_points.iter() {
+                        let q = Vec3::new(p.x, p.y, 0.0);
+                        positions.push((q + offset).into());
+                        face_uvs.push(Vec2::new(p.x, 1.0 - p.y));
+                    }
+                }
+                1 => {
+                    for p in tri_points.iter().rev() {
+                        let q = Vec3::new(p.x, p.y, 1.0);
+                        positions.push((q + offset).into());
+                        face_uvs.push(Vec2::new(p.x, 1.0 - p.y));
+                    }
+                }
+                2 => {
+                    for p in tri_points.iter() {
+                        let q = Vec3::new(0.0, p.x, p.y);
+                        positions.push((q + offset).into());
+                        face_uvs.push(Vec2::new(1.0 - p.x, 1.0 - p.y));
+                    }
+                }
+                3 => {
+                    for p in tri_points.iter().rev() {
+                        let q = Vec3::new(1.0, p.x, p.y);
+                        positions.push((q + offset).into());
+                        face_uvs.push(Vec2::new(p.x, 1.0 - p.y));
+                    }
+                }
+                4 => {
+                    for p in tri_points.iter() {
+                        let q = Vec3::new(p.y, 0.0, p.x);
+                        positions.push((q + offset).into());
+                        face_uvs.push(Vec2::new(p.y, 1.0 - p.x));
+                    }
+                }
+                5 => {
+                    for p in tri_points.iter().rev() {
+                        let q = Vec3::new(p.y, 1.0, p.x);
+                        positions.push((q + offset).into());
+                        face_uvs.push(Vec2::new(1.0 - p.y, 1.0 - p.x));
+                    }
+                }
+                _ => {
+                    continue;
+                }
+            };
+
+            for _ in 0..tri_points.len() {
+                normals.push(normal.into());
+                colors.push([face_color.x, face_color.y, face_color.z, 1.0]);
+            }
+        }
+    }
+
+    positions.shrink_to_fit();
+    normals.shrink_to_fit();
+    colors.shrink_to_fit();
+
+    VoxelMesh {
+        positions,
+        normals,
+        colors,
+    }
 }

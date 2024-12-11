@@ -4449,6 +4449,7 @@ dependencies = [
 name = "snowfall_voxel"
 version = "0.1.0"
 dependencies = [
+ "bevy_math",
  "serde",
  "snowfall_core",
 ]
