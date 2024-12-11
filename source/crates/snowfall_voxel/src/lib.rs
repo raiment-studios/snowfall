@@ -1,5 +1,6 @@
 mod block;
 mod voxel_grid;
+mod voxel_scene;
 mod voxel_set;
 mod vs_vec3;
 
@@ -12,6 +13,7 @@ pub mod prelude {
 }
 
 mod internal {
+    pub use bevy_math::prelude::*;
     pub use serde::{Deserialize, Serialize};
     pub use std::collections::HashMap;
 
