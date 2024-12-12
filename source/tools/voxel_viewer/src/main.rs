@@ -95,7 +95,7 @@ fn startup(
     ));
 
     commands.spawn((
-        Mesh3d(meshes.add(Plane3d::default().mesh().size(100.0, 100.0))),
+        Mesh3d(meshes.add(Plane3d::default().mesh().size(256.0, 256.0))),
         MeshMaterial3d(materials.add(Color::srgb(0.25, 0.25, 0.25))),
         Transform::from_rotation(Quat::from_rotation_x(FRAC_PI_2)),
     ));
@@ -131,7 +131,13 @@ fn regenerate_model(model: String, seed: u64) {
         .args(&["run", "--release", "--", &model, &seed.to_string()])
         .output()
         .expect("Failed to run model_generator");
-    println!("{:#?}", output)
+    if !output.status.success() {
+        error!("Failed to run model_generator");
+        println!("{:#?}", output.stdout);
+        println!("{:#?}", output.stderr);
+    } else {
+        println!("Generated model: {}-{}", model, seed);
+    }
 }
 
 fn update_camera_rotation(

@@ -153,8 +153,8 @@ fn generate_pine_tree(seed: u64) -> VoxelSet {
     model.register_block(Block::color("wood3", 36, 38, 31));
 
     const R: i32 = 8;
-    let base_height: i32 = rng.range(4..=8);
-    let cone_height: i32 = (base_height + rng.range(1..=6)).max(8);
+    let base_height: i32 = rng.range(6..=10);
+    let cone_height: i32 = (base_height + rng.range(4..=16));
     let girth: f32 = rng.range(0.5..=0.75);
 
     let mut leaf_select = rng.select_fn(vec!["leaves", "leaves2", "leaves3"]);

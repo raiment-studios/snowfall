@@ -1,5 +1,5 @@
-dev:
-    cargo watch --ignore content -x run
+dev generator seed:
+    cargo watch --ignore content -s "just run {{generator}} {{seed}}"
 
 run generator seed:
     cargo run --release -- {{generator}} {{seed}}
