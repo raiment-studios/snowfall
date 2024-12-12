@@ -4,7 +4,8 @@
 
 ## P2 (should do soon)
 
--   [ ] Update `model_generator` to take a geneator name and seed as arguments
+-   [ ] Update fence to conform to the hill shape
+-   [x] Update `model_generator` to take a geneator name and seed as arguments
 -   [ ] `Painter` struct for snowfall_voxel
 -   [x] Some way to quickly preview generated voxel models
 
