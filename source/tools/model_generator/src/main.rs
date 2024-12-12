@@ -67,13 +67,17 @@ fn generate_tree_cluster(seed: u64) -> VoxelScene {
     const MAX_ATTEMPTS: usize = 128;
     const CLOSEST_DISTANCE: f32 = 12.0;
     const RANGE: i32 = 48;
-    let mut count = rng.range(6..=18);
+    let mut count = rng.range(12..=24);
 
     let mut scene = VoxelScene::new();
 
     let mut point_set = PointSet::new();
     for _ in 0..MAX_ATTEMPTS {
-        let model_id = *rng.select(&vec!["tree1", "tree2", "pine_tree"]);
+        let model_id = *rng.select_weighted(&vec![
+            (10, "tree1"), //
+            (10, "tree2"),
+            (80, "pine_tree"),
+        ]);
         let seed = rng.range(1..8192);
         let position = IVec3::new(rng.range(-RANGE..=RANGE), rng.range(-RANGE..=RANGE), 0);
 
