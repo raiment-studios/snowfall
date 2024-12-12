@@ -2,6 +2,8 @@ use crate::internal::*;
 
 /// VSVec3 = Voxel-space Vector3
 ///
+/// TODO: replace this with IVec3.  Doesn't seem worth a distinct type!
+///
 /// NOTE: it's worth considering if we can / should consolidate or take advantage
 /// of bevy_math here OR if it's actually better to decouple them.  Right now
 /// it is likely the snowfall engine **should** be built on top of Bevy and thus

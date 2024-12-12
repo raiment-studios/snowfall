@@ -1,4 +1,5 @@
 mod block;
+mod point_set;
 mod voxel_grid;
 mod voxel_scene;
 mod voxel_set;
@@ -7,6 +8,7 @@ mod vs_vec3;
 pub mod prelude {
     // TODO: tidy up the wildcard exports once this crate stabilizes a bit
     pub use crate::block::*;
+    pub use crate::point_set::*;
     pub use crate::voxel_grid::*;
     pub use crate::voxel_scene::*;
     pub use crate::voxel_set::*;
