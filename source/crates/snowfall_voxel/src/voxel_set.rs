@@ -61,6 +61,27 @@ impl VoxelSet {
         (min, max)
     }
 
+    // Returns the z-coordinate of the highest non-empty voxel
+    // at x,y.  Returns None if there are no non-empty voxels at
+    // that x,y coordinate.
+    pub fn height_at(&self, x: i32, y: i32) -> Option<i32> {
+        let mut height: Option<i32> = None;
+        for (v, _block) in self.voxel_iter(false) {
+            if v.x != x || v.y != y {
+                continue;
+            }
+            match height {
+                Some(h) => {
+                    height = Some(h.max(v.z));
+                }
+                None => {
+                    height = Some(v.z);
+                }
+            };
+        }
+        height
+    }
+
     // ------------------------------------------------------------------------
     // Voxel manipulation
     // ------------------------------------------------------------------------

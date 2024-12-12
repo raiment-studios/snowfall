@@ -203,7 +203,7 @@ fn update_model(
                     println!("{}", &object.model_id);
                     regenerate_model(object.model_id.clone(), object.seed);
 
-                    // TODO: this assumes it's a .bin file
+                    // TODO: this flat-out assumes it's a .bin file
                     let filename = format!(
                         "../model_generator/content/{}-{}.bin",
                         object.model_id, object.seed
@@ -243,7 +243,7 @@ fn update_model(
             let center_point = VSVec3::midpoint(&bounds.0, &bounds.1).to_ws();
 
             state.look_at = center_point.into();
-            state.view_radius = max_extent as f32 * 2.0;
+            state.view_radius = max_extent as f32 * 0.5;
         }
         "bin" => {
             let Ok(model) = VoxelSet::deserialize_from_file(&filename) else {
