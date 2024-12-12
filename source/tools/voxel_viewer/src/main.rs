@@ -97,7 +97,8 @@ fn startup(
     commands.spawn((
         Mesh3d(meshes.add(Plane3d::default().mesh().size(256.0, 256.0))),
         MeshMaterial3d(materials.add(Color::srgb(0.25, 0.25, 0.25))),
-        Transform::from_rotation(Quat::from_rotation_x(FRAC_PI_2)),
+        Transform::from_rotation(Quat::from_rotation_x(FRAC_PI_2))
+            .with_translation(Vec3::new(0.0, 0.0, 1.0)),
     ));
 }
 
@@ -238,12 +239,12 @@ fn update_model(
             let bounds = (min, max);
             let max_extent = (((bounds.1.x - bounds.0.x + 1).pow(2)
                 + (bounds.1.y - bounds.0.y + 1).pow(2)
-                + (bounds.1.z - bounds.0.z + 1).pow(2)) as f32)
+                + (bounds.1.z - 0 + 1).pow(2)) as f32)
                 .sqrt();
             let center_point = VSVec3::midpoint(&bounds.0, &bounds.1).to_ws();
 
             state.look_at = center_point.into();
-            state.view_radius = max_extent as f32 * 0.5;
+            state.view_radius = max_extent as f32 * 2.5;
         }
         "bin" => {
             let Ok(model) = VoxelSet::deserialize_from_file(&filename) else {
@@ -258,7 +259,7 @@ fn update_model(
             let center_point = VSVec3::midpoint(&bounds.0, &bounds.1).to_ws();
 
             state.look_at = center_point.into();
-            state.view_radius = max_extent as f32 * 1.5;
+            state.view_radius = (max_extent as f32 * 1.15).max(8.0);
 
             VoxelMeshComponent::spawn_from_model(
                 &model,

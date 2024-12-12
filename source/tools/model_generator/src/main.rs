@@ -20,6 +20,7 @@ fn main() {
         "tree2" => generate_tree2(seed).into(),
         "pine_tree" => generate_pine_tree(seed).into(),
         "small_hill" => generate_small_hill(seed).into(),
+        "circle_fence" => generate_circle_fence(seed).into(),
 
         "tree_cluster" => generate_tree_cluster(seed).into(),
         "tree_hill" => generate_tree_hill(seed).into(),
@@ -60,6 +61,77 @@ impl Into<ModelType> for VoxelScene {
     fn into(self) -> ModelType {
         ModelType::VoxelScene(self)
     }
+}
+
+fn bresenham3d(p: IVec3, q: IVec3) -> Vec<IVec3> {
+    let mut v = Vec::new();
+    for (x, y, z) in line_drawing::Bresenham3d::new((p.x, p.y, p.z), (q.x, q.y, q.z)) {
+        v.push(IVec3::new(x, y, z));
+    }
+    v
+}
+
+fn generate_circle_fence(seed: u64) -> VoxelSet {
+    let mut model = VoxelSet::new();
+    model.register_block(Block::color("debug", 246, 238, 38));
+    model.register_block(Block::color("wood", 30, 12, 5));
+    model.register_block(Block::color("wood2", 22, 11, 8));
+    model.register_block(Block::color("wood3", 31, 8, 3));
+
+    use std::f32::consts::PI;
+    const H: i32 = 6;
+    let mut rng = RNG::new(seed);
+
+    let mut wood_select = rng.select_fn(vec!["wood", "wood2", "wood3"]);
+    let offset = rng.range(0.0..PI);
+
+    let mut draw_segment = |p: IVec3, q: IVec3| {
+        let path = bresenham3d(p, q);
+
+        let mut block_top = wood_select();
+        let mut block_bottom = wood_select();
+        for i in 0..path.len() {
+            let v = &path[i];
+            let post = (i == 0 || ((i + 1) % 4 == 0)) && i + 3 < path.len();
+
+            model.set_voxel((v.x, v.y, (H / 2) as i32), block_top);
+            model.set_voxel((v.x, v.y, H), block_bottom);
+            if post {
+                let block = wood_select();
+                for z in 0..H {
+                    model.set_voxel((v.x, v.y, z), block);
+                }
+
+                block_top = wood_select();
+                block_bottom = wood_select();
+            }
+        }
+    };
+
+    let mut first: Option<IVec3> = None;
+    let mut last: Option<IVec3> = None;
+    for i in (0..360).step_by(40) {
+        let angle = offset + (i as f32 * std::f32::consts::PI / 180.0);
+        let x = 40.0 * angle.cos();
+        let y = 40.0 * angle.sin();
+        let x = x.floor() as i32;
+        let y = y.floor() as i32;
+
+        let q = IVec3::new(x, y, 0);
+        if first.is_none() {
+            first = Some(q)
+        }
+        match last {
+            Some(p) => {
+                draw_segment(p, q);
+            }
+            None => {}
+        }
+        last = Some(q)
+    }
+    draw_segment(last.unwrap(), first.unwrap());
+
+    model
 }
 
 fn generate_tree_hill(seed: u64) -> VoxelScene {
