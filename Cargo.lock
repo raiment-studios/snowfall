@@ -5102,6 +5102,7 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "snowfall_bevy",
+ "snowfall_core",
  "snowfall_voxel",
 ]
 

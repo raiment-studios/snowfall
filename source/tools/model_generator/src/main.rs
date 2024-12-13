@@ -19,7 +19,7 @@ fn main() {
         ground_objects: vec![&hill],
     };
 
-    let model: ModelType = generate_model(generator.as_str(), seed, ctx);
+    let model: ModelType = generate_model(generator.as_str(), seed, &ctx);
     match model {
         ModelType::Empty => {
             eprintln!("Unknown generator: {}", generator);

@@ -1,6 +1,7 @@
 use crate::internal::*;
 
 pub struct GenContext<'a> {
+    pub center: IVec3,
     pub ground_objects: Vec<&'a VoxelSet>,
 }
 
@@ -30,11 +31,11 @@ fn bresenham3d(p: IVec3, q: IVec3) -> Vec<IVec3> {
     v
 }
 
-pub fn generate_model(model_id: &str, seed: u64, ctx: GenContext) -> ModelType {
+pub fn generate_model(model_id: &str, seed: u64, ctx: &GenContext) -> ModelType {
     match model_id {
         "tree1" => generate_tree1(seed).into(),
         "tree2" => generate_tree2(seed).into(),
-        "pine_tree" => generate_pine_tree(seed).into(),
+        "pine_tree" => generate_pine_tree(seed, ctx).into(),
         "small_hill" => generate_small_hill(seed).into(),
         "fence" => generate_fence(seed, ctx).into(),
 
@@ -45,7 +46,7 @@ pub fn generate_model(model_id: &str, seed: u64, ctx: GenContext) -> ModelType {
     }
 }
 
-pub fn generate_fence(seed: u64, ctx: GenContext) -> VoxelSet {
+pub fn generate_fence(seed: u64, ctx: &GenContext) -> VoxelSet {
     let mut model = VoxelSet::new();
     model.register_block(Block::color("wood", 30, 12, 5));
     model.register_block(Block::color("wood2", 22, 11, 8));
@@ -164,7 +165,7 @@ pub fn generate_small_hill(seed: u64) -> VoxelSet {
     model
 }
 
-pub fn generate_pine_tree(seed: u64) -> VoxelSet {
+pub fn generate_pine_tree(seed: u64, ctx: &GenContext) -> VoxelSet {
     let mut rng = RNG::new(seed);
 
     let mut model = VoxelSet::new();
@@ -183,7 +184,17 @@ pub fn generate_pine_tree(seed: u64) -> VoxelSet {
     let mut leaf_select = rng.select_fn(vec!["leaves", "leaves2", "leaves3"]);
     let mut wood_select = rng.select_fn(vec!["wood", "wood2", "wood3"]);
 
-    for z in 0..=base_height {
+    let base_z = match ctx
+        .ground_objects
+        .iter()
+        .map(|m| m.height_at(ctx.center.x, ctx.center.y))
+        .max()
+    {
+        Some(Some(z)) => z + 1,
+        _ => 0,
+    };
+
+    for z in base_z..=base_z + base_height {
         model.set_voxel((0, 0, z), wood_select());
     }
 
@@ -202,7 +213,7 @@ pub fn generate_pine_tree(seed: u64) -> VoxelSet {
                 }
 
                 let block = leaf_select();
-                model.set_voxel((x, y, z + base_height), block);
+                model.set_voxel((x, y, z + base_height + base_z), block);
             }
         }
     }

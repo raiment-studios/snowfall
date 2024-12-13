@@ -11,24 +11,23 @@ use clap::Parser;
 
 #[derive(Parser)]
 struct CLIArguments {
-    /// Name of the file to load
-    filename: String,
+    generator: String,
+    seed: u64,
 }
 
 #[derive(Resource)]
 struct AppState {
-    filename: String,
-
-    file_modification: u64,
+    generator: String,
+    seed: u64,
     view_radius: f32,
     look_at: Vec3,
 }
 
 impl AppState {
-    fn new(filename: String) -> Self {
+    fn new(generator: String, seed: u64) -> Self {
         Self {
-            filename,
-            file_modification: 0,
+            generator,
+            seed,
             view_radius: 32.0,
             look_at: Vec3::new(0.0, 0.0, 1.0),
         }
@@ -44,19 +43,17 @@ fn main() {
             level: bevy::log::Level::WARN,
             ..default()
         }))
-        .insert_resource(AppState::new(args.filename))
+        .insert_resource(AppState::new(args.generator, args.seed))
         .add_systems(
             Startup,
             (
                 startup, //
-                startup_init_model.after(startup),
             ),
         )
         .add_systems(
             Update,
             (
-                update_model,
-                update_camera_rotation.after(update_model), //
+                update_camera_rotation, //
             ),
         )
         .run();
@@ -66,6 +63,7 @@ fn startup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    mut state: ResMut<AppState>,
 ) {
     use std::f32::consts::{FRAC_PI_2, PI};
 
@@ -100,118 +98,52 @@ fn startup(
         Transform::from_rotation(Quat::from_rotation_x(FRAC_PI_2))
             .with_translation(Vec3::new(0.0, 0.0, 1.0)),
     ));
-}
 
-fn startup_init_model(state: Res<AppState>) {
-    let filename = state.filename.clone();
+    // ------------------------------------------------------------------------
 
-    // Get the basename
-    let basename = std::path::Path::new(&filename)
-        .file_stem()
-        .expect("Failed to get basename")
-        .to_str()
-        .expect("Failed to convert to string")
-        .to_string();
+    let mut rng = snowfall_core::prelude::RNG::new(state.seed + 23849);
+    let hill = generate_small_hill(798);
+    let mut ctx = GenContext {
+        center: IVec3::new(0, 0, 0),
+        ground_objects: vec![&hill],
+    };
 
-    // Split the extension
-    let mut parts = basename.split('-').collect::<Vec<&str>>().clone();
-    let seed = parts
-        .pop()
-        .expect("Failed to get seed")
-        .parse::<u64>()
-        .unwrap();
-    let model = parts.pop().expect("Failed to get model");
+    match generate_model(state.generator.as_str(), state.seed, &ctx) {
+        ModelType::VoxelSet(model) => {
+            let bounds = model.bounds();
+            let max_extent = (bounds.1.x - bounds.0.x + 1)
+                .max(bounds.1.y - bounds.0.y + 1)
+                .max(bounds.1.z - bounds.0.z + 1);
+            let center_point = VSVec3::midpoint(&bounds.0, &bounds.1).to_ws();
 
-    regenerate_model(model.to_string(), seed);
-}
+            state.look_at = center_point.into();
+            state.view_radius = (max_extent as f32 * 1.15).max(8.0);
 
-fn regenerate_model(model: String, seed: u64) {
-    // Run the process model_generator with the args model and seed
-    let output = std::process::Command::new("cargo")
-        .current_dir("../model_generator")
-        .args(&["run", "--release", "--", &model, &seed.to_string()])
-        .output()
-        .expect("Failed to run model_generator");
-    if !output.status.success() {
-        error!("Failed to run model_generator");
-        println!("{:#?}", output.stdout);
-        println!("{:#?}", output.stderr);
-    } else {
-        println!("Generated model: {}-{}", model, seed);
-    }
-}
-
-fn update_camera_rotation(
-    mut camera_query: Query<&mut Transform, With<Camera>>,
-    state: Res<AppState>,
-    frame_count: Res<FrameCount>,
-) {
-    let angle = frame_count.0 as f32 * -0.005;
-    let angle_z = frame_count.0 as f32 * 0.005;
-    let x = state.view_radius * angle.cos() + state.look_at.x;
-    let y = state.view_radius * angle.sin() + state.look_at.y;
-    let z = state.view_radius / 3.0 * angle_z.sin() + state.view_radius / 2.0 + state.look_at.z;
-
-    let mut transform = camera_query.single_mut();
-    *transform = Transform::from_xyz(x, y, z).looking_at(state.look_at, Vec3::Z);
-}
-
-fn update_model(
-    mut commands: Commands, //
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-    mut state: ResMut<AppState>,
-    mut voxel_query: Query<&mut VoxelMeshComponent>,
-    frame_count: Res<FrameCount>,
-) {
-    if frame_count.0 % 20 != 0 {
-        return;
-    }
-
-    use std::time::UNIX_EPOCH;
-
-    let filename = state.filename.clone();
-
-    // Get the file timestamp
-    let metadata = std::fs::metadata(&filename).unwrap();
-    let modified = metadata.modified().unwrap();
-    let modified = modified.duration_since(UNIX_EPOCH).unwrap().as_secs();
-    if modified <= state.file_modification {
-        return;
-    }
-    state.file_modification = modified;
-
-    for mut entity in voxel_query.iter_mut() {
-        println!("Removing entity: {:?}", entity);
-        entity.despawn(&mut commands, &mut meshes, &mut materials);
-    }
-
-    // Get extension of filename
-    let extension = filename
-        .split('.')
-        .last()
-        .expect("Failed to get extension")
-        .to_lowercase();
-    match extension.as_str() {
-        "yaml" => {
-            let file: VoxelSceneFile =
-                serde_yaml::from_str(&std::fs::read_to_string(&filename).unwrap()).unwrap();
-
+            VoxelMeshComponent::spawn_from_model(
+                &model,
+                &mut commands,
+                &mut meshes,
+                &mut materials,
+                Vec3::new(0.0, 0.0, 0.0),
+            );
+        }
+        ModelType::VoxelScene(model) => {
             let mut min = VSVec3::new(i32::MAX, i32::MAX, i32::MAX);
             let mut max = VSVec3::new(i32::MIN, i32::MIN, i32::MIN);
-            for layer in &file.scene.layers {
+            for layer in &model.layers {
                 for object in &layer.objects {
                     println!("{}", &object.model_id);
-                    regenerate_model(object.model_id.clone(), object.seed);
-
-                    // TODO: this flat-out assumes it's a .bin file
-                    let filename = format!(
-                        "../model_generator/content/{}-{}.bin",
-                        object.model_id, object.seed
-                    );
-                    let Ok(model) = VoxelSet::deserialize_from_file(&filename) else {
-                        error!("Failed to deserialize voxel set");
-                        return;
+                    let model = generate_model(object.model_id.clone().as_str(), object.seed, &ctx);
+                    let model = match model {
+                        ModelType::VoxelSet(model) => model,
+                        ModelType::VoxelScene(_) => {
+                            eprintln!("VoxelScene objects are not supported");
+                            std::process::exit(1);
+                        }
+                        ModelType::Empty => {
+                            eprintln!("Unknown generator: {}", object.model_id);
+                            std::process::exit(1);
+                        }
                     };
 
                     let bounds = model.bounds();
@@ -246,38 +178,29 @@ fn update_model(
             state.look_at = center_point.into();
             state.view_radius = max_extent as f32 * 2.5;
         }
-        "bin" => {
-            let Ok(model) = VoxelSet::deserialize_from_file(&filename) else {
-                error!("Failed to deserialize voxel set");
-                return;
-            };
-
-            let bounds = model.bounds();
-            let max_extent = (bounds.1.x - bounds.0.x + 1)
-                .max(bounds.1.y - bounds.0.y + 1)
-                .max(bounds.1.z - bounds.0.z + 1);
-            let center_point = VSVec3::midpoint(&bounds.0, &bounds.1).to_ws();
-
-            state.look_at = center_point.into();
-            state.view_radius = (max_extent as f32 * 1.15).max(8.0);
-
-            VoxelMeshComponent::spawn_from_model(
-                &model,
-                &mut commands,
-                &mut meshes,
-                &mut materials,
-                Vec3::new(0.0, 0.0, 0.0),
-            );
-        }
         _ => {
-            error!("Unknown file extension: {}", extension);
+            eprintln!("Unknown generator: {}", state.generator);
             std::process::exit(1);
         }
-    };
+    }
 
-    {
-        let model = generate_small_hill(6798);
+    for _i in 0..7 {
+        const R: i32 = 42;
+        let seed = rng.range(1..8192);
+        let x: i32 = rng.range(-R..=R);
+        let y: i32 = rng.range(-R..=R);
+        ctx.center = IVec3::new(x, y, 0);
+        let model = generate_pine_tree(seed, &ctx);
+        VoxelMeshComponent::spawn_from_model(
+            &model,
+            &mut commands,
+            &mut meshes,
+            &mut materials,
+            Vec3::new(x as f32, y as f32, 0.0),
+        );
+    }
 
+    for model in ctx.ground_objects.iter() {
         VoxelMeshComponent::spawn_from_model(
             &model,
             &mut commands,
@@ -286,4 +209,19 @@ fn update_model(
             Vec3::new(0.0, 0.0, 0.0),
         );
     }
+}
+
+fn update_camera_rotation(
+    mut camera_query: Query<&mut Transform, With<Camera>>,
+    state: Res<AppState>,
+    frame_count: Res<FrameCount>,
+) {
+    let angle = frame_count.0 as f32 * -0.005;
+    let angle_z = frame_count.0 as f32 * 0.005;
+    let x = state.view_radius * angle.cos() + state.look_at.x;
+    let y = state.view_radius * angle.sin() + state.look_at.y;
+    let z = state.view_radius / 3.0 * angle_z.sin() + state.view_radius / 2.0 + state.look_at.z;
+
+    let mut transform = camera_query.single_mut();
+    *transform = Transform::from_xyz(x, y, z).looking_at(state.look_at, Vec3::Z);
 }

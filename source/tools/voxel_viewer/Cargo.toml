@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+snowfall_core = { path = "../../crates/snowfall_core" }
 snowfall_voxel = { path = "../../crates/snowfall_voxel" }
 snowfall_bevy = { path = "../../crates/snowfall_bevy" }
 bevy = "0.15.0"
