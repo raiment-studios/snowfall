@@ -19,6 +19,7 @@ struct CLIArguments {
 struct AppState {
     generator: String,
     seed: u64,
+    use_scene: bool,
     view_radius: f32,
     look_at: Vec3,
 }
@@ -28,6 +29,7 @@ impl AppState {
         Self {
             generator,
             seed,
+            use_scene: false,
             view_radius: 32.0,
             look_at: Vec3::new(0.0, 0.0, 1.0),
         }
@@ -105,27 +107,29 @@ fn startup(
 
     let mut models = Vec::new();
 
-    for j in 0..16 {
-        println!("Adding model {}", j);
-        let mut ctx = GenContext {
-            center: IVec3::new(0, 0, 0),
-            ground_objects: vec![],
-        };
-        for i in 0..models.len() {
-            ctx.ground_objects.push(&models[i]);
-        }
+    if state.use_scene {
+        for j in 0..16 {
+            println!("Adding model {}", j);
+            let mut ctx = GenContext {
+                center: IVec3::new(0, 0, 0),
+                ground_objects: vec![],
+            };
+            for i in 0..models.len() {
+                ctx.ground_objects.push(&models[i]);
+            }
 
-        const R: i32 = 128;
-        let seed = rng.range(1..8192);
-        let x: i32 = rng.sign() * rng.range(0..=R);
-        let y: i32 = rng.sign() * rng.range(0..=R);
-        ctx.center = IVec3::new(x, y, 0);
-        let hill: ModelType = generators::small_hill(seed, &ctx).into();
-        let model = Model {
-            model: hill,
-            position: ctx.center.clone(),
-        };
-        models.push(model);
+            const R: i32 = 128;
+            let seed = rng.range(1..8192);
+            let x: i32 = rng.sign() * rng.range(0..=R);
+            let y: i32 = rng.sign() * rng.range(0..=R);
+            ctx.center = IVec3::new(x, y, 0);
+            let hill: ModelType = generators::small_hill(seed, &ctx).into();
+            let model = Model {
+                model: hill,
+                position: ctx.center.clone(),
+            };
+            models.push(model);
+        }
     }
 
     let mut ctx = GenContext {
@@ -212,34 +216,36 @@ fn startup(
         }
     }
 
-    for _i in 0..32 {
-        const R: i32 = 96;
-        let seed = rng.range(1..8192);
-        let x: i32 = rng.range(-R..=R);
-        let y: i32 = rng.range(-R..=R);
-        ctx.center = IVec3::new(x, y, 0);
-        let model = generators::pine_tree(seed, &ctx);
-        VoxelMeshComponent::spawn_from_model(
-            &model,
-            &mut commands,
-            &mut meshes,
-            &mut materials,
-            Vec3::new(x as f32, y as f32, 0.0),
-        );
-    }
+    if state.use_scene {
+        for _i in 0..32 {
+            const R: i32 = 96;
+            let seed = rng.range(1..8192);
+            let x: i32 = rng.range(-R..=R);
+            let y: i32 = rng.range(-R..=R);
+            ctx.center = IVec3::new(x, y, 0);
+            let model = generators::pine_tree(seed, &ctx);
+            VoxelMeshComponent::spawn_from_model(
+                &model,
+                &mut commands,
+                &mut meshes,
+                &mut materials,
+                Vec3::new(x as f32, y as f32, 0.0),
+            );
+        }
 
-    for model in ctx.ground_objects.iter() {
-        let p = model.position.clone();
-        let ModelType::VoxelSet(voxel_set) = &model.model else {
-            panic!("Expected VoxelSet");
-        };
-        VoxelMeshComponent::spawn_from_model(
-            voxel_set,
-            &mut commands,
-            &mut meshes,
-            &mut materials,
-            Vec3::new(p.x as f32, p.y as f32, p.z as f32),
-        );
+        for model in ctx.ground_objects.iter() {
+            let p = model.position.clone();
+            let ModelType::VoxelSet(voxel_set) = &model.model else {
+                panic!("Expected VoxelSet");
+            };
+            VoxelMeshComponent::spawn_from_model(
+                voxel_set,
+                &mut commands,
+                &mut meshes,
+                &mut materials,
+                Vec3::new(p.x as f32, p.y as f32, p.z as f32),
+            );
+        }
     }
 }
 

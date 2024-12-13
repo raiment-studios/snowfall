@@ -13,7 +13,8 @@ pub mod prelude {
     pub mod generators {
         pub use crate::generators::*;
     }
-    pub use crate::paint::{generate_model, GenContext, Model, ModelType};
+    pub use super::generators::generate_model;
+    pub use crate::paint::{GenContext, Model, ModelType};
     pub use crate::point_set::*;
     pub use crate::voxel_grid::*;
     pub use crate::voxel_scene::*;
