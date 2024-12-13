@@ -1,3 +1,4 @@
+use bevy_math::IVec3;
 use snowfall_voxel::prelude::*;
 
 use clap::Parser;
@@ -13,9 +14,10 @@ struct ProcessArgs {
 fn main() {
     let ProcessArgs { generator, seed } = ProcessArgs::parse();
 
-    let hill = generate_small_hill(6798);
+    let hill: ModelType = generate_small_hill(6798).into();
 
     let ctx = GenContext {
+        center: IVec3::new(0, 0, 0),
         ground_objects: vec![&hill],
     };
 
@@ -30,7 +32,7 @@ fn main() {
         }
         ModelType::VoxelScene(model) => {
             let filename = format!("content/{}-{}.yaml", generator, seed);
-            let file = VoxelSceneFile::new(model);
+            let file = VoxelSceneFile::new(*model);
             serde_yaml::to_writer(std::fs::File::create(&filename).unwrap(), &file).unwrap();
         }
     }

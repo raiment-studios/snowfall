@@ -102,7 +102,7 @@ fn startup(
     // ------------------------------------------------------------------------
 
     let mut rng = snowfall_core::prelude::RNG::new(state.seed + 23849);
-    let hill = generate_small_hill(798);
+    let hill: ModelType = generate_small_hill(798).into();
     let mut ctx = GenContext {
         center: IVec3::new(0, 0, 0),
         ground_objects: vec![&hill],
@@ -201,8 +201,11 @@ fn startup(
     }
 
     for model in ctx.ground_objects.iter() {
+        let ModelType::VoxelSet(voxel_set) = *model else {
+            panic!("Expected VoxelSet");
+        };
         VoxelMeshComponent::spawn_from_model(
-            &model,
+            &voxel_set,
             &mut commands,
             &mut meshes,
             &mut materials,

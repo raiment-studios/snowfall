@@ -2,24 +2,45 @@ use crate::internal::*;
 
 pub struct GenContext<'a> {
     pub center: IVec3,
-    pub ground_objects: Vec<&'a VoxelSet>,
+    pub ground_objects: Vec<&'a ModelType>,
+}
+
+impl<'a> GenContext<'a> {
+    pub fn new(center: IVec3) -> Self {
+        Self {
+            center,
+            ground_objects: Vec::new(),
+        }
+    }
+
+    pub fn ground_height_at(&self, x: i32, y: i32) -> Option<i32> {
+        self.ground_objects
+            .iter()
+            .map(|m| match m {
+                ModelType::VoxelSet(m) => m.height_at(x, y),
+                ModelType::VoxelScene(m) => None,
+                _ => None,
+            })
+            .max()
+            .unwrap_or(None)
+    }
 }
 
 pub enum ModelType {
     Empty,
-    VoxelSet(VoxelSet),
-    VoxelScene(VoxelScene),
+    VoxelSet(Box<VoxelSet>),
+    VoxelScene(Box<VoxelScene>),
 }
 
 impl Into<ModelType> for VoxelSet {
     fn into(self) -> ModelType {
-        ModelType::VoxelSet(self)
+        ModelType::VoxelSet(Box::new(self))
     }
 }
 
 impl Into<ModelType> for VoxelScene {
     fn into(self) -> ModelType {
-        ModelType::VoxelScene(self)
+        ModelType::VoxelScene(Box::new(self))
     }
 }
 
@@ -67,10 +88,7 @@ pub fn generate_fence(seed: u64, ctx: &GenContext) -> VoxelSet {
         let x = x.floor() as i32;
         let y = y.floor() as i32;
 
-        let z = match ctx.ground_objects.iter().map(|m| m.height_at(x, y)).max() {
-            Some(Some(z)) => z + 1,
-            _ => 0,
-        };
+        let z = ctx.ground_height_at(x, y).unwrap_or(0);
         base_pts.push(IVec3::new(x, y, z));
     }
     base_pts.push(base_pts[0]); // close the loop
@@ -184,15 +202,9 @@ pub fn generate_pine_tree(seed: u64, ctx: &GenContext) -> VoxelSet {
     let mut leaf_select = rng.select_fn(vec!["leaves", "leaves2", "leaves3"]);
     let mut wood_select = rng.select_fn(vec!["wood", "wood2", "wood3"]);
 
-    let base_z = match ctx
-        .ground_objects
-        .iter()
-        .map(|m| m.height_at(ctx.center.x, ctx.center.y))
-        .max()
-    {
-        Some(Some(z)) => z + 1,
-        _ => 0,
-    };
+    let base_z = ctx
+        .ground_height_at(ctx.center.x, ctx.center.y)
+        .unwrap_or(0);
 
     for z in base_z..=base_z + base_height {
         model.set_voxel((0, 0, z), wood_select());
