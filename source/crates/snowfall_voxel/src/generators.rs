@@ -1,8 +1,13 @@
 use crate::internal::*;
 
+pub struct Model {
+    pub model: ModelType,
+    pub position: IVec3,
+}
+
 pub struct GenContext<'a> {
     pub center: IVec3,
-    pub ground_objects: Vec<&'a ModelType>,
+    pub ground_objects: Vec<&'a Model>,
 }
 
 impl<'a> GenContext<'a> {
@@ -16,10 +21,14 @@ impl<'a> GenContext<'a> {
     pub fn ground_height_at(&self, x: i32, y: i32) -> Option<i32> {
         self.ground_objects
             .iter()
-            .map(|m| match m {
-                ModelType::VoxelSet(m) => m.height_at(x, y),
-                ModelType::VoxelScene(m) => None,
-                _ => None,
+            .map(|m| {
+                let mx = x - m.position.x;
+                let my = y - m.position.y;
+                match &m.model {
+                    ModelType::VoxelSet(m) => m.height_at(mx, my),
+                    ModelType::VoxelScene(m) => None,
+                    _ => None,
+                }
             })
             .max()
             .unwrap_or(None)
@@ -57,7 +66,7 @@ pub fn generate_model(model_id: &str, seed: u64, ctx: &GenContext) -> ModelType 
         "tree1" => generate_tree1(seed).into(),
         "tree2" => generate_tree2(seed).into(),
         "pine_tree" => generate_pine_tree(seed, ctx).into(),
-        "small_hill" => generate_small_hill(seed).into(),
+        "small_hill" => generate_small_hill(seed, ctx).into(),
         "fence" => generate_fence(seed, ctx).into(),
 
         "tree_cluster" => generate_tree_cluster(seed).into(),
@@ -72,6 +81,8 @@ pub fn generate_fence(seed: u64, ctx: &GenContext) -> VoxelSet {
     model.register_block(Block::color("wood", 30, 12, 5));
     model.register_block(Block::color("wood2", 22, 11, 8));
     model.register_block(Block::color("wood3", 31, 8, 3));
+    model.register_block(Block::color("red", 255, 8, 3));
+    model.register_block(Block::color("blue", 31, 8, 255));
 
     use std::f32::consts::PI;
     let mut rng = RNG::new(seed);
@@ -93,21 +104,8 @@ pub fn generate_fence(seed: u64, ctx: &GenContext) -> VoxelSet {
     }
     base_pts.push(base_pts[0]); // close the loop
 
-    // Draw beams
-    for pairs in base_pts.windows(2) {
-        let p = pairs[0];
-        let q = pairs[1];
-        for dz in vec![2, 4] {
-            for v in bresenham3d(
-                IVec3::new(p.x, p.y, p.z + dz),
-                IVec3::new(q.x, q.y, q.z + dz),
-            ) {
-                model.set_voxel((v.x, v.y, v.z), "wood");
-            }
-        }
-    }
-
     // Draw posts
+    let mut posts = Vec::new();
     for pairs in base_pts.windows(2) {
         let p = pairs[0];
         let q = pairs[1];
@@ -118,17 +116,37 @@ pub fn generate_fence(seed: u64, ctx: &GenContext) -> VoxelSet {
             if (i % 5 != 0) || i + 3 >= line.len() {
                 continue;
             }
+
+            let gz = ctx.ground_height_at(v.x, v.y).unwrap_or(0);
+
             let block = wood_select();
             for dz in 0..6 {
-                model.set_voxel((v.x, v.y, v.z + dz), block);
+                model.set_voxel((v.x, v.y, gz + dz), block);
             }
+            posts.push(IVec3::new(v.x, v.y, gz));
+        }
+    }
+    posts.push(posts[0]); // close the loop
+
+    // Draw beams
+    for pairs in posts.windows(2) {
+        let p = pairs[0];
+        let q = pairs[1];
+        let line = bresenham3d(IVec3::new(p.x, p.y, p.z), IVec3::new(q.x, q.y, q.z));
+
+        let block_top = wood_select();
+        let block_bottom = wood_select();
+        for i in 1..line.len() - 1 {
+            let v = &line[i];
+            model.set_voxel((v.x, v.y, v.z + 4), block_top);
+            model.set_voxel((v.x, v.y, v.z + 2), block_bottom);
         }
     }
 
     model
 }
 
-pub fn generate_small_hill(seed: u64) -> VoxelSet {
+pub fn generate_small_hill(seed: u64, ctx: &GenContext) -> VoxelSet {
     let mut rng = RNG::new(seed);
 
     let mut model = VoxelSet::new();
@@ -150,7 +168,7 @@ pub fn generate_small_hill(seed: u64) -> VoxelSet {
     let mut dirt_block = rng.select_fn(vec!["dirt", "dirt2"]);
     let mut grass_block = rng.select_fn(vec!["grass1", "grass2"]);
 
-    let mut noise = rng.open_simplex().scale(12.0).build();
+    let noise = rng.open_simplex().scale(12.0).build();
 
     for y in -size_y..=size_y {
         for x in -size_x..=size_x {
@@ -165,6 +183,7 @@ pub fn generate_small_hill(seed: u64) -> VoxelSet {
             let h = 3.0 * h;
             let zh = h.floor() as i32;
 
+            let base_z = ctx.ground_height_at(x, y).unwrap_or(0);
             for z in 0..=zh {
                 let block = if z < zh {
                     "dirt"
@@ -176,7 +195,7 @@ pub fn generate_small_hill(seed: u64) -> VoxelSet {
                         grass_block()
                     }
                 };
-                model.set_voxel((x, y, z), block);
+                model.set_voxel((x, y, base_z + z), block);
             }
         }
     }
@@ -344,7 +363,11 @@ pub fn generate_tree_hill(seed: u64) -> VoxelScene {
     let hill_seed = rng.range(1..8192);
     let tree_cluster_seed = rng.range(1..8192);
 
-    let hill = generate_small_hill(hill_seed);
+    let ctx = GenContext {
+        center: IVec3::new(0, 0, 0),
+        ground_objects: vec![],
+    };
+    let hill = generate_small_hill(hill_seed, &ctx);
     scene.add_object(
         0,
         Object {

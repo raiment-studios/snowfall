@@ -65,7 +65,7 @@ fn startup(
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut state: ResMut<AppState>,
 ) {
-    use std::f32::consts::{FRAC_PI_2, PI};
+    use std::f32::consts::FRAC_PI_2;
 
     //  Default camera, lights, and ground plane
     commands.spawn((
@@ -102,11 +102,37 @@ fn startup(
     // ------------------------------------------------------------------------
 
     let mut rng = snowfall_core::prelude::RNG::new(state.seed + 23849);
-    let hill: ModelType = generate_small_hill(798).into();
+
+    let mut models = Vec::new();
+
+    for j in 0..4 {
+        println!("Adding model {}", j);
+        let mut ctx = GenContext {
+            center: IVec3::new(0, 0, 0),
+            ground_objects: vec![],
+        };
+        for i in 0..models.len() {
+            ctx.ground_objects.push(&models[i]);
+        }
+
+        let seed = rng.range(1..8192);
+        let x: i32 = rng.range(-64..=64);
+        let y: i32 = rng.range(-64..=64);
+        let hill: ModelType = generate_small_hill(seed, &ctx).into();
+        let model = Model {
+            model: hill,
+            position: IVec3::new(x, y, 0),
+        };
+        models.push(model);
+    }
+
     let mut ctx = GenContext {
         center: IVec3::new(0, 0, 0),
-        ground_objects: vec![&hill],
+        ground_objects: vec![],
     };
+    for i in 0..models.len() {
+        ctx.ground_objects.push(&models[i]);
+    }
 
     match generate_model(state.generator.as_str(), state.seed, &ctx) {
         ModelType::VoxelSet(model) => {
@@ -201,15 +227,16 @@ fn startup(
     }
 
     for model in ctx.ground_objects.iter() {
-        let ModelType::VoxelSet(voxel_set) = *model else {
+        let p = model.position.clone();
+        let ModelType::VoxelSet(voxel_set) = &model.model else {
             panic!("Expected VoxelSet");
         };
         VoxelMeshComponent::spawn_from_model(
-            &voxel_set,
+            voxel_set,
             &mut commands,
             &mut meshes,
             &mut materials,
-            Vec3::new(0.0, 0.0, 0.0),
+            Vec3::new(p.x as f32, p.y as f32, p.z as f32),
         );
     }
 }

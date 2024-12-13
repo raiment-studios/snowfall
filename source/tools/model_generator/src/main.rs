@@ -14,11 +14,9 @@ struct ProcessArgs {
 fn main() {
     let ProcessArgs { generator, seed } = ProcessArgs::parse();
 
-    let hill: ModelType = generate_small_hill(6798).into();
-
     let ctx = GenContext {
         center: IVec3::new(0, 0, 0),
-        ground_objects: vec![&hill],
+        ground_objects: vec![],
     };
 
     let model: ModelType = generate_model(generator.as_str(), seed, &ctx);

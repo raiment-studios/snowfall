@@ -13,7 +13,10 @@ use snowfall_core::prelude::*;
 pub struct VoxelSet {
     generation: u64,     // Generation number used to track changes
     palette: Vec<Block>, // Palette of blocks used in the set
-    data: HashMap<VSVec3, u16>,
+
+    // Storing the data by z-column is *much* faster in any context where
+    // "height at x,y" is a common operation.
+    data: HashMap<(i32, i32), HashMap<i32, u16>>,
 }
 
 impl VoxelSet {
@@ -65,17 +68,21 @@ impl VoxelSet {
     // at x,y.  Returns None if there are no non-empty voxels at
     // that x,y coordinate.
     pub fn height_at(&self, x: i32, y: i32) -> Option<i32> {
+        let Some(column) = self.data.get(&(x, y)) else {
+            return None;
+        };
+
         let mut height: Option<i32> = None;
-        for (v, _block) in self.voxel_iter(false) {
-            if v.x != x || v.y != y {
+        for (z, id) in column.iter() {
+            if *id == 0 {
                 continue;
             }
             match height {
                 Some(h) => {
-                    height = Some(h.max(v.z));
+                    height = Some(h.max(*z));
                 }
                 None => {
-                    height = Some(v.z);
+                    height = Some(*z);
                 }
             };
         }
@@ -87,8 +94,10 @@ impl VoxelSet {
     // ------------------------------------------------------------------------
 
     pub fn is_empty(&self, vc: VSVec3) -> bool {
-        let entry = *self.data.get(&vc).unwrap_or(&0);
-        entry == 0
+        let Some(col) = self.data.get(&(vc.x, vc.y)) else {
+            return true;
+        };
+        *col.get(&vc.z).unwrap_or(&0) == 0
     }
 
     pub fn is_empty_f32(&self, x: f32, y: f32, z: f32) -> bool {
@@ -103,19 +112,30 @@ impl VoxelSet {
         let id = id.into();
         let index = match self.palette.iter().position(|b| b.id == id) {
             Some(i) => i as u16,
-            None => 0,
+            _ => 0,
         };
-        self.data.insert(vc.into(), index);
+        // self.data.insert(vc.into(), index);
+
+        // Get the column or create it
+        let vc = vc.into();
+        let column = self.data.entry((vc.x, vc.y)).or_insert(HashMap::new());
+        column.insert(vc.z, index);
     }
 
-    pub fn voxel_iter(&self, include_empty: bool) -> impl Iterator<Item = (VSVec3, &Block)> {
-        self.data
-            .iter()
-            .filter(move |(_, &index)| include_empty || index != 0)
-            .map(move |(vc, &index)| {
-                let block = &self.palette[index as usize];
-                (*vc, block)
-            })
+    pub fn voxel_iter(&self, include_empty: bool) -> Vec<(VSVec3, &Block)> {
+        // Collect all the voxels into a vec
+        let mut voxels = Vec::new();
+        for (x, column) in self.data.iter() {
+            for (z, id) in column.iter() {
+                let vc = VSVec3::new(x.0, x.1, *z);
+                let block = &self.palette[*id as usize];
+                if block.is_empty() && !include_empty {
+                    continue;
+                }
+                voxels.push((vc, block));
+            }
+        }
+        voxels
     }
 
     // ------------------------------------------------------------------------
