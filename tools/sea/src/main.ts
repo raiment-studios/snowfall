@@ -6,20 +6,23 @@ import { command_cprintln } from './commands/cprintln.ts';
 import { command_system } from './commands/command_system.ts';
 
 async function main(args: string[]) {
-    switch (args[0]) {
-        case 'cprintln':
-            return command_cprintln(args.slice(1));
-        case 'cd':
-            return await change_directory(args.slice(1));
-        case 'validate-commit-msg':
-            return await command_validate_commit_msg(args[1]);
-        case 'system':
-            return await command_system();
-        case 'upgrade-tools':
-            return await upgrade_tools();
-        case 'versions':
-            return await command_ensure_tools();
+    const table: Record<string, () => void> = {
+        cprintln: () => command_cprintln(args.slice(1)),
+        cd: () => change_directory(args.slice(1)),
+        'validate-commit-msg': () => command_validate_commit_msg(args[1]),
+        system: () => command_system(),
+        'upgrade-tools': () => upgrade_tools(),
+        versions: () => command_ensure_tools(),
+    };
+
+    const handler = table[args[0]];
+    if (handler === undefined) {
+        console.log('Unknown command:', args[0]);
+        console.log('Known commands:');
+        console.log('  ' + Object.keys(table).join(' \n'));
+        Deno.exit(1);
     }
+    handler();
 }
 
 async function upgrade_tools() {
