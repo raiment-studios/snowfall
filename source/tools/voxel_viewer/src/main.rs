@@ -274,4 +274,16 @@ fn update_model(
             std::process::exit(1);
         }
     };
+
+    {
+        let model = generate_small_hill(6798);
+
+        VoxelMeshComponent::spawn_from_model(
+            &model,
+            &mut commands,
+            &mut meshes,
+            &mut materials,
+            Vec3::new(0.0, 0.0, 0.0),
+        );
+    }
 }
