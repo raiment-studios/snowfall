@@ -120,7 +120,7 @@ fn startup(
         let x: i32 = rng.sign() * rng.range(0..=R);
         let y: i32 = rng.sign() * rng.range(0..=R);
         ctx.center = IVec3::new(x, y, 0);
-        let hill: ModelType = generate_small_hill(seed, &ctx).into();
+        let hill: ModelType = generators::small_hill(seed, &ctx).into();
         let model = Model {
             model: hill,
             position: ctx.center.clone(),
@@ -218,7 +218,7 @@ fn startup(
         let x: i32 = rng.range(-R..=R);
         let y: i32 = rng.range(-R..=R);
         ctx.center = IVec3::new(x, y, 0);
-        let model = generate_pine_tree(seed, &ctx);
+        let model = generators::pine_tree(seed, &ctx);
         VoxelMeshComponent::spawn_from_model(
             &model,
             &mut commands,

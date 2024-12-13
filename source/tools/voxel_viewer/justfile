@@ -1,5 +1,21 @@
+[private]
+help:
+    @just --list --unsorted
+
+# build the project
+build:
+    cargo build --release
+build-watch:
+    cargo watch -s "just build"
+
+
 run model seed:
     cargo run --release -- {{model}} {{seed}}
 
+# watch for source changes and relaunch
 dev model seed:
     cargo watch -s "just run {{model}} {{seed}}"
+
+# format and lint the code
+fmt:
+    cargo fmt
