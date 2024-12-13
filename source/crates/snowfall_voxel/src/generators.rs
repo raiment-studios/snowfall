@@ -184,8 +184,8 @@ pub fn generate_small_hill(seed: u64, ctx: &GenContext) -> VoxelSet {
             let h = 16.0 * cos01(u * 0.5).powf(power) * cos01(v * 0.5).powf(power) - 8.25;
             let h = 3.0 * h;
             let zh = h.floor() as i32;
-
             let base_z = ctx.ground_height_at(x, y).unwrap_or(0);
+
             for z in 0..=zh {
                 let block = if z < zh {
                     "dirt"

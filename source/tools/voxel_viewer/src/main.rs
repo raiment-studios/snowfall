@@ -105,7 +105,7 @@ fn startup(
 
     let mut models = Vec::new();
 
-    for j in 0..8 {
+    for j in 0..16 {
         println!("Adding model {}", j);
         let mut ctx = GenContext {
             center: IVec3::new(0, 0, 0),
