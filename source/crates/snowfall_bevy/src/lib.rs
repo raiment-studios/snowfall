@@ -118,7 +118,13 @@ impl VoxelMeshComponent {
         mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, arrays.colors);
         let mesh = meshes.add(mesh);
 
-        let material = materials.add(Color::WHITE);
+        //let material = materials.add(Color::WHITE);
+        let material = materials.add(StandardMaterial {
+            base_color: Color::WHITE,
+            specular_transmission: 0.0,
+            reflectance: 0.0,
+            ..Default::default()
+        });
 
         let parent = commands.spawn(()).id();
         commands.entity(parent).insert((

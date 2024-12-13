@@ -1,3 +1,5 @@
+use serde::de::value;
+
 use crate::internal::*;
 
 pub fn bresenham3d(p: IVec3, q: IVec3) -> Vec<IVec3> {
@@ -29,19 +31,23 @@ impl<'a> GenContext<'a> {
     pub fn ground_height_at(&self, x: i32, y: i32) -> Option<i32> {
         let x = x + self.center.x;
         let y = y + self.center.y;
-        self.ground_objects
-            .iter()
-            .map(|m| {
-                let mx = x - m.position.x;
-                let my = y - m.position.y;
-                match &m.model {
-                    ModelType::VoxelSet(m) => m.height_at(mx, my),
-                    ModelType::VoxelScene(m) => None,
-                    _ => None,
-                }
-            })
-            .max()
-            .unwrap_or(None)
+
+        let mut max_value: Option<i32> = None;
+        for obj in &self.ground_objects {
+            let mx = x - obj.position.x;
+            let my = y - obj.position.y;
+
+            let value = match &obj.model {
+                ModelType::VoxelSet(m) => m.height_at(mx, my),
+                ModelType::VoxelScene(_m) => None,
+                _ => None,
+            };
+            let Some(value) = value else {
+                continue;
+            };
+            max_value = Some(max_value.unwrap_or(value).max(value));
+        }
+        max_value
     }
 }
 

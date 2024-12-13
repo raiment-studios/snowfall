@@ -29,7 +29,7 @@ impl AppState {
         Self {
             generator,
             seed,
-            use_scene: false,
+            use_scene: true,
             view_radius: 32.0,
             look_at: Vec3::new(0.0, 0.0, 1.0),
         }
@@ -108,7 +108,9 @@ fn startup(
     let mut models = Vec::new();
 
     if state.use_scene {
-        for j in 0..16 {
+        use std::f32::consts::PI;
+
+        for j in 0..5 {
             println!("Adding model {}", j);
             let mut ctx = GenContext {
                 center: IVec3::new(0, 0, 0),
@@ -118,12 +120,13 @@ fn startup(
                 ctx.ground_objects.push(&models[i]);
             }
 
-            const R: i32 = 128;
+            const R: f32 = 128.0;
             let seed = rng.range(1..8192);
-            let x: i32 = rng.sign() * rng.range(0..=R);
-            let y: i32 = rng.sign() * rng.range(0..=R);
+            let a = j as f32 * 2.0 * PI / 5.0;
+            let x: i32 = (R * a.cos()).round() as i32;
+            let y: i32 = (R * a.sin()).round() as i32;
             ctx.center = IVec3::new(x, y, 0);
-            let hill: ModelType = generators::small_hill(seed, &ctx).into();
+            let hill: ModelType = generators::hill2(seed, &ctx).into();
             let model = Model {
                 model: hill,
                 position: ctx.center.clone(),
@@ -140,7 +143,8 @@ fn startup(
         ctx.ground_objects.push(&models[i]);
     }
 
-    match generate_model(state.generator.as_str(), state.seed, &ctx) {
+    let model = generate_model(state.generator.as_str(), state.seed, &ctx);
+    match &model {
         ModelType::VoxelSet(model) => {
             let bounds = model.bounds();
             let max_extent = (bounds.1.x - bounds.0.x + 1)
@@ -149,7 +153,7 @@ fn startup(
             let center_point = VSVec3::midpoint(&bounds.0, &bounds.1).to_ws();
 
             state.look_at = center_point.into();
-            state.view_radius = (max_extent as f32 * 1.15).max(8.0);
+            state.view_radius = (max_extent as f32 * 0.75).max(8.0);
 
             VoxelMeshComponent::spawn_from_model(
                 &model,
@@ -216,14 +220,37 @@ fn startup(
         }
     }
 
+    let model = &Model {
+        model,
+        position: IVec3::new(0, 0, 0),
+    };
+    ctx.ground_objects.push(&model);
+
     if state.use_scene {
-        for _i in 0..32 {
-            const R: i32 = 96;
+        for _i in 0..48 {
+            const R: i32 = 192;
             let seed = rng.range(1..8192);
             let x: i32 = rng.range(-R..=R);
             let y: i32 = rng.range(-R..=R);
             ctx.center = IVec3::new(x, y, 0);
             let model = generators::pine_tree(seed, &ctx);
+            VoxelMeshComponent::spawn_from_model(
+                &model,
+                &mut commands,
+                &mut meshes,
+                &mut materials,
+                Vec3::new(x as f32, y as f32, 0.0),
+            );
+        }
+
+        let mut rng = rng.fork();
+        for _i in 0..2 {
+            const R: i32 = 150;
+            let seed = rng.range(1..8192);
+            let x: i32 = rng.range(-R..=R);
+            let y: i32 = rng.range(-R..=R);
+            ctx.center = IVec3::new(x, y, 0);
+            let model = generators::fence(seed, &ctx);
             VoxelMeshComponent::spawn_from_model(
                 &model,
                 &mut commands,
