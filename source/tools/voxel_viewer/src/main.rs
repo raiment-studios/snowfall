@@ -105,7 +105,7 @@ fn startup(
 
     let mut models = Vec::new();
 
-    for j in 0..4 {
+    for j in 0..8 {
         println!("Adding model {}", j);
         let mut ctx = GenContext {
             center: IVec3::new(0, 0, 0),
@@ -115,13 +115,15 @@ fn startup(
             ctx.ground_objects.push(&models[i]);
         }
 
+        const R: i32 = 128;
         let seed = rng.range(1..8192);
-        let x: i32 = rng.range(-64..=64);
-        let y: i32 = rng.range(-64..=64);
+        let x: i32 = rng.sign() * rng.range(0..=R);
+        let y: i32 = rng.sign() * rng.range(0..=R);
+        ctx.center = IVec3::new(x, y, 0);
         let hill: ModelType = generate_small_hill(seed, &ctx).into();
         let model = Model {
             model: hill,
-            position: IVec3::new(x, y, 0),
+            position: ctx.center.clone(),
         };
         models.push(model);
     }
@@ -210,8 +212,8 @@ fn startup(
         }
     }
 
-    for _i in 0..7 {
-        const R: i32 = 42;
+    for _i in 0..32 {
+        const R: i32 = 96;
         let seed = rng.range(1..8192);
         let x: i32 = rng.range(-R..=R);
         let y: i32 = rng.range(-R..=R);

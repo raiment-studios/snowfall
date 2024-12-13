@@ -19,6 +19,8 @@ impl<'a> GenContext<'a> {
     }
 
     pub fn ground_height_at(&self, x: i32, y: i32) -> Option<i32> {
+        let x = x + self.center.x;
+        let y = y + self.center.y;
         self.ground_objects
             .iter()
             .map(|m| {
@@ -221,9 +223,7 @@ pub fn generate_pine_tree(seed: u64, ctx: &GenContext) -> VoxelSet {
     let mut leaf_select = rng.select_fn(vec!["leaves", "leaves2", "leaves3"]);
     let mut wood_select = rng.select_fn(vec!["wood", "wood2", "wood3"]);
 
-    let base_z = ctx
-        .ground_height_at(ctx.center.x, ctx.center.y)
-        .unwrap_or(0);
+    let base_z = ctx.ground_height_at(0, 0).unwrap_or(0);
 
     for z in base_z..=base_z + base_height {
         model.set_voxel((0, 0, z), wood_select());

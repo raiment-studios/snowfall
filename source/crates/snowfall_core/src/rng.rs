@@ -43,6 +43,14 @@ impl RNG {
         self.rng.gen()
     }
 
+    pub fn sign(&mut self) -> i32 {
+        if self.gen() {
+            1
+        } else {
+            -1
+        }
+    }
+
     pub fn bool(&mut self) -> bool {
         self.gen()
     }
