@@ -1,5 +1,6 @@
 mod fence;
 mod hill2;
+mod hill3;
 mod pine_tree;
 mod small_hill;
 mod tree1;
@@ -9,6 +10,7 @@ mod tree_hill;
 
 pub use fence::*;
 pub use hill2::*;
+pub use hill3::*;
 pub use pine_tree::*;
 pub use small_hill::*;
 pub use tree1::*;
@@ -26,6 +28,7 @@ pub fn generate_model(model_id: &str, seed: u64, ctx: &GenContext) -> ModelType 
         "small_hill" => small_hill(seed, ctx).into(),
         "fence" => fence(seed, ctx).into(),
         "hill2" => hill2(seed, ctx).into(),
+        "hill3" => hill3(seed, ctx).into(),
 
         "tree_cluster" => tree_cluster(seed).into(),
         "tree_hill" => tree_hill(seed).into(),

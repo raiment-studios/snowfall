@@ -107,7 +107,7 @@ fn startup(
 
     let mut models = Vec::new();
 
-    if state.use_scene {
+    if false && state.use_scene {
         use std::f32::consts::PI;
 
         for j in 0..5 {
@@ -153,7 +153,7 @@ fn startup(
             let center_point = VSVec3::midpoint(&bounds.0, &bounds.1).to_ws();
 
             state.look_at = center_point.into();
-            state.view_radius = (max_extent as f32 * 0.75).max(8.0);
+            state.view_radius = (max_extent as f32 * 0.45).max(8.0);
 
             VoxelMeshComponent::spawn_from_model(
                 &model,
@@ -228,7 +228,7 @@ fn startup(
 
     if state.use_scene {
         for _i in 0..48 {
-            const R: i32 = 192;
+            const R: i32 = 256;
             let seed = rng.range(1..8192);
             let x: i32 = rng.range(-R..=R);
             let y: i32 = rng.range(-R..=R);
@@ -243,35 +243,37 @@ fn startup(
             );
         }
 
-        let mut rng = rng.fork();
-        for _i in 0..2 {
-            const R: i32 = 150;
-            let seed = rng.range(1..8192);
-            let x: i32 = rng.range(-R..=R);
-            let y: i32 = rng.range(-R..=R);
-            ctx.center = IVec3::new(x, y, 0);
-            let model = generators::fence(seed, &ctx);
-            VoxelMeshComponent::spawn_from_model(
-                &model,
-                &mut commands,
-                &mut meshes,
-                &mut materials,
-                Vec3::new(x as f32, y as f32, 0.0),
-            );
-        }
+        if false {
+            let mut rng = rng.fork();
+            for _i in 0..2 {
+                const R: i32 = 150;
+                let seed = rng.range(1..8192);
+                let x: i32 = rng.range(-R..=R);
+                let y: i32 = rng.range(-R..=R);
+                ctx.center = IVec3::new(x, y, 0);
+                let model = generators::fence(seed, &ctx);
+                VoxelMeshComponent::spawn_from_model(
+                    &model,
+                    &mut commands,
+                    &mut meshes,
+                    &mut materials,
+                    Vec3::new(x as f32, y as f32, 0.0),
+                );
+            }
 
-        for model in ctx.ground_objects.iter() {
-            let p = model.position.clone();
-            let ModelType::VoxelSet(voxel_set) = &model.model else {
-                panic!("Expected VoxelSet");
-            };
-            VoxelMeshComponent::spawn_from_model(
-                voxel_set,
-                &mut commands,
-                &mut meshes,
-                &mut materials,
-                Vec3::new(p.x as f32, p.y as f32, p.z as f32),
-            );
+            for model in ctx.ground_objects.iter() {
+                let p = model.position.clone();
+                let ModelType::VoxelSet(voxel_set) = &model.model else {
+                    panic!("Expected VoxelSet");
+                };
+                VoxelMeshComponent::spawn_from_model(
+                    voxel_set,
+                    &mut commands,
+                    &mut meshes,
+                    &mut materials,
+                    Vec3::new(p.x as f32, p.y as f32, p.z as f32),
+                );
+            }
         }
     }
 }

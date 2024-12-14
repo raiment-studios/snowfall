@@ -36,7 +36,6 @@ impl<'a> GenContext<'a> {
         for obj in &self.ground_objects {
             let mx = x - obj.position.x;
             let my = y - obj.position.y;
-
             let value = match &obj.model {
                 ModelType::VoxelSet(m) => m.height_at(mx, my),
                 ModelType::VoxelScene(_m) => None,
