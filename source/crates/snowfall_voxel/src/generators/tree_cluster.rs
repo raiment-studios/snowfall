@@ -28,7 +28,7 @@ pub fn tree_cluster(seed: u64) -> VoxelScene {
         point_set.add(position);
         scene.add_object(
             0,
-            Object {
+            VoxelModelRef {
                 model_id: model_id.to_string(),
                 seed,
                 position,

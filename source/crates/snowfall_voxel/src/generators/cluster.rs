@@ -37,7 +37,7 @@ pub fn cluster(seed: u64, ctx: &GenContext) -> VoxelScene {
         point_set.add(position);
         scene.add_object(
             0,
-            Object {
+            VoxelModelRef {
                 model_id: model_id.to_string(),
                 seed,
                 position,

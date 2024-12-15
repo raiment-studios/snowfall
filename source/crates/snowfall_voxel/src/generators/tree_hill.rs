@@ -12,7 +12,7 @@ pub fn tree_hill(seed: u64) -> VoxelScene {
     let hill = generators::small_hill(hill_seed, &ctx);
     scene.add_object(
         0,
-        Object {
+        VoxelModelRef {
             model_id: "small_hill".to_string(),
             seed: hill_seed,
             position: IVec3::new(0, 0, 0),
@@ -28,7 +28,7 @@ pub fn tree_hill(seed: u64) -> VoxelScene {
 
         scene.add_object(
             1,
-            Object {
+            VoxelModelRef {
                 model_id: object.model_id.clone(),
                 seed: object.seed,
                 position: p,

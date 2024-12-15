@@ -15,7 +15,7 @@ impl VoxelScene {
         Self { layers: Vec::new() }
     }
 
-    pub fn add_object(&mut self, layer: usize, object: Object) {
+    pub fn add_object(&mut self, layer: usize, object: VoxelModelRef) {
         self.layers.resize_with(layer + 1, || Layer::new());
         self.layers[layer].objects.push(object);
     }
@@ -29,7 +29,7 @@ pub struct Layer {
     #[serde(default)]
     pub is_ground: bool,
 
-    pub objects: Vec<Object>,
+    pub objects: Vec<VoxelModelRef>,
 }
 
 impl Layer {
@@ -41,18 +41,21 @@ impl Layer {
     }
 }
 
+/// Provides the parameters needed to generate a particular
+/// model dynamically (or from disk).
+///
 /// TODO:
 ///
 /// - Rotation (in 90 degree increments) and mirror
 ///   - Worth constraining rather than an arbitrary quaternion?
 #[derive(Serialize, Deserialize)]
-pub struct Object {
+pub struct VoxelModelRef {
     pub model_id: String,
     pub seed: u64,
-    pub position: IVec3,
-
     #[serde(default)]
     pub params: serde_json::Value,
+
+    pub position: IVec3,
 }
 
 pub const VOXEL_SCENE_FILE_IDENTIFIER: &str = "SNOWFALL_VOXEL_SCENE";
