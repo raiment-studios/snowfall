@@ -9,7 +9,7 @@ pub fn bresenham3d(p: IVec3, q: IVec3) -> Vec<IVec3> {
 }
 
 pub struct Model {
-    pub model: ModelType,
+    pub model: VoxelModel,
     pub position: IVec3,
 }
 
@@ -45,8 +45,8 @@ impl<'a> GenContext<'a> {
             let mx = x - obj.position.x;
             let my = y - obj.position.y;
             let value = match &obj.model {
-                ModelType::VoxelSet(m) => m.height_at(mx, my),
-                ModelType::VoxelScene(_m) => None,
+                VoxelModel::VoxelSet(m) => m.height_at(mx, my),
+                VoxelModel::VoxelScene(_m) => None,
                 _ => None,
             };
             let Some(value) = value else {
@@ -55,23 +55,5 @@ impl<'a> GenContext<'a> {
             max_value = Some(max_value.unwrap_or(value).max(value));
         }
         max_value
-    }
-}
-
-pub enum ModelType {
-    Empty,
-    VoxelSet(Box<VoxelSet>),
-    VoxelScene(Box<VoxelScene>),
-}
-
-impl Into<ModelType> for VoxelSet {
-    fn into(self) -> ModelType {
-        ModelType::VoxelSet(Box::new(self))
-    }
-}
-
-impl Into<ModelType> for VoxelScene {
-    fn into(self) -> ModelType {
-        ModelType::VoxelScene(Box::new(self))
     }
 }

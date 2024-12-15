@@ -116,7 +116,7 @@ fn startup(
     );
     for model in scene.models {
         let position = model.position.clone();
-        let ModelType::VoxelSet(model) = model.model else {
+        let VoxelModel::VoxelSet(model) = model.model else {
             continue;
         };
         let bounds = model.bounds();
@@ -175,16 +175,16 @@ fn generate(
         println!("Loading model from file: {}", &filename);
         let contents = std::fs::read_to_string(&filename).unwrap();
         let file: VoxelSceneFile = serde_yaml::from_str(&contents).unwrap();
-        ModelType::VoxelScene(Box::new(file.scene))
+        VoxelModel::VoxelScene(Box::new(file.scene))
     } else {
         println!("Generating model: {}", &filename);
         generate_model(generator, seed, &ctx)
     };
 
     match &model {
-        ModelType::Empty => {}
-        ModelType::VoxelSet(_) => {}
-        ModelType::VoxelScene(model) => {
+        VoxelModel::Empty => {}
+        VoxelModel::VoxelSet(_) => {}
+        VoxelModel::VoxelScene(model) => {
             for layer in &model.layers {
                 for object in &layer.objects {
                     println!("{} {:#?}", &object.model_id, &object.params);

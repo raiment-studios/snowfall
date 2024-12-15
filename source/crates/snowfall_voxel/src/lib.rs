@@ -3,6 +3,7 @@ mod generators;
 mod paint;
 mod point_set;
 mod voxel_grid;
+mod voxel_model;
 mod voxel_scene;
 mod voxel_set;
 mod vs_vec3;
@@ -14,9 +15,10 @@ pub mod prelude {
         pub use crate::generators::*;
     }
     pub use super::generators::generate_model;
-    pub use crate::paint::{GenContext, Model, ModelType};
+    pub use crate::paint::{GenContext, Model};
     pub use crate::point_set::*;
     pub use crate::voxel_grid::*;
+    pub use crate::voxel_model::*;
     pub use crate::voxel_scene::*;
     pub use crate::voxel_set::*;
     pub use crate::vs_vec3::*;

@@ -16,16 +16,29 @@ impl VoxelScene {
     }
 
     pub fn add_object(&mut self, layer: usize, object: Object) {
-        self.layers.resize_with(layer + 1, || Layer {
-            objects: Vec::new(),
-        });
+        self.layers.resize_with(layer + 1, || Layer::new());
         self.layers[layer].objects.push(object);
     }
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct Layer {
+    /// If true, this means models on this layer should be treated as "the ground"
+    /// on which other objects can be placed. E.g. it makes sense for a house to be
+    /// placed on terrain but not on top of another house.
+    #[serde(default)]
+    pub is_ground: bool,
+
     pub objects: Vec<Object>,
+}
+
+impl Layer {
+    pub fn new() -> Self {
+        Self {
+            is_ground: false,
+            objects: Vec::new(),
+        }
+    }
 }
 
 /// TODO:

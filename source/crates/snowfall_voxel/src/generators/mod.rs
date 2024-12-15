@@ -22,7 +22,7 @@ pub use tree_hill::*;
 
 use crate::internal::*;
 
-pub fn generate_model(model_id: &str, seed: u64, ctx: &GenContext) -> ModelType {
+pub fn generate_model(model_id: &str, seed: u64, ctx: &GenContext) -> VoxelModel {
     match model_id {
         "tree1" => tree1(seed).into(),
         "tree2" => tree2(seed).into(),
@@ -36,6 +36,6 @@ pub fn generate_model(model_id: &str, seed: u64, ctx: &GenContext) -> ModelType 
         "tree_cluster" => tree_cluster(seed).into(),
         "tree_hill" => tree_hill(seed).into(),
 
-        _ => ModelType::Empty,
+        _ => VoxelModel::Empty,
     }
 }

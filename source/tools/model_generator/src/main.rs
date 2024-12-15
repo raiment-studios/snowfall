@@ -15,16 +15,16 @@ fn main() {
     let ProcessArgs { generator, seed } = ProcessArgs::parse();
 
     let ctx = GenContext::new();
-    let model: ModelType = generate_model(generator.as_str(), seed, &ctx);
+    let model: VoxelModel = generate_model(generator.as_str(), seed, &ctx);
     match model {
-        ModelType::Empty => {
+        VoxelModel::Empty => {
             eprintln!("Unknown generator: {}", generator);
             std::process::exit(1);
         }
-        ModelType::VoxelSet(model) => {
+        VoxelModel::VoxelSet(model) => {
             model.serialize_to_file(&format!("content/{}-{}.bin", generator, seed));
         }
-        ModelType::VoxelScene(model) => {
+        VoxelModel::VoxelScene(model) => {
             let filename = format!("content/{}-{}.yaml", generator, seed);
             let file = VoxelSceneFile::new(*model);
             serde_yaml::to_writer(std::fs::File::create(&filename).unwrap(), &file).unwrap();
