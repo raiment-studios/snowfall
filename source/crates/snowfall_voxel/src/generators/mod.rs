@@ -1,3 +1,4 @@
+mod cluster;
 mod fence;
 mod hill2;
 mod hill3;
@@ -8,6 +9,7 @@ mod tree2;
 mod tree_cluster;
 mod tree_hill;
 
+pub use cluster::*;
 pub use fence::*;
 pub use hill2::*;
 pub use hill3::*;
@@ -20,7 +22,12 @@ pub use tree_hill::*;
 
 use crate::internal::*;
 
-pub fn generate_model(model_id: &str, seed: u64, ctx: &GenContext) -> ModelType {
+pub fn generate_model(
+    model_id: &str,
+    seed: u64,
+    params: serde_json::Value,
+    ctx: &GenContext,
+) -> ModelType {
     match model_id {
         "tree1" => tree1(seed).into(),
         "tree2" => tree2(seed).into(),
@@ -29,6 +36,7 @@ pub fn generate_model(model_id: &str, seed: u64, ctx: &GenContext) -> ModelType 
         "fence" => fence(seed, ctx).into(),
         "hill2" => hill2(seed, ctx).into(),
         "hill3" => hill3(seed, ctx).into(),
+        "cluster" => cluster(seed, params).into(),
 
         "tree_cluster" => tree_cluster(seed).into(),
         "tree_hill" => tree_hill(seed).into(),

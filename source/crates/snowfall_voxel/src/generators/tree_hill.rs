@@ -8,10 +8,7 @@ pub fn tree_hill(seed: u64) -> VoxelScene {
     let hill_seed = rng.range(1..8192);
     let tree_cluster_seed = rng.range(1..8192);
 
-    let ctx = GenContext {
-        center: IVec3::new(0, 0, 0),
-        ground_objects: vec![],
-    };
+    let ctx = GenContext::new();
     let hill = generators::small_hill(hill_seed, &ctx);
     scene.add_object(
         0,
@@ -19,6 +16,7 @@ pub fn tree_hill(seed: u64) -> VoxelScene {
             model_id: "small_hill".to_string(),
             seed: hill_seed,
             position: IVec3::new(0, 0, 0),
+            params: serde_json::Value::Null,
         },
     );
 
@@ -34,6 +32,7 @@ pub fn tree_hill(seed: u64) -> VoxelScene {
                 model_id: object.model_id.clone(),
                 seed: object.seed,
                 position: p,
+                params: serde_json::Value::Null,
             },
         );
     }

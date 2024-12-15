@@ -19,7 +19,6 @@ struct CLIArguments {
 struct AppState {
     generator: String,
     seed: u64,
-    use_scene: bool,
     view_radius: f32,
     look_at: Vec3,
 }
@@ -29,7 +28,6 @@ impl AppState {
         Self {
             generator,
             seed,
-            use_scene: true,
             view_radius: 32.0,
             look_at: Vec3::new(0.0, 0.0, 1.0),
         }
@@ -103,179 +101,108 @@ fn startup(
 
     // ------------------------------------------------------------------------
 
-    let mut rng = snowfall_core::prelude::RNG::new(state.seed + 23849);
+    let mut scene = Scene { models: Vec::new() };
+    generate(
+        state.generator.as_str(),
+        state.seed,
+        IVec3::ZERO,
+        serde_json::Value::Null,
+        &mut scene,
+    );
 
-    let mut models = Vec::new();
+    let mut scene_bounds = (
+        IVec3::new(i32::MAX, i32::MAX, i32::MAX),
+        IVec3::new(i32::MIN, i32::MIN, i32::MIN),
+    );
+    for model in scene.models {
+        let position = model.position.clone();
+        let ModelType::VoxelSet(model) = model.model else {
+            continue;
+        };
+        let bounds = model.bounds();
+        scene_bounds.0.x = scene_bounds.0.x.min(bounds.0.x);
+        scene_bounds.0.y = scene_bounds.0.y.min(bounds.0.y);
+        scene_bounds.0.z = scene_bounds.0.z.min(bounds.0.z);
+        scene_bounds.1.x = scene_bounds.1.x.max(bounds.1.x);
+        scene_bounds.1.y = scene_bounds.1.y.max(bounds.1.y);
+        scene_bounds.1.z = scene_bounds.1.z.max(bounds.1.z);
 
-    if false && state.use_scene {
-        use std::f32::consts::PI;
-
-        for j in 0..5 {
-            println!("Adding model {}", j);
-            let mut ctx = GenContext {
-                center: IVec3::new(0, 0, 0),
-                ground_objects: vec![],
-            };
-            for i in 0..models.len() {
-                ctx.ground_objects.push(&models[i]);
-            }
-
-            const R: f32 = 128.0;
-            let seed = rng.range(1..8192);
-            let a = j as f32 * 2.0 * PI / 5.0;
-            let x: i32 = (R * a.cos()).round() as i32;
-            let y: i32 = (R * a.sin()).round() as i32;
-            ctx.center = IVec3::new(x, y, 0);
-            let hill: ModelType = generators::hill2(seed, &ctx).into();
-            let model = Model {
-                model: hill,
-                position: ctx.center.clone(),
-            };
-            models.push(model);
-        }
+        VoxelMeshComponent::spawn_from_model(
+            &model,
+            &mut commands,
+            &mut meshes,
+            &mut materials,
+            Vec3::new(position.x as f32, position.y as f32, position.z as f32),
+        );
     }
 
-    let mut ctx = GenContext {
-        center: IVec3::new(0, 0, 0),
-        ground_objects: vec![],
+    let bounds = scene_bounds;
+    let max_extent = (((bounds.1.x - bounds.0.x + 1).pow(2)
+        + (bounds.1.y - bounds.0.y + 1).pow(2)
+        + (bounds.1.z - 0 + 1).pow(2)) as f32)
+        .sqrt();
+    let center_point = Vec3::new(
+        (bounds.0.x + bounds.1.x) as f32 / 2.0,
+        (bounds.0.y + bounds.1.y) as f32 / 2.0,
+        (bounds.0.z + bounds.1.z) as f32 / 2.0,
+    );
+
+    state.look_at = center_point.into();
+    state.view_radius = max_extent as f32 * 0.5;
+}
+
+struct Scene {
+    models: Vec<Model>,
+}
+
+fn generate(
+    generator: &str,
+    seed: u64,
+    center: IVec3,
+    params: serde_json::Value,
+    scene: &mut Scene,
+) {
+    let mut ctx = GenContext::new();
+    ctx.center = center;
+    for i in 0..scene.models.len() {
+        ctx.ground_objects.push(&scene.models[i]);
+    }
+    let filename = format!("content/{}-{}.yaml", generator, seed);
+
+    // Check if filename exists
+    let model = if std::path::Path::new(&filename).exists() {
+        println!("Loading model from file: {}", &filename);
+        let contents = std::fs::read_to_string(&filename).unwrap();
+        let file: VoxelSceneFile = serde_yaml::from_str(&contents).unwrap();
+        ModelType::VoxelScene(Box::new(file.scene))
+    } else {
+        println!("Generating model: {}", &filename);
+        generate_model(generator, seed, params, &ctx)
     };
-    for i in 0..models.len() {
-        ctx.ground_objects.push(&models[i]);
-    }
 
-    let model = generate_model(state.generator.as_str(), state.seed, &ctx);
     match &model {
-        ModelType::VoxelSet(model) => {
-            let bounds = model.bounds();
-            let max_extent = (bounds.1.x - bounds.0.x + 1)
-                .max(bounds.1.y - bounds.0.y + 1)
-                .max(bounds.1.z - bounds.0.z + 1);
-            let center_point = VSVec3::midpoint(&bounds.0, &bounds.1).to_ws();
-
-            state.look_at = center_point.into();
-            state.view_radius = (max_extent as f32 * 0.45).max(8.0);
-
-            VoxelMeshComponent::spawn_from_model(
-                &model,
-                &mut commands,
-                &mut meshes,
-                &mut materials,
-                Vec3::new(0.0, 0.0, 0.0),
-            );
-        }
+        ModelType::Empty => {}
+        ModelType::VoxelSet(_) => {}
         ModelType::VoxelScene(model) => {
-            let mut min = VSVec3::new(i32::MAX, i32::MAX, i32::MAX);
-            let mut max = VSVec3::new(i32::MIN, i32::MIN, i32::MIN);
             for layer in &model.layers {
                 for object in &layer.objects {
-                    println!("{}", &object.model_id);
-                    let model = generate_model(object.model_id.clone().as_str(), object.seed, &ctx);
-                    let model = match model {
-                        ModelType::VoxelSet(model) => model,
-                        ModelType::VoxelScene(_) => {
-                            eprintln!("VoxelScene objects are not supported");
-                            std::process::exit(1);
-                        }
-                        ModelType::Empty => {
-                            eprintln!("Unknown generator: {}", object.model_id);
-                            std::process::exit(1);
-                        }
-                    };
-
-                    let bounds = model.bounds();
-                    min.x = min.x.min(bounds.0.x);
-                    min.y = min.y.min(bounds.0.y);
-                    min.z = min.z.min(bounds.0.z);
-                    max.x = max.x.max(bounds.1.x);
-                    max.y = max.y.max(bounds.1.y);
-                    max.z = max.z.max(bounds.1.z);
-
-                    VoxelMeshComponent::spawn_from_model(
-                        &model,
-                        &mut commands,
-                        &mut meshes,
-                        &mut materials,
-                        Vec3::new(
-                            object.position.x as f32,
-                            object.position.y as f32,
-                            object.position.z as f32,
-                        ),
+                    println!("{} {:#?}", &object.model_id, &object.params);
+                    generate(
+                        object.model_id.clone().as_str(),
+                        object.seed,
+                        object.position,
+                        object.params.clone(),
+                        scene,
                     );
                 }
             }
-
-            let bounds = (min, max);
-            let max_extent = (((bounds.1.x - bounds.0.x + 1).pow(2)
-                + (bounds.1.y - bounds.0.y + 1).pow(2)
-                + (bounds.1.z - 0 + 1).pow(2)) as f32)
-                .sqrt();
-            let center_point = VSVec3::midpoint(&bounds.0, &bounds.1).to_ws();
-
-            state.look_at = center_point.into();
-            state.view_radius = max_extent as f32 * 2.5;
         }
-        _ => {
-            eprintln!("Unknown generator: {}", state.generator);
-            std::process::exit(1);
-        }
-    }
-
-    let model = &Model {
-        model,
-        position: IVec3::new(0, 0, 0),
     };
-    ctx.ground_objects.push(&model);
 
-    if state.use_scene {
-        for _i in 0..48 {
-            const R: i32 = 256;
-            let seed = rng.range(1..8192);
-            let x: i32 = rng.range(-R..=R);
-            let y: i32 = rng.range(-R..=R);
-            ctx.center = IVec3::new(x, y, 0);
-            let model = generators::pine_tree(seed, &ctx);
-            VoxelMeshComponent::spawn_from_model(
-                &model,
-                &mut commands,
-                &mut meshes,
-                &mut materials,
-                Vec3::new(x as f32, y as f32, 0.0),
-            );
-        }
-
-        if false {
-            let mut rng = rng.fork();
-            for _i in 0..2 {
-                const R: i32 = 150;
-                let seed = rng.range(1..8192);
-                let x: i32 = rng.range(-R..=R);
-                let y: i32 = rng.range(-R..=R);
-                ctx.center = IVec3::new(x, y, 0);
-                let model = generators::fence(seed, &ctx);
-                VoxelMeshComponent::spawn_from_model(
-                    &model,
-                    &mut commands,
-                    &mut meshes,
-                    &mut materials,
-                    Vec3::new(x as f32, y as f32, 0.0),
-                );
-            }
-
-            for model in ctx.ground_objects.iter() {
-                let p = model.position.clone();
-                let ModelType::VoxelSet(voxel_set) = &model.model else {
-                    panic!("Expected VoxelSet");
-                };
-                VoxelMeshComponent::spawn_from_model(
-                    voxel_set,
-                    &mut commands,
-                    &mut meshes,
-                    &mut materials,
-                    Vec3::new(p.x as f32, p.y as f32, p.z as f32),
-                );
-            }
-        }
-    }
+    scene.models.push(Model {
+        model: model,
+        position: center,
+    });
 }
 
 fn update_camera_rotation(

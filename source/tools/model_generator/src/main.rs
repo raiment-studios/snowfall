@@ -14,12 +14,8 @@ struct ProcessArgs {
 fn main() {
     let ProcessArgs { generator, seed } = ProcessArgs::parse();
 
-    let ctx = GenContext {
-        center: IVec3::new(0, 0, 0),
-        ground_objects: vec![],
-    };
-
-    let model: ModelType = generate_model(generator.as_str(), seed, &ctx);
+    let ctx = GenContext::new();
+    let model: ModelType = generate_model(generator.as_str(), seed, serde_json::Value::Null, &ctx);
     match model {
         ModelType::Empty => {
             eprintln!("Unknown generator: {}", generator);

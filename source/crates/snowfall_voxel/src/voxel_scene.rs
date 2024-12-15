@@ -37,6 +37,9 @@ pub struct Object {
     pub model_id: String,
     pub seed: u64,
     pub position: IVec3,
+
+    #[serde(default)]
+    pub params: serde_json::Value,
 }
 
 pub const VOXEL_SCENE_FILE_IDENTIFIER: &str = "SNOWFALL_VOXEL_SCENE";

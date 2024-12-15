@@ -1,5 +1,3 @@
-use serde::de::value;
-
 use crate::internal::*;
 
 pub fn bresenham3d(p: IVec3, q: IVec3) -> Vec<IVec3> {
@@ -18,13 +16,15 @@ pub struct Model {
 pub struct GenContext<'a> {
     pub center: IVec3,
     pub ground_objects: Vec<&'a Model>,
+    pub params: serde_json::Value,
 }
 
 impl<'a> GenContext<'a> {
-    pub fn new(center: IVec3) -> Self {
+    pub fn new() -> Self {
         Self {
-            center,
+            center: IVec3::new(0, 0, 0),
             ground_objects: Vec::new(),
+            params: serde_json::Value::Null,
         }
     }
 

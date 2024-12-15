@@ -1,0 +1,14 @@
+identifier: SNOWFALL_VOXEL_SCENE
+version: 0.0.1
+scene:
+    layers:
+        - objects:
+              - model_id: hill2
+                seed: 0
+                position: [0, 0, 0]
+              - model_id: cluster
+                seed: 8092
+                position: [0, 0, 0]
+                params:
+                    count: [40, 200]
+                    range: 128

@@ -1,12 +1,22 @@
 use crate::internal::*;
 
-pub fn tree_cluster(seed: u64) -> VoxelScene {
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+struct ClusterParams {
+    count: Option<[i64; 2]>,
+    range: Option<i32>,
+}
+
+pub fn cluster(seed: u64, params: serde_json::Value) -> VoxelScene {
     let mut rng = RNG::new(seed);
+
+    println!("{:#?}", params);
+    let mut params: ClusterParams = serde_json::from_value(params).unwrap_or_default();
+    let count_range = params.count.get_or_insert([12, 24]);
+    let range = *params.range.get_or_insert(48);
 
     const MAX_ATTEMPTS: usize = 128;
     const CLOSEST_DISTANCE: f32 = 12.0;
-    const RANGE: i32 = 48;
-    let mut count = rng.range(12..=24);
+    let mut count = rng.range(count_range[0]..=count_range[1]);
 
     let mut scene = VoxelScene::new();
 
@@ -18,7 +28,7 @@ pub fn tree_cluster(seed: u64) -> VoxelScene {
             (80, "pine_tree"),
         ]);
         let seed = rng.range(1..8192);
-        let position = IVec3::new(rng.range(-RANGE..=RANGE), rng.range(-RANGE..=RANGE), 0);
+        let position = IVec3::new(rng.range(-range..=range), rng.range(-range..=range), 0);
 
         let d = point_set.nearest_distance(&position).unwrap_or(f32::MAX);
         if d < CLOSEST_DISTANCE {

@@ -3143,6 +3143,7 @@ dependencies = [
  "clap",
  "line_drawing",
  "serde",
+ "serde_json",
  "serde_yaml",
  "snowfall_core",
  "snowfall_voxel",
@@ -4466,6 +4467,7 @@ dependencies = [
  "bevy_math",
  "line_drawing",
  "serde",
+ "serde_json",
  "snowfall_core",
 ]
 
