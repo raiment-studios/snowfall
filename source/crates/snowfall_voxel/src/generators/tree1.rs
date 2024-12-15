@@ -1,6 +1,6 @@
 use crate::internal::*;
 
-pub fn tree1(_seed: u64) -> VoxelSet {
+pub fn tree1(_seed: u64, ctx: &GenContext) -> VoxelSet {
     let mut model = VoxelSet::new();
     model.register_block(Block::color("grass", 50, 200, 50));
     model.register_block(Block::color("sand", 180, 200, 20));
@@ -8,9 +8,10 @@ pub fn tree1(_seed: u64) -> VoxelSet {
 
     const R: i32 = 8;
     const H: i32 = 20;
+    let base_z = ctx.ground_height_at(0, 0).unwrap_or(0);
 
     for z in 0..=H {
-        model.set_voxel((0, 0, z), "wood");
+        model.set_voxel((0, 0, base_z + z), "wood");
     }
 
     for z in -R..=R {
@@ -27,7 +28,7 @@ pub fn tree1(_seed: u64) -> VoxelSet {
                     continue;
                 }
                 let name = if (y.abs() % 2) == 0 { "grass" } else { "sand" };
-                model.set_voxel((x, y, z + R / 2 + H), name);
+                model.set_voxel((x, y, base_z + z + R / 2 + H), name);
             }
         }
     }

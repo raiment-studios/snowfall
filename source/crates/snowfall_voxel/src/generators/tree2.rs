@@ -1,6 +1,6 @@
 use crate::internal::*;
 
-pub fn tree2(seed: u64) -> VoxelSet {
+pub fn tree2(seed: u64, ctx: &GenContext) -> VoxelSet {
     let mut rng = RNG::new(seed);
 
     let mut model = VoxelSet::new();
@@ -37,10 +37,11 @@ pub fn tree2(seed: u64) -> VoxelSet {
     const R: i32 = 8;
     let height: i32 = rng.range(12..=20);
     let noise = rng.open_simplex().scale(3.0).build();
+    let base_z = ctx.ground_height_at(0, 0).unwrap_or(0);
 
     for z in 0..=height {
         let block_name = wood_select();
-        model.set_voxel((0, 0, z), block_name);
+        model.set_voxel((0, 0, base_z), block_name);
     }
 
     for z in -R..=R {
@@ -63,7 +64,7 @@ pub fn tree2(seed: u64) -> VoxelSet {
                 }
 
                 let name = leaf_select();
-                model.set_voxel((x, y, z + R / 2 + height), name);
+                model.set_voxel((x, y, base_z + z + R / 2 + height), name);
             }
         }
     }

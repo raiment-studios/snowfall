@@ -21,7 +21,7 @@ pub fn tree_hill(seed: u64) -> VoxelScene {
     );
 
     let tree_cluster = generators::tree_cluster(tree_cluster_seed);
-    for object in tree_cluster.layers[0].objects.iter() {
+    for object in tree_cluster.layers[0].models.iter() {
         let mut p = object.position.clone();
         let z = hill.height_at(p.x, p.y).unwrap_or(0);
         p.z = z + 1;

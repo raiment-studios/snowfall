@@ -17,7 +17,7 @@ impl VoxelScene {
 
     pub fn add_object(&mut self, layer: usize, object: VoxelModelRef) {
         self.layers.resize_with(layer + 1, || Layer::new());
-        self.layers[layer].objects.push(object);
+        self.layers[layer].models.push(object);
     }
 }
 
@@ -29,14 +29,14 @@ pub struct Layer {
     #[serde(default)]
     pub is_ground: bool,
 
-    pub objects: Vec<VoxelModelRef>,
+    pub models: Vec<VoxelModelRef>,
 }
 
 impl Layer {
     pub fn new() -> Self {
         Self {
             is_ground: false,
-            objects: Vec::new(),
+            models: Vec::new(),
         }
     }
 }

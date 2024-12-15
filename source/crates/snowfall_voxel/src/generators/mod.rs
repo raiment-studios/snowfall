@@ -24,8 +24,8 @@ use crate::internal::*;
 
 pub fn generate_model(model_id: &str, seed: u64, ctx: &GenContext) -> VoxelModel {
     match model_id {
-        "tree1" => tree1(seed).into(),
-        "tree2" => tree2(seed).into(),
+        "tree1" => tree1(seed, ctx).into(),
+        "tree2" => tree2(seed, ctx).into(),
         "pine_tree" => pine_tree(seed, ctx).into(),
         "small_hill" => small_hill(seed, ctx).into(),
         "fence" => fence(seed, ctx).into(),

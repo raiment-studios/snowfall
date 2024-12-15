@@ -186,7 +186,7 @@ fn generate(
         VoxelModel::VoxelSet(_) => {}
         VoxelModel::VoxelScene(model) => {
             for layer in &model.layers {
-                for object in &layer.objects {
+                for object in &layer.models {
                     println!("{} {:#?}", &object.model_id, &object.params);
                     generate(
                         object.model_id.clone().as_str(),
