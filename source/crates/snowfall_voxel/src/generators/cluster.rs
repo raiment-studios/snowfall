@@ -6,11 +6,10 @@ struct ClusterParams {
     range: Option<i32>,
 }
 
-pub fn cluster(seed: u64, params: serde_json::Value) -> VoxelScene {
+pub fn cluster(seed: u64, ctx: &GenContext) -> VoxelScene {
     let mut rng = RNG::new(seed);
 
-    println!("{:#?}", params);
-    let mut params: ClusterParams = serde_json::from_value(params).unwrap_or_default();
+    let mut params: ClusterParams = ctx.params();
     let count_range = params.count.get_or_insert([12, 24]);
     let range = *params.range.get_or_insert(48);
 

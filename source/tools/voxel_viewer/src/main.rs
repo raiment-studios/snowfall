@@ -164,6 +164,7 @@ fn generate(
 ) {
     let mut ctx = GenContext::new();
     ctx.center = center;
+    ctx.params = params;
     for i in 0..scene.models.len() {
         ctx.ground_objects.push(&scene.models[i]);
     }
@@ -177,7 +178,7 @@ fn generate(
         ModelType::VoxelScene(Box::new(file.scene))
     } else {
         println!("Generating model: {}", &filename);
-        generate_model(generator, seed, params, &ctx)
+        generate_model(generator, seed, &ctx)
     };
 
     match &model {

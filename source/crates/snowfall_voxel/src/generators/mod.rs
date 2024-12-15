@@ -22,12 +22,7 @@ pub use tree_hill::*;
 
 use crate::internal::*;
 
-pub fn generate_model(
-    model_id: &str,
-    seed: u64,
-    params: serde_json::Value,
-    ctx: &GenContext,
-) -> ModelType {
+pub fn generate_model(model_id: &str, seed: u64, ctx: &GenContext) -> ModelType {
     match model_id {
         "tree1" => tree1(seed).into(),
         "tree2" => tree2(seed).into(),
@@ -36,7 +31,7 @@ pub fn generate_model(
         "fence" => fence(seed, ctx).into(),
         "hill2" => hill2(seed, ctx).into(),
         "hill3" => hill3(seed, ctx).into(),
-        "cluster" => cluster(seed, params).into(),
+        "cluster" => cluster(seed, ctx).into(),
 
         "tree_cluster" => tree_cluster(seed).into(),
         "tree_hill" => tree_hill(seed).into(),

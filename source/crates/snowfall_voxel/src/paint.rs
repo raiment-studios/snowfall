@@ -28,6 +28,14 @@ impl<'a> GenContext<'a> {
         }
     }
 
+    pub fn params<T>(&self) -> T
+    where
+        T: serde::de::DeserializeOwned + Default,
+    {
+        let t: Result<T, _> = serde_json::from_value(self.params.clone());
+        t.unwrap_or_default()
+    }
+
     pub fn ground_height_at(&self, x: i32, y: i32) -> Option<i32> {
         let x = x + self.center.x;
         let y = y + self.center.y;
