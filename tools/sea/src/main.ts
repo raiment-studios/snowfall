@@ -20,7 +20,7 @@ async function main(args: string[]) {
   if (handler === undefined) {
     console.log("Unknown command:", args[0]);
     console.log("Known commands:");
-    console.log("  " + Object.keys(table).join(" \n"));
+    console.log("  " + Object.keys(table).sort().join("\n  "));
     Deno.exit(1);
   }
   handler();
