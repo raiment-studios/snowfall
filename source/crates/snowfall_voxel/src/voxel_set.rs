@@ -50,9 +50,9 @@ impl VoxelSet {
     // ------------------------------------------------------------------------
 
     /// Returns the inclusive bounds of the voxel set.
-    pub fn bounds(&self) -> (VSVec3, VSVec3) {
-        let mut min = VSVec3::new(i32::MAX, i32::MAX, i32::MAX);
-        let mut max = VSVec3::new(i32::MIN, i32::MIN, i32::MIN);
+    pub fn bounds(&self) -> (IVec3, IVec3) {
+        let mut min = IVec3::new(i32::MAX, i32::MAX, i32::MAX);
+        let mut max = IVec3::new(i32::MIN, i32::MIN, i32::MIN);
         for (vc, _) in self.voxel_iter(false) {
             min.x = min.x.min(vc.x);
             min.y = min.y.min(vc.y);
@@ -93,7 +93,7 @@ impl VoxelSet {
     // Voxel manipulation
     // ------------------------------------------------------------------------
 
-    pub fn is_empty(&self, vc: VSVec3) -> bool {
+    pub fn is_empty(&self, vc: IVec3) -> bool {
         let Some(col) = self.data.get(&(vc.x, vc.y)) else {
             return true;
         };
@@ -101,12 +101,12 @@ impl VoxelSet {
     }
 
     pub fn is_empty_f32(&self, x: f32, y: f32, z: f32) -> bool {
-        self.is_empty(VSVec3::from_ws(x, y, z))
+        self.is_empty(from_ws(x, y, z))
     }
 
     pub fn set_voxel<S, T>(&mut self, vc: S, id: T)
     where
-        S: Into<VSVec3>,
+        S: Into<IVec3>,
         T: Into<String>,
     {
         let id = id.into();
@@ -122,12 +122,12 @@ impl VoxelSet {
         column.insert(vc.z, index);
     }
 
-    pub fn voxel_iter(&self, include_empty: bool) -> Vec<(VSVec3, &Block)> {
+    pub fn voxel_iter(&self, include_empty: bool) -> Vec<(IVec3, &Block)> {
         // Collect all the voxels into a vec
         let mut voxels = Vec::new();
         for (x, column) in self.data.iter() {
             for (z, id) in column.iter() {
-                let vc = VSVec3::new(x.0, x.1, *z);
+                let vc = IVec3::new(x.0, x.1, *z);
                 let block = &self.palette[*id as usize];
                 if block.is_empty() && !include_empty {
                     continue;
@@ -221,7 +221,7 @@ pub fn build_mesh_arrays(voxel_set: &VoxelSet) -> VoxelMesh {
     ];
 
     for (position, voxel) in voxel_set.voxel_iter(false) {
-        let offset: Vec3 = position.to_ws().into();
+        let offset: Vec3 = Vec3::new(position.x as f32, position.y as f32, position.z as f32);
         if voxel.is_empty() {
             continue;
         }

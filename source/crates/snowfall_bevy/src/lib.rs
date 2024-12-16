@@ -47,7 +47,7 @@ impl NaiveVoxelComponent {
         let mut cache = HashMap::<String, Handle<StandardMaterial>>::new();
 
         // Now iterate over all the non-empty voxels and create a child entity for each
-        for (VSVec3 { x, y, z }, block) in model.voxel_iter(false) {
+        for (IVec3 { x, y, z }, block) in model.voxel_iter(false) {
             let material = cache.entry(block.id.to_string()).or_insert_with(|| {
                 let (r, g, b) = match block.shader {
                     BlockShader::Empty => panic!("Should have been filtered out!"),

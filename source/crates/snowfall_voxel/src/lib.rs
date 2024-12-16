@@ -6,7 +6,6 @@ mod voxel_grid;
 mod voxel_model;
 mod voxel_scene;
 mod voxel_set;
-mod vs_vec3;
 
 pub mod prelude {
     // TODO: tidy up the wildcard exports once this crate stabilizes a bit
@@ -21,7 +20,6 @@ pub mod prelude {
     pub use crate::voxel_model::*;
     pub use crate::voxel_scene::*;
     pub use crate::voxel_set::*;
-    pub use crate::vs_vec3::*;
 }
 
 mod internal {
@@ -36,5 +34,9 @@ mod internal {
     pub use crate::voxel_grid::*;
     pub mod generators {
         pub use super::super::generators::*;
+    }
+
+    pub fn from_ws(x: f32, y: f32, z: f32) -> IVec3 {
+        IVec3::new(x.floor() as i32, y.floor() as i32, z.floor() as i32)
     }
 }
