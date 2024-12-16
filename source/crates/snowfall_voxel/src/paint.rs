@@ -8,6 +8,12 @@ pub fn bresenham3d(p: IVec3, q: IVec3) -> Vec<IVec3> {
     v
 }
 
+pub fn rotate_2d(u: f32, v: f32, angle: f32) -> (f32, f32) {
+    let u2 = u * angle.cos() - v * angle.sin();
+    let v2 = u * angle.sin() + v * angle.cos();
+    (u2, v2)
+}
+
 pub struct Model {
     pub model: VoxelModel,
     pub position: IVec3,

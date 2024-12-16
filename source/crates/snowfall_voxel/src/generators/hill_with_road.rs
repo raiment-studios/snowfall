@@ -1,5 +1,3 @@
-use pathfinding::matrix::directions::N;
-
 use crate::internal::*;
 
 pub fn hill_with_road(seed: u64, ctx: &GenContext) -> VoxelSet {
@@ -187,10 +185,4 @@ fn road(seed: u64, model: &mut VoxelSet) -> Result<(), String> {
         }
     }
     Ok(())
-}
-
-fn rotate_2d(u: f32, v: f32, angle: f32) -> (f32, f32) {
-    let u2 = u * angle.cos() - v * angle.sin();
-    let v2 = u * angle.sin() + v * angle.cos();
-    (u2, v2)
 }
