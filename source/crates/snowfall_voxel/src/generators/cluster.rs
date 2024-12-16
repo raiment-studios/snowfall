@@ -28,6 +28,7 @@ pub fn cluster(seed: u64, ctx: &GenContext) -> VoxelScene {
         ]);
         let seed = rng.range(1..8192);
         let position = IVec3::new(rng.range(-range..=range), rng.range(-range..=range), 0);
+        let position = position + ctx.center;
 
         let d = point_set.nearest_distance(&position).unwrap_or(f32::MAX);
         if d < CLOSEST_DISTANCE {

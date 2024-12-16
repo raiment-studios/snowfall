@@ -182,7 +182,10 @@ fn generate(
     };
 
     match &model {
-        VoxelModel::Empty => {}
+        VoxelModel::Empty => {
+            println!("Empty model: {} {}", generator, seed);
+            std::process::exit(1);
+        }
         VoxelModel::VoxelSet(_) => {}
         VoxelModel::VoxelScene(model) => {
             for layer in &model.layers {

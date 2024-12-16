@@ -8,7 +8,19 @@ scene:
                 position: [0, 0, 0]
               - model_id: cluster
                 seed: 8092
-                position: [0, 0, 0]
+                position: [82, 0, 0]
                 params:
-                    count: [40, 200]
-                    range: 128
+                    count: [10, 20]
+                    range: 20
+              - model_id: cluster
+                seed: 92
+                position: [42, 70, 0]
+                params:
+                    count: [10, 20]
+                    range: 20
+              - model_id: cluster
+                seed: 3821
+                position: [-52, -50, 0]
+                params:
+                    count: [10, 16]
+                    range: 30

@@ -25,4 +25,4 @@ async function main(args: string[]) {
   handler();
 }
 
-main(Deno.args);
+await main(Deno.args);
