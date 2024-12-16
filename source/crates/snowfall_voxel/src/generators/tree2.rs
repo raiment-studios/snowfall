@@ -41,7 +41,7 @@ pub fn tree2(seed: u64, ctx: &GenContext) -> VoxelSet {
 
     for z in 0..=height {
         let block_name = wood_select();
-        model.set_voxel((0, 0, base_z), block_name);
+        model.set_voxel((0, 0, base_z + z), block_name);
     }
 
     for z in -R..=R {

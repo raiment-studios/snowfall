@@ -148,7 +148,7 @@ fn startup(
     );
 
     state.look_at = center_point.into();
-    state.view_radius = max_extent as f32 * 0.5;
+    state.view_radius = max_extent as f32 * 0.25;
 }
 
 struct Scene {

@@ -29,7 +29,7 @@ pub fn hill_with_road(seed: u64, ctx: &GenContext) -> VoxelSet {
             let jitter_radius = 1.5 * noise4.gen_2d(u0, v0);
             let jitter_angle = 2.0 * PI * noise3.gen_2d(u0, v0);
             let h3 = 64.0 * jitter_radius * (0.5 + 0.5 * jitter_angle.cos());
-            let h = h3.powf(1.45);
+            let h = h3.powf(1.15);
 
             // Smooth influnece to 0 around the tile edges
             let base_z = ctx.ground_height_at(x, y).unwrap_or(1);
@@ -42,9 +42,9 @@ pub fn hill_with_road(seed: u64, ctx: &GenContext) -> VoxelSet {
         }
     }
 
-    let mut goal: (i32, i32, i32) = (rng.range((R / 2)..R), rng.range((R / 2)..=R), 0);
+    let mut goal: (i32, i32, i32) = (202, 202, 0);
     goal.2 = model.height_at(goal.0, goal.1).unwrap_or(0);
-    let mut start: (i32, i32, i32) = (rng.range(-R..=(-R / 2)), rng.range(-R..=(-R / 2)), 0);
+    let mut start: (i32, i32, i32) = (-252, -164, 0);
     start.2 = model.height_at(start.0, start.1).unwrap_or(0);
 
     let mut cache: HashMap<(i32, i32), i32> = HashMap::new();
@@ -95,30 +95,54 @@ pub fn hill_with_road(seed: u64, ctx: &GenContext) -> VoxelSet {
 
             costs.into_iter()
         },
-        |&(x, y, z)| 35 * (goal.0.abs_diff(x) + goal.1.abs_diff(y) + goal.2.abs_diff(z)),
+        |&(x, y, z)| 100 * (goal.0.abs_diff(x) + goal.1.abs_diff(y) + goal.2.abs_diff(z)),
         |&p| p == goal,
     );
 
-    if let Some((path, _cost)) = result {
-        for (x, y, z) in path {
-            for dz in 0..=10 {
-                //model.set_voxel((x, y, z + dz), "red");
-            }
-            let bz = *cache
-                .entry((x, y))
-                .or_insert_with(|| model.height_at(x, y).unwrap_or(0));
-            for dx in -2..=2 {
-                for dy in -2..=2 {
-                    let nx = x + dx;
-                    let ny = y + dy;
-                    let nz: i32 = *cache
-                        .entry((nx, ny))
-                        .or_insert_with(|| model.height_at(nx, ny).unwrap_or(0));
+    // Find points along the path every N segments
+    // Draw a flatten empty at each
+    // Connect with painted voxels
+    let path = match result {
+        Some((path, _cost)) => path,
+        None => {
+            println!("No path found");
+            return model;
+        }
+    };
 
-                    for z in nz..=bz {
-                        model.set_voxel((nx, ny, z), "empty");
+    // Print first and last point
+    println!("start: {:?}", path[0]);
+    println!("goal: {:?}", path[path.len() - 1]);
+
+    let mut posts = Vec::new();
+    for i in (0..path.len() - 6).step_by(12) {
+        posts.push(path[i]);
+    }
+    posts.push(path[path.len() - 1]);
+
+    for pair in posts.windows(2) {
+        let p = IVec3::new(pair[0].0, pair[0].1, pair[0].2);
+        let q = IVec3::new(pair[1].0, pair[1].1, pair[1].2);
+
+        println!("p: {:?} q: {:?}", p, q);
+
+        const R: i32 = 3;
+
+        let line = bresenham3d(p, q);
+        for IVec3 { x, y, z } in &line {
+            for dx in -R..=R {
+                for dy in -R..=R {
+                    for dz in 1..=12 {
+                        model.set_voxel((x + dx, y + dy, z + dz), "empty");
                     }
-                    model.set_voxel((nx, ny, bz), dirt_block());
+                }
+            }
+        }
+        for IVec3 { x, y, z } in line {
+            for dx in -R..=R {
+                for dy in -R..=R {
+                    let block = dirt_block();
+                    model.set_voxel((x + dx, y + dy, z), block);
                 }
             }
         }

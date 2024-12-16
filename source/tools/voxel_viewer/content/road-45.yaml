@@ -3,8 +3,8 @@ version: 0.0.1
 scene:
     layers:
         - models:
-              - model_id: hill2
-                seed: 0
+              - model_id: hill_with_road
+                seed: 1920
                 position: [0, 0, 0]
               - model_id: cluster
                 seed: 8092
@@ -24,3 +24,15 @@ scene:
                 params:
                     count: [10, 16]
                     range: 30
+              - model_id: cluster
+                seed: 33
+                position: [-122, -160, 0]
+                params:
+                    count: [50, 60]
+                    range: 80
+              - model_id: cluster
+                seed: 23
+                position: [162, -122, 0]
+                params:
+                    count: [50, 60]
+                    range: 80
