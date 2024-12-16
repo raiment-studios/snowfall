@@ -318,9 +318,8 @@ impl ChunkFull {
     }
     fn set(&mut self, p: (u8, u8, u8), block_index: usize) {
         let local = self.palette.to_local(block_index);
-        self.data[p.0 as usize
-            + p.1 as usize * CHUNK_DIM_X
-            + p.2 as usize * CHUNK_DIM_X * CHUNK_DIM_Y] = local;
+        let index = self.index(p);
+        self.data[index] = local;
     }
 
     fn index(&self, p: (u8, u8, u8)) -> usize {
