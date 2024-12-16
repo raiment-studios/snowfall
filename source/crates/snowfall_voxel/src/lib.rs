@@ -17,7 +17,7 @@ pub mod prelude {
     pub use super::generators::generate_model;
     pub use crate::paint::{GenContext, Model};
     pub use crate::point_set::*;
-    pub use crate::voxel_grid::*;
+    pub use crate::voxel_grid::{VoxelGrid, VoxelGridGenerator, VoxelGridPager};
     pub use crate::voxel_model::*;
     pub use crate::voxel_scene::*;
     pub use crate::voxel_set::*;
@@ -29,11 +29,12 @@ mod internal {
     pub use serde::{Deserialize, Serialize};
     pub use std::collections::HashMap;
 
-    pub use crate::prelude::*;
     pub use snowfall_core::prelude::*;
 
+    pub use super::paint::*;
+    pub use crate::prelude::*;
+    pub use crate::voxel_grid::*;
     pub mod generators {
         pub use super::super::generators::*;
     }
-    pub use super::paint::*;
 }
