@@ -28,7 +28,6 @@ pub fn hill_with_road(seed: u64, ctx: &GenContext) -> VoxelSet {
             let h3 = 64.0 * jitter_radius * (0.5 + 0.5 * jitter_angle.cos());
             let h = h3.powf(1.15);
 
-            // Smooth influnece to 0 around the tile edges
             let base_z = ctx.ground_height_at(x, y).unwrap_or(1);
 
             // Draw the voxels

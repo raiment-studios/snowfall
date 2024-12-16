@@ -6,10 +6,13 @@ use crate::internal::*;
 /// Since there is one shared Block for **every** instance, this
 /// structure does not need to be as optimized for space.
 ///
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Block {
     pub id: String, // unique identifier for the block (e.g. "grass", "sand")
     pub shader: BlockShader,
+
+    /// Indicates the voxel cannot be built on top of.
+    pub occupied: bool,
 }
 
 impl Block {
@@ -17,6 +20,7 @@ impl Block {
         Block {
             id: "empty".to_string(),
             shader: BlockShader::Empty,
+            occupied: false,
         }
     }
 
@@ -27,7 +31,18 @@ impl Block {
         Block {
             id: id.into(),
             shader: BlockShader::RGB(BlockRGB { r, g, b }),
+            occupied: false,
         }
+    }
+
+    pub fn with_occupied(&self, occupied: bool) -> Self {
+        let mut block = self.clone();
+        if self.occupied == occupied {
+            return block;
+        }
+        block.id = format!("{}&occupied={}", block.id, occupied);
+        block.occupied = occupied;
+        block
     }
 
     pub fn is_empty(&self) -> bool {
@@ -36,9 +51,14 @@ impl Block {
             _ => false,
         }
     }
+
+    /// Returns true if all properties other than id match
+    pub fn is_equivalent(&self, other: &Block) -> bool {
+        self.shader == other.shader && self.occupied == other.occupied
+    }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct BlockRGB {
     pub r: u8,
     pub g: u8,
@@ -56,7 +76,7 @@ impl BlockRGB {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub enum BlockShader {
     Empty,
     RGB(BlockRGB),

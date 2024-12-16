@@ -48,6 +48,7 @@ fn main() {
             Startup,
             (
                 startup, //
+                startup_scene,
             ),
         )
         .add_systems(
@@ -63,7 +64,6 @@ fn startup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut state: ResMut<AppState>,
 ) {
     use std::f32::consts::FRAC_PI_2;
 
@@ -98,11 +98,19 @@ fn startup(
         Transform::from_rotation(Quat::from_rotation_x(FRAC_PI_2))
             .with_translation(Vec3::new(0.0, 0.0, 1.0)),
     ));
+}
 
-    // ------------------------------------------------------------------------
-
-    let mut scene = Scene { models: Vec::new() };
-    generate(
+fn startup_scene(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut state: ResMut<AppState>,
+) {
+    //
+    // Recursively generate the scene from the root generator
+    //
+    let mut scene = Scene2::new();
+    scene.root = generate(
         state.generator.as_str(),
         state.seed,
         IVec3::ZERO,
@@ -110,31 +118,20 @@ fn startup(
         &mut scene,
     );
 
+    //
+    // Create the Bevy graphics from the generator models
+    //
     let mut scene_bounds = (
         IVec3::new(i32::MAX, i32::MAX, i32::MAX),
         IVec3::new(i32::MIN, i32::MIN, i32::MIN),
     );
-    for model in scene.models {
-        let position = model.position.clone();
-        let VoxelModel::VoxelSet(model) = model.model else {
-            continue;
-        };
-        let bounds = model.bounds();
-        scene_bounds.0.x = scene_bounds.0.x.min(bounds.0.x);
-        scene_bounds.0.y = scene_bounds.0.y.min(bounds.0.y);
-        scene_bounds.0.z = scene_bounds.0.z.min(bounds.0.z);
-        scene_bounds.1.x = scene_bounds.1.x.max(bounds.1.x);
-        scene_bounds.1.y = scene_bounds.1.y.max(bounds.1.y);
-        scene_bounds.1.z = scene_bounds.1.z.max(bounds.1.z);
-
-        VoxelMeshComponent::spawn_from_model(
-            &model,
-            &mut commands,
-            &mut meshes,
-            &mut materials,
-            Vec3::new(position.x as f32, position.y as f32, position.z as f32),
-        );
-    }
+    spawn_model(
+        &scene.root,
+        &mut scene_bounds,
+        &mut commands,
+        &mut meshes,
+        &mut materials,
+    );
 
     let bounds = scene_bounds;
     let max_extent = (((bounds.1.x - bounds.0.x + 1).pow(2)
@@ -151,8 +148,44 @@ fn startup(
     state.view_radius = max_extent as f32 * 0.25;
 }
 
-struct Scene {
-    models: Vec<Model>,
+fn spawn_model(
+    obj: &Object,
+    scene_bounds: &mut (IVec3, IVec3),
+    commands: &mut Commands,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<StandardMaterial>>,
+) {
+    match &obj.imp {
+        ObjectImp::Empty => {}
+        ObjectImp::Stub => {}
+        ObjectImp::Actor(_) => {}
+        ObjectImp::VoxelSet(model) => {
+            let bounds = model.bounds();
+            scene_bounds.0.x = scene_bounds.0.x.min(bounds.0.x);
+            scene_bounds.0.y = scene_bounds.0.y.min(bounds.0.y);
+            scene_bounds.0.z = scene_bounds.0.z.min(bounds.0.z);
+            scene_bounds.1.x = scene_bounds.1.x.max(bounds.1.x);
+            scene_bounds.1.y = scene_bounds.1.y.max(bounds.1.y);
+            scene_bounds.1.z = scene_bounds.1.z.max(bounds.1.z);
+
+            VoxelMeshComponent::spawn_from_model(
+                &model,
+                commands,
+                meshes,
+                materials,
+                Vec3::new(
+                    obj.position.x as f32,
+                    obj.position.y as f32,
+                    obj.position.z as f32,
+                ),
+            );
+        }
+        ObjectImp::Group(group) => {
+            for object in &group.objects {
+                spawn_model(&object, scene_bounds, commands, meshes, materials);
+            }
+        }
+    }
 }
 
 fn generate(
@@ -160,14 +193,14 @@ fn generate(
     seed: u64,
     center: IVec3,
     params: serde_json::Value,
-    scene: &mut Scene,
-) {
+    scene: &mut Scene2,
+) -> Object {
     let mut ctx = GenContext::new();
     ctx.center = center;
-    ctx.params = params;
-    for i in 0..scene.models.len() {
+    ctx.params = params.clone();
+    /*for i in 0..scene.models.len() {
         ctx.ground_objects.push(&scene.models[i]);
-    }
+    }*/
     let filename = format!("content/{}-{}.yaml", generator, seed);
 
     // Check if filename exists
@@ -181,32 +214,48 @@ fn generate(
         generate_model(generator, seed, &ctx)
     };
 
-    match &model {
+    match model {
         VoxelModel::Empty => {
             println!("Empty model: {} {}", generator, seed);
-            std::process::exit(1);
+            Object {
+                generator_id: generator.to_string(),
+                seed,
+                params: params.clone(),
+                position: center,
+                imp: ObjectImp::Empty,
+            }
         }
-        VoxelModel::VoxelSet(_) => {}
+        VoxelModel::VoxelSet(voxel_set) => Object {
+            generator_id: generator.to_string(),
+            seed,
+            params: params.clone(),
+            position: center,
+            imp: ObjectImp::VoxelSet(voxel_set),
+        },
         VoxelModel::VoxelScene(model) => {
+            let mut group = Group::new();
             for layer in &model.layers {
                 for object in &layer.models {
                     println!("{} {:#?}", &object.model_id, &object.params);
-                    generate(
+                    let obj = generate(
                         object.model_id.clone().as_str(),
                         object.seed,
                         object.position,
                         object.params.clone(),
                         scene,
                     );
+                    group.objects.push(obj);
                 }
             }
+            Object {
+                generator_id: generator.to_string(),
+                seed,
+                params: params.clone(),
+                position: center,
+                imp: ObjectImp::Group(Box::new(group)),
+            }
         }
-    };
-
-    scene.models.push(Model {
-        model: model,
-        position: center,
-    });
+    }
 }
 
 fn update_camera_rotation(

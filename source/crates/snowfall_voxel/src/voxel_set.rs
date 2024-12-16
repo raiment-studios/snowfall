@@ -45,6 +45,16 @@ impl VoxelSet {
         }
     }
 
+    /// Adds the block to the palette if there is not already such a block.
+    pub fn ensure_block(&mut self, block: Block) -> u16 {
+        if let Some(index) = self.palette.iter().position(|b| b.is_equivalent(&block)) {
+            index as u16
+        } else {
+            self.palette.push(block);
+            (self.palette.len() - 1) as u16
+        }
+    }
+
     // ------------------------------------------------------------------------
     // Voxel properties
     // ------------------------------------------------------------------------
@@ -114,7 +124,6 @@ impl VoxelSet {
             Some(i) => i as u16,
             _ => 0,
         };
-        // self.data.insert(vc.into(), index);
 
         // Get the column or create it
         let vc = vc.into();
