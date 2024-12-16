@@ -40,6 +40,7 @@
 
     "explorer.incrementalNaming": "smart",
     "explorer.excludeGitIgnore": false,
+    "workbench.colorTheme": "Gruvbox Dark Medium",
     "workbench.colorCustomizations": {
         "tab.activeBackground": "#555",
         "editor.background": "#111",
