@@ -5,6 +5,17 @@ const CHUNK_DIM_Y: usize = 8;
 const CHUNK_DIM_Z: usize = 16;
 const CHUNK_SIZE: usize = CHUNK_DIM_X * CHUNK_DIM_Y * CHUNK_DIM_Z;
 
+/// Interface for allowing chunks to be paged in / out of memory.
+pub trait VoxelGridPager {
+    fn read_chunk(&self, p: IVec3) -> Option<Chunk>;
+    fn write_chunk(&self, p: IVec3, chunk: Chunk);
+}
+
+/// Interface for providing the contents of a new chunk.
+pub trait VoxelGridGenerator {
+    fn generate(&self, world_position: IVec3) -> &str;
+}
+
 /// VoxelGrid is a 3D grid of voxels designed for handling unbounded, sparse
 /// voxel data.
 ///
@@ -21,17 +32,6 @@ pub struct VoxelGrid {
     chunks: HashMap<IVec3, Chunk>,
     pager: Option<Box<dyn VoxelGridPager>>,
     generator: Option<Box<dyn VoxelGridGenerator>>,
-}
-
-/// Interface for allowing chunks to be paged in / out of memory.
-pub trait VoxelGridPager {
-    fn read_chunk(&self, p: IVec3) -> Option<Chunk>;
-    fn write_chunk(&self, p: IVec3, chunk: Chunk);
-}
-
-/// Interface for providing the contents of a new chunk.
-pub trait VoxelGridGenerator {
-    fn generate(&self, world_position: IVec3) -> &str;
 }
 
 impl VoxelGrid {
@@ -53,7 +53,7 @@ impl VoxelGrid {
     // ------------------------------------------------------------------------
 
     // Destructuring Self can avoid lifetime conflicts across use of the
-    // different fields.  This intended for internal use.
+    // different fields. This is intended for internal use.
     fn destructure(
         grid: &mut VoxelGrid,
     ) -> (
@@ -98,8 +98,16 @@ impl VoxelGrid {
         todo!()
     }
 
-    pub fn get(&self, p: IVec3) -> &Block {
-        todo!()
+    pub fn get<S>(&self, p: S) -> Option<&Block>
+    where
+        S: Into<IVec3>,
+    {
+        let (chunk_pos, inner_pos) = chunk_coords(p.into());
+        if let Some(chunk) = self.chunks.get(&chunk_pos) {
+            let block_index = chunk.get(inner_pos);
+            return Some(&self.palette.blocks[block_index]);
+        }
+        None
     }
 
     pub fn set<S, T>(&mut self, p: S, id: T)
