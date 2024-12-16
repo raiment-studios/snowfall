@@ -2,6 +2,7 @@ mod cluster;
 mod fence;
 mod hill2;
 mod hill3;
+mod hill_with_road;
 mod pine_tree;
 mod small_hill;
 mod tree1;
@@ -13,6 +14,7 @@ pub use cluster::*;
 pub use fence::*;
 pub use hill2::*;
 pub use hill3::*;
+pub use hill_with_road::*;
 pub use pine_tree::*;
 pub use small_hill::*;
 pub use tree1::*;
@@ -31,6 +33,7 @@ pub fn generate_model(model_id: &str, seed: u64, ctx: &GenContext) -> VoxelModel
         "fence" => fence(seed, ctx).into(),
         "hill2" => hill2(seed, ctx).into(),
         "hill3" => hill3(seed, ctx).into(),
+        "hill_with_road" => hill_with_road(seed, ctx).into(),
         "cluster" => cluster(seed, ctx).into(),
 
         "tree_cluster" => tree_cluster(seed).into(),
