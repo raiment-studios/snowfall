@@ -18,7 +18,6 @@ pub fn hill_with_road(seed: u64, ctx: &GenContext) -> VoxelSet {
     let noise4 = rng.open_simplex().scale(0.25).build();
     let noise3 = rng.open_simplex().scale(0.5).build();
 
-    let mut dirt_block = rng.select_fn(vec!["dirt", "dirt2"]);
     let mut grass_block = rng.select_fn(vec!["grass1", "grass2"]);
 
     for y in -R..=R {
@@ -42,13 +41,51 @@ pub fn hill_with_road(seed: u64, ctx: &GenContext) -> VoxelSet {
         }
     }
 
-    let mut goal: (i32, i32, i32) = (202, 202, 0);
+    for _ in 0..4 {
+        if road(rng.range(1..=8192), &mut model).is_ok() {
+            break;
+        }
+    }
+
+    model
+}
+
+fn road(seed: u64, model: &mut VoxelSet) -> Result<(), String> {
+    let mut rng = RNG::new(seed);
+    let mut dirt_block = rng.select_fn(vec!["dirt", "dirt2"]);
+
+    //
+    // Choose the start and end points of the road segment.
+    //
+    // Ensure they are in different quadrants of the rectangular
+    // area and are not too close to the center.
+    //
+    let quadrants = vec![(1, 1), (-1, 1), (-1, -1), (1, -1)];
+    let selected = rng.select_n(2, &quadrants);
+
+    let mut gen_range = || rng.range(200..=250);
+    let mut goal: (i32, i32, i32) = (gen_range(), gen_range(), 0);
+    goal.0 *= selected[0].0;
+    goal.1 *= selected[0].1;
     goal.2 = model.height_at(goal.0, goal.1).unwrap_or(0);
-    let mut start: (i32, i32, i32) = (-252, -164, 0);
+    let mut start: (i32, i32, i32) = (gen_range(), gen_range(), 0);
+    start.0 *= selected[1].0;
+    start.1 *= selected[1].1;
     start.2 = model.height_at(start.0, start.1).unwrap_or(0);
 
+    //
+    // Cache the height look-ups since there are many look-ups
+    //
     let mut cache: HashMap<(i32, i32), i32> = HashMap::new();
 
+    // Call the A* pathfinding algorithm to generate the connection
+    // from start to end.
+    //
+    // Be wary:
+    // - If no path exists, astar() never returns (!)
+    // - If the heuristic is *less expensive* than the actual
+    //   lowest cost path, then the algorithm breaks
+    //
     let mut count = 0;
     let result = pathfinding::prelude::astar(
         &start,
@@ -99,20 +136,18 @@ pub fn hill_with_road(seed: u64, ctx: &GenContext) -> VoxelSet {
         |&p| p == goal,
     );
 
-    // Find points along the path every N segments
-    // Draw a flatten empty at each
-    // Connect with painted voxels
+    //
+    // Segmentize.
+    //
+    // Given the found path, break it into a series of straight line segments
+    // which "feels" more natural of a constructed road than exact path finding
+    //
     let path = match result {
         Some((path, _cost)) => path,
         None => {
-            println!("No path found");
-            return model;
+            return Err("No path found".to_string());
         }
     };
-
-    // Print first and last point
-    println!("start: {:?}", path[0]);
-    println!("goal: {:?}", path[path.len() - 1]);
 
     let mut posts = Vec::new();
     for i in (0..path.len() - 6).step_by(12) {
@@ -120,11 +155,15 @@ pub fn hill_with_road(seed: u64, ctx: &GenContext) -> VoxelSet {
     }
     posts.push(path[path.len() - 1]);
 
+    //
+    // Connect the segments.
+    //
+    // Do this by flattening the terrain in a brief radius around the
+    // path and painting the ground voxels to the road color.
+    //
     for pair in posts.windows(2) {
         let p = IVec3::new(pair[0].0, pair[0].1, pair[0].2);
         let q = IVec3::new(pair[1].0, pair[1].1, pair[1].2);
-
-        println!("p: {:?} q: {:?}", p, q);
 
         const R: i32 = 3;
 
@@ -147,8 +186,7 @@ pub fn hill_with_road(seed: u64, ctx: &GenContext) -> VoxelSet {
             }
         }
     }
-
-    model
+    Ok(())
 }
 
 fn rotate_2d(u: f32, v: f32, angle: f32) -> (f32, f32) {

@@ -4,7 +4,7 @@ scene:
     layers:
         - models:
               - model_id: hill_with_road
-                seed: 1920
+                seed: 196
                 position: [0, 0, 0]
               - model_id: cluster
                 seed: 8092

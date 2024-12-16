@@ -67,6 +67,33 @@ impl RNG {
         let index: usize = self.range(0..v.len());
         &v[index]
     }
+    pub fn select_n<'a, T>(&mut self, n: usize, v: &'a Vec<T>) -> Vec<&'a T>
+    where
+        T: Clone,
+    {
+        let mut n = n.min(v.len());
+        let mut pool = Vec::with_capacity(v.len());
+        for i in 0..v.len() {
+            pool.push(i);
+        }
+
+        let mut chosen: Vec<usize> = Vec::with_capacity(n);
+        let mut pool_len = pool.len();
+        while n > 0 {
+            let index: usize = self.range(0..pool.len());
+            pool.swap(index, pool_len - 1);
+            let j = pool.pop().unwrap();
+            chosen.push(j);
+            n -= 1;
+            pool_len -= 1;
+        }
+
+        let mut r: Vec<&'a T> = Vec::with_capacity(chosen.len());
+        for i in 0..chosen.len() {
+            r.push(&v[chosen[i]]);
+        }
+        r
+    }
 
     pub fn select_fn<T>(&mut self, v: Vec<T>) -> impl FnMut() -> T
     where
