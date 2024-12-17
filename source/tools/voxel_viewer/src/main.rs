@@ -162,7 +162,7 @@ fn startup_scene(
     );
 
     state.look_at = center_point;
-    state.view_radius = max_extent * 0.25;
+    state.view_radius = max_extent * 1.25;
 }
 
 fn spawn_model(
