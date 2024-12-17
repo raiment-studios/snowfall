@@ -1,17 +1,23 @@
 use crate::internal::*;
 
 pub fn maple(ctx: &GenContext, scene: &mut Scene2) -> Group {
+    use std::f32::consts::PI;
+
     let mut rng = ctx.make_rng();
 
     let mut group = Group::new();
     let mut clusters = Vec::new();
-    const RANGE: i32 = 7;
+
+    let mut angle = rng.range(0.0..(PI * 2.0));
+    let mut height: f32 = rng.range(10.0..=15.0);
+    let mut reach = rng.range(4.0..6.0);
     for _ in 0..6 {
-        let position = IVec3::new(
-            rng.range(-RANGE..=RANGE),
-            rng.range(-RANGE..=RANGE),
-            rng.range(15..=20),
-        );
+        let actual_reach = rng.range(0.5..1.0) * reach;
+        let x = (actual_reach * angle.cos()).round() as i32;
+        let y = (actual_reach * angle.sin()).round() as i32;
+        let z = height.round() as i32;
+
+        let position = IVec3::new(x, y, z);
         clusters.push(position.clone());
 
         let seed = rng.seed8();
@@ -25,6 +31,10 @@ pub fn maple(ctx: &GenContext, scene: &mut Scene2) -> Group {
             params: serde_json::Value::Null,
             imp: ObjectImp::VoxelSet(Box::new(voxel_set)),
         });
+
+        angle += rng.range((0.2 * PI)..=(2.2 * PI));
+        height += rng.range(1.5..2.5);
+        reach += rng.range(0.5..1.0);
     }
 
     let mut trunk = VoxelSet::new();

@@ -31,7 +31,7 @@ pub fn generate_model(ctx: &GenContext, scene: &mut Scene2) -> VoxelModel {
     match ctx.generator.as_str() {
         "cluster" => cluster(seed, ctx).into(),
         "fence" => fence(ctx, scene).into(),
-        "flower" => maple(ctx, scene).into(),
+        "maple" => maple(ctx, scene).into(),
         "hill_with_road" => hill_with_road(ctx, scene).into(),
         "hill2" => hill2(ctx, scene).into(),
         "hill3" => hill3(ctx, scene).into(),
