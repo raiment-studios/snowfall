@@ -21,7 +21,7 @@ impl RNG {
         rand::random()
     }
 
-    pub fn seed8k(&mut self) -> u64 {
+    pub fn seed8(&mut self) -> u64 {
         self.range(1..8192)
     }
 

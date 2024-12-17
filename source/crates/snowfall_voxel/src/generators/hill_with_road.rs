@@ -3,17 +3,19 @@ use crate::{internal::*, voxel_set};
 pub fn hill_with_road(ctx: &GenContext, scene: &mut Scene2) -> Group {
     let mut rng = ctx.make_rng();
 
-    scene.terrain = hill(&ctx.fork("hill", rng.seed8k()), scene);
-    road(&ctx.fork("road", rng.seed8k()), scene);
+    scene.terrain = hill(&ctx.fork("hill", rng.seed8()), scene);
+    for _ in 0..7 {
+        road(&ctx.fork("road", rng.seed8()), scene);
+    }
 
     let mut group = Group::new();
     for _ in 0..4 {
-        let seed = rng.seed8k();
+        let seed = rng.seed8();
         let mut ctx = ctx.fork("cluster", seed);
-        ctx.center = IVec3::new(rng.range(-200..=200), rng.range(-200..=200), 0);
+        //ctx.center = IVec3::new(rng.range(-200..=200), rng.range(-200..=200), 0);
         ctx.params = serde_json::json!({
-            "count": [12, 24],
-            "range": 48,
+            "count": [320, 400],
+            "range": 248,
         });
         let g = cluster2(&ctx, scene);
         for object in g.objects {
@@ -44,26 +46,38 @@ pub fn cluster2(ctx: &GenContext, scene: &Scene2) -> Group {
 
     let mut point_set = PointSet::new();
     for _ in 0..MAX_ATTEMPTS {
+        let position = IVec3::new(rng.range(-range..=range), rng.range(-range..=range), 0);
+        let position = position + ctx.center;
+
+        //
+        // Reject the position if the nearest distance is too close to another tree
+        // in the cluster (perhaps this should be too close to **any** object?) OR
+        // if the block it would be placed on is marked as occupied already.
+        //
+        let d = point_set.nearest_distance_2d(&position).unwrap_or(f32::MAX);
+        if d < CLOSEST_DISTANCE {
+            continue;
+        }
+        if let Some(block) = scene.terrain.top_block_at(position.x, position.y) {
+            if block.occupied {
+                continue;
+            }
+        }
+
+        point_set.add(position);
+
         let model_id = *rng.select_weighted(&vec![
             (10, "tree1"), //
             (10, "tree2"),
             (80, "pine_tree"),
         ]);
-        let position = IVec3::new(rng.range(-range..=range), rng.range(-range..=range), 0);
-        let position = position + ctx.center;
-
-        let d = point_set.nearest_distance(&position).unwrap_or(f32::MAX);
-        if d < CLOSEST_DISTANCE {
-            continue;
-        }
-
-        point_set.add(position);
-
-        let seed = rng.seed8k();
+        let seed = rng.seed8();
+        let mut sctx = ctx.fork(model_id, seed);
+        sctx.center = position;
         let voxel_set: VoxelSet = match model_id {
-            "tree1" => generators::tree1(&ctx.fork("tree1", seed), scene),
-            "tree2" => generators::tree2(&ctx.fork("tree2", seed), scene),
-            "pine_tree" => generators::pine_tree(&ctx.fork("pine_tree", seed), scene),
+            "tree1" => generators::tree1(&sctx, scene),
+            "tree2" => generators::tree2(&sctx, scene),
+            "pine_tree" => generators::pine_tree(&sctx, scene),
             _ => panic!("unknown model_id"),
         };
 
@@ -127,7 +141,7 @@ fn hill(ctx: &GenContext, scene: &mut Scene2) -> VoxelSet {
 fn road(ctx: &GenContext, scene: &mut Scene2) {
     let mut rng = ctx.make_rng();
     for _ in 0..4 {
-        let ctx = ctx.fork("road", rng.seed8k());
+        let ctx = ctx.fork("road", rng.seed8());
         if road_imp(&ctx, scene).is_ok() {
             return;
         }
@@ -139,7 +153,11 @@ fn road_imp(ctx: &GenContext, scene: &mut Scene2) -> Result<(), String> {
 
     let mut rng = ctx.make_rng();
     let model = &mut scene.terrain;
-    let mut dirt_block = rng.select_fn(vec!["dirt", "dirt2"]);
+
+    model.register_block(Block::color("road1", 25, 20, 10).modify(|b| b.walk_cost = 5));
+    model.register_block(Block::color("road2", 20, 15, 10).modify(|b| b.walk_cost = 5));
+
+    let mut road_block = rng.select_fn(vec!["road1", "road2"]);
 
     //
     // Choose the start and end points of the road segment.
@@ -198,15 +216,21 @@ fn road_imp(ctx: &GenContext, scene: &mut Scene2) -> Result<(), String> {
                     let new_z: i32 = *cache
                         .entry((new_x, new_y))
                         .or_insert_with(|| model.height_at(new_x, new_y).unwrap_or(0));
+
+                    let block = model.get_voxel((new_x, new_y, new_z));
+                    let walk_cost = block.walk_cost as u32;
+
                     let dz = new_z - z;
-                    let cost = 2 * match dz {
-                        -2 => 10,
-                        -1 => 1,
-                        0 => 2,
-                        1 => 10,
-                        2 => 30,
-                        _ => 100,
-                    } + if dx.abs() + dy.abs() > 1 { 3 } else { 2 };
+                    let cost: u32 = walk_cost
+                        + 2 * match dz {
+                            -2 => 10,
+                            -1 => 1,
+                            0 => 2,
+                            1 => 10,
+                            2 => 30,
+                            _ => 100,
+                        }
+                        + if dx.abs() + dy.abs() > 1 { 3 } else { 2 };
                     Some(((new_x, new_y, new_z), cost))
                 })
                 .collect::<Vec<_>>();
@@ -218,7 +242,7 @@ fn road_imp(ctx: &GenContext, scene: &mut Scene2) -> Result<(), String> {
 
             costs.into_iter()
         },
-        |&(x, y, z)| 100 * (end.0.abs_diff(x) + end.1.abs_diff(y) + end.2.abs_diff(z)),
+        |&(x, y, z)| 300 * (end.0.abs_diff(x) + end.1.abs_diff(y) + end.2.abs_diff(z)),
         |&p| p.0 == end.0 && p.1 == end.1,
     );
 
@@ -252,6 +276,7 @@ fn road_imp(ctx: &GenContext, scene: &mut Scene2) -> Result<(), String> {
         let q = IVec3::new(pair[1].0, pair[1].1, pair[1].2);
 
         const R: i32 = 3;
+        const R2: i32 = R + 4;
 
         let line = bresenham3d(p, q);
         for IVec3 { x, y, z } in &line {
@@ -263,11 +288,22 @@ fn road_imp(ctx: &GenContext, scene: &mut Scene2) -> Result<(), String> {
                 }
             }
         }
-        for IVec3 { x, y, z } in line {
+        for IVec3 { x, y, z } in &line {
             for dx in -R..=R {
                 for dy in -R..=R {
-                    let block = dirt_block();
-                    model.set_voxel((x + dx, y + dy, z), block);
+                    let block = road_block();
+                    model.set_voxel((x + dx, y + dy, *z), block);
+                }
+            }
+        }
+
+        // Mark the road and area around it as "occupied" so other objects
+        // are not placed on top of it.
+        for IVec3 { x, y, z } in line {
+            for dx in -R2..=R2 {
+                for dy in -R2..=R2 {
+                    let z = model.height_at(x + dx, y + dy).unwrap_or(0);
+                    model.modify_voxel((x + dx, y + dy, z), |block| block.with_occupied(true));
                 }
             }
         }

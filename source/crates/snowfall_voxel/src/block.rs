@@ -13,6 +13,9 @@ pub struct Block {
 
     /// Indicates the voxel cannot be built on top of.
     pub occupied: bool,
+
+    /// 0-100, but should be >=1 for any non-empty block
+    pub walk_cost: u8,
 }
 
 impl Block {
@@ -20,6 +23,19 @@ impl Block {
         Block {
             id: "empty".to_string(),
             shader: BlockShader::Empty,
+            walk_cost: 0,
+            occupied: false,
+        }
+    }
+
+    pub fn new<T>(id: T) -> Self
+    where
+        T: Into<String>,
+    {
+        Block {
+            id: id.into(),
+            shader: BlockShader::Empty,
+            walk_cost: 10,
             occupied: false,
         }
     }
@@ -28,21 +44,56 @@ impl Block {
     where
         T: Into<String>,
     {
-        Block {
-            id: id.into(),
-            shader: BlockShader::RGB(BlockRGB { r, g, b }),
-            occupied: false,
-        }
+        let mut block = Block::new(id);
+        block.walk_cost = 10;
+        block.shader = BlockShader::RGB(BlockRGB { r, g, b });
+        block
     }
 
     pub fn with_occupied(&self, occupied: bool) -> Self {
+        self.variant(|block| block.occupied = occupied)
+    }
+
+    pub fn with_color(&self, r: u8, g: u8, b: u8) -> Self {
+        self.variant(|block| block.shader = BlockShader::RGB(BlockRGB { r, g, b }))
+    }
+
+    pub fn modify<T>(&self, cb: T) -> Self
+    where
+        T: Fn(&mut Block),
+    {
         let mut block = self.clone();
-        if self.occupied == occupied {
-            return block;
+        cb(&mut block);
+        if block.is_equivalent(self) {
+            return self.clone();
         }
-        block.id = format!("{}&occupied={}", block.id, occupied);
-        block.occupied = occupied;
+        // Do **not** update the id
         block
+    }
+
+    pub fn variant<T>(&self, cb: T) -> Self
+    where
+        T: Fn(&mut Block),
+    {
+        let mut block = self.clone();
+        cb(&mut block);
+        if block.is_equivalent(self) {
+            return self.clone();
+        }
+        block.id = block.variant_id();
+        block
+    }
+
+    pub fn variant_id(&self) -> String {
+        format!(
+            "{}::{}|{}",
+            self.id,
+            if self.occupied { "X" } else { "O" },
+            match self.shader {
+                BlockShader::Empty => "E".to_string(),
+                BlockShader::RGB(ref rgb) => format!("RGB{},{},{}", rgb.r, rgb.g, rgb.b),
+            }
+        )
     }
 
     pub fn is_empty(&self) -> bool {

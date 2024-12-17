@@ -19,7 +19,10 @@ pub fn pine_tree(ctx: &GenContext, scene: &Scene2) -> VoxelSet {
     let mut leaf_select = rng.select_fn(vec!["leaves", "leaves2", "leaves3"]);
     let mut wood_select = rng.select_fn(vec!["wood", "wood2", "wood3"]);
 
-    let base_z = scene.terrain.height_at(0, 0).unwrap_or(0);
+    let base_z = scene
+        .terrain
+        .height_at(ctx.center.x, ctx.center.y)
+        .unwrap_or(0);
 
     for z in base_z..=base_z + base_height {
         model.set_voxel((0, 0, z), wood_select());

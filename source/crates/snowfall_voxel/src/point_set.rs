@@ -9,6 +9,7 @@ where
 
 pub trait Point3D {
     fn distance_to(&self, other: &Self) -> f32;
+    fn distance_2d(&self, other: &Self) -> f32;
 }
 
 impl Point3D for IVec3 {
@@ -17,6 +18,12 @@ impl Point3D for IVec3 {
         let dy = self.y - other.y;
         let dz = self.z - other.z;
         ((dx * dx + dy * dy + dz * dz) as f32).sqrt()
+    }
+
+    fn distance_2d(&self, other: &Self) -> f32 {
+        let dx = self.x - other.x;
+        let dy = self.y - other.y;
+        ((dx * dx + dy * dy) as f32).sqrt()
     }
 }
 
@@ -30,6 +37,23 @@ where
 
     pub fn add(&mut self, point: T) {
         self.points.push(point);
+    }
+
+    pub fn nearest_2d(&self, point: &T) -> Option<&T> {
+        let mut min_distance = f32::MAX;
+        let mut value: Option<&T> = None;
+        for p in self.points.iter() {
+            let distance = p.distance_2d(&point);
+            if distance < min_distance {
+                min_distance = distance;
+                value = Some(p);
+            }
+        }
+        value
+    }
+
+    pub fn nearest_distance_2d(&self, point: &T) -> Option<f32> {
+        self.nearest_2d(point).map(|p| p.distance_2d(&point))
     }
 
     // TODO: in theory, it may be sense to use a optimized

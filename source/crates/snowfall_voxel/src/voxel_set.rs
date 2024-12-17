@@ -99,6 +99,28 @@ impl VoxelSet {
         height
     }
 
+    pub fn top_block_at(&self, x: i32, y: i32) -> Option<&Block> {
+        let Some(column) = self.data.get(&(x, y)) else {
+            return None;
+        };
+
+        let mut height: Option<i32> = None;
+        let mut top_block: Option<&Block> = None;
+        for (z, id) in column.iter() {
+            if *id == 0 {
+                continue;
+            }
+            if match height {
+                Some(h) => h < *z,
+                None => true,
+            } {
+                height = Some(*z);
+                top_block = Some(&self.palette[*id as usize]);
+            }
+        }
+        top_block
+    }
+
     // ------------------------------------------------------------------------
     // Voxel manipulation
     // ------------------------------------------------------------------------
@@ -112,6 +134,19 @@ impl VoxelSet {
 
     pub fn is_empty_f32(&self, x: f32, y: f32, z: f32) -> bool {
         self.is_empty(from_ws(x, y, z))
+    }
+
+    pub fn get_voxel<S>(&self, vs: S) -> &Block
+    where
+        S: Into<IVec3>,
+    {
+        let vc = vs.into();
+        let id = if let Some(column) = self.data.get(&(vc.x, vc.y)) {
+            *column.get(&vc.z).unwrap_or(&0)
+        } else {
+            0
+        };
+        self.palette.get(id as usize).unwrap()
     }
 
     pub fn set_voxel<S, T>(&mut self, vc: S, id: T)
@@ -129,6 +164,25 @@ impl VoxelSet {
         let vc = vc.into();
         let column = self.data.entry((vc.x, vc.y)).or_insert(HashMap::new());
         column.insert(vc.z, index);
+    }
+
+    pub fn modify_voxel<S>(&mut self, vc: S, cb: fn(&Block) -> Block)
+    where
+        S: Into<IVec3>,
+    {
+        let vc: IVec3 = vc.into();
+        let (index, new_block) = {
+            let column = self.data.entry((vc.x, vc.y)).or_insert(HashMap::new());
+            let index = *column.get(&vc.z).unwrap_or(&0);
+            let block = &self.palette[index as usize];
+            (index, cb(block))
+        };
+        let new_index = self.ensure_block(new_block);
+        if new_index == index {
+            return;
+        }
+        let column = self.data.entry((vc.x, vc.y)).or_insert(HashMap::new());
+        column.insert(vc.z, new_index);
     }
 
     pub fn voxel_iter(&self, include_empty: bool) -> Vec<(IVec3, &Block)> {
