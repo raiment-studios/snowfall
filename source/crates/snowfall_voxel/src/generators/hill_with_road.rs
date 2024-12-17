@@ -4,7 +4,7 @@ pub fn hill_with_road(ctx: &GenContext, scene: &mut Scene2) -> Group {
     let mut rng = ctx.make_rng();
 
     scene.terrain = hill(&ctx.fork("hill", rng.seed8()), scene);
-    for _ in 0..7 {
+    for _ in 0..4 {
         road(&ctx.fork("road", rng.seed8()), scene);
     }
 
@@ -154,8 +154,8 @@ fn road_imp(ctx: &GenContext, scene: &mut Scene2) -> Result<(), String> {
     let mut rng = ctx.make_rng();
     let model = &mut scene.terrain;
 
-    model.register_block(Block::color("road1", 25, 20, 10).modify(|b| b.walk_cost = 5));
-    model.register_block(Block::color("road2", 20, 15, 10).modify(|b| b.walk_cost = 5));
+    model.register_block(Block::color("road1", 25, 20, 10).modify(|b| b.walk_cost = 0.15));
+    model.register_block(Block::color("road2", 20, 15, 10).modify(|b| b.walk_cost = 0.15));
 
     let mut road_block = rng.select_fn(vec!["road1", "road2"]);
 
@@ -190,7 +190,7 @@ fn road_imp(ctx: &GenContext, scene: &mut Scene2) -> Result<(), String> {
     // - If the heuristic is *less expensive* than the actual
     //   lowest cost path, then the algorithm breaks
     //
-    let mut count = 0;
+    let mut iterations = 0;
     let result = pathfinding::prelude::astar(
         &start,
         |&(x, y, _z)| {
@@ -205,6 +205,11 @@ fn road_imp(ctx: &GenContext, scene: &mut Scene2) -> Result<(), String> {
                 (-1, -1),
             ];
 
+            const MAX_COST: f32 = 25_000.0;
+            fn cost_as_u32(cost: f32) -> u32 {
+                (cost.min(MAX_COST) * 1000.0).round() as u32
+            }
+
             let costs = moves
                 .iter()
                 .filter_map(|&(dx, dy)| {
@@ -216,33 +221,51 @@ fn road_imp(ctx: &GenContext, scene: &mut Scene2) -> Result<(), String> {
                     let new_z: i32 = *cache
                         .entry((new_x, new_y))
                         .or_insert_with(|| model.height_at(new_x, new_y).unwrap_or(0));
+                    let dz = new_z - z;
 
                     let block = model.get_voxel((new_x, new_y, new_z));
-                    let walk_cost = block.walk_cost as u32;
+                    let walk_cost = block.walk_cost;
 
-                    let dz = new_z - z;
-                    let cost: u32 = walk_cost
-                        + 2 * match dz {
-                            -2 => 10,
-                            -1 => 1,
-                            0 => 2,
-                            1 => 10,
-                            2 => 30,
-                            _ => 100,
-                        }
-                        + if dx.abs() + dy.abs() > 1 { 3 } else { 2 };
+                    let distance_xy: f32 = ((dx.pow(2) + dy.pow(2)) as f32).sqrt();
+                    let dz_factor: f32 = if dz < -8 {
+                        100.0
+                    } else if dz < -4 {
+                        2.0
+                    } else if dz < -2 {
+                        1.5
+                    } else if dz < 0 {
+                        0.75
+                    } else if dz == 0 {
+                        1.0
+                    } else if dz < 2 {
+                        1.25
+                    } else if dz < 4 {
+                        1.5
+                    } else if dz < 8 {
+                        2.0
+                    } else if dz < 16 {
+                        5.0
+                    } else {
+                        100.0
+                    };
+
+                    let cost = distance_xy * dz_factor * (1.0 + 10.0 * walk_cost);
+                    let cost = cost_as_u32(cost);
                     Some(((new_x, new_y, new_z), cost))
                 })
                 .collect::<Vec<_>>();
 
-            count += 1;
-            if count > 1_000_000 {
+            iterations += 1;
+            if iterations > 1_000_000 {
                 panic!("too many iterations");
             }
 
             costs.into_iter()
         },
-        |&(x, y, z)| 300 * (end.0.abs_diff(x) + end.1.abs_diff(y) + end.2.abs_diff(z)),
+        |&(x, y, z)| {
+            let d = end.0.abs_diff(x) + end.1.abs_diff(y) + end.2.abs_diff(z);
+            d * 1000 * 100 * 10
+        },
         |&p| p.0 == end.0 && p.1 == end.1,
     );
 
@@ -283,7 +306,7 @@ fn road_imp(ctx: &GenContext, scene: &mut Scene2) -> Result<(), String> {
             for dx in -R..=R {
                 for dy in -R..=R {
                     for dz in 1..=12 {
-                        model.set_voxel((x + dx, y + dy, z + dz), "empty");
+                        model.clear_voxel((x + dx, y + dy, z + dz));
                     }
                 }
             }
@@ -291,15 +314,17 @@ fn road_imp(ctx: &GenContext, scene: &mut Scene2) -> Result<(), String> {
         for IVec3 { x, y, z } in &line {
             for dx in -R..=R {
                 for dy in -R..=R {
+                    let z = model.height_at(x + dx, y + dy).unwrap_or(0);
+                    let p = (x + dx, y + dy, z);
                     let block = road_block();
-                    model.set_voxel((x + dx, y + dy, *z), block);
+                    model.set_voxel(p, block);
                 }
             }
         }
 
         // Mark the road and area around it as "occupied" so other objects
         // are not placed on top of it.
-        for IVec3 { x, y, z } in line {
+        for IVec3 { x, y, z } in &line {
             for dx in -R2..=R2 {
                 for dy in -R2..=R2 {
                     let z = model.height_at(x + dx, y + dy).unwrap_or(0);

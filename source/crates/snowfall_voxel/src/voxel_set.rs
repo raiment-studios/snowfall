@@ -11,8 +11,8 @@ use snowfall_core::prelude::*;
 ///
 #[derive(Serialize, Deserialize)]
 pub struct VoxelSet {
-    generation: u64,     // Generation number used to track changes
-    palette: Vec<Block>, // Palette of blocks used in the set
+    generation: u64,         // Generation number used to track changes
+    pub palette: Vec<Block>, // Palette of blocks used in the set
 
     // Storing the data by z-column is *much* faster in any context where
     // "height at x,y" is a common operation.
@@ -147,6 +147,15 @@ impl VoxelSet {
             0
         };
         self.palette.get(id as usize).unwrap()
+    }
+
+    pub fn clear_voxel<S>(&mut self, vc: S)
+    where
+        S: Into<IVec3>,
+    {
+        let vc = vc.into();
+        let column = self.data.entry((vc.x, vc.y)).or_insert(HashMap::new());
+        column.insert(vc.z, 0);
     }
 
     pub fn set_voxel<S, T>(&mut self, vc: S, id: T)
