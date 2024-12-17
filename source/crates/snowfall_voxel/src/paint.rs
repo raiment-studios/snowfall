@@ -19,18 +19,16 @@ pub struct Model {
     pub position: IVec3,
 }
 
-pub struct GenContext<'a> {
+/// This isn't fully the generation context since generators also can
+/// account for the terrain and other objects in the scene.
+pub struct GenContext {
     pub generator: String,
     pub seed: u64,
     pub center: IVec3,
     pub params: serde_json::Value,
-
-    // 🪦 DEPRECATED: moving towards generators accessing the terrain
-    // more explicitly (and objects it wants to avoid colliding with)
-    pub ground_objects: Vec<&'a Model>,
 }
 
-impl<'a> GenContext<'a> {
+impl GenContext {
     pub fn new<T>(generator: T, seed: u64) -> Self
     where
         T: Into<String>,
@@ -39,7 +37,6 @@ impl<'a> GenContext<'a> {
             generator: generator.into(),
             seed,
             center: IVec3::new(0, 0, 0),
-            ground_objects: Vec::new(),
             params: serde_json::Value::Null,
         }
     }
@@ -52,7 +49,6 @@ impl<'a> GenContext<'a> {
             generator: generator.into(),
             seed,
             center: self.center,
-            ground_objects: self.ground_objects.clone(),
             params: self.params.clone(),
         }
     }
