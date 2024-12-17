@@ -1,7 +1,90 @@
-use crate::internal::*;
+use crate::{internal::*, voxel_set};
 
-pub fn hill_with_road(seed: u64, ctx: &GenContext) -> VoxelSet {
-    let mut rng = RNG::new(seed);
+pub fn hill_with_road(ctx: &GenContext, scene: &mut Scene2) -> Group {
+    let mut rng = ctx.make_rng();
+
+    scene.terrain = hill(&ctx.fork("hill", rng.seed8k()), scene);
+    road(&ctx.fork("road", rng.seed8k()), scene);
+
+    let mut group = Group::new();
+    for _ in 0..4 {
+        let seed = rng.seed8k();
+        let mut ctx = ctx.fork("cluster", seed);
+        ctx.center = IVec3::new(rng.range(-200..=200), rng.range(-200..=200), 0);
+        ctx.params = serde_json::json!({
+            "count": [12, 24],
+            "range": 48,
+        });
+        let g = cluster2(&ctx, scene);
+        for object in g.objects {
+            group.objects.push(object);
+        }
+    }
+    group
+}
+
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+struct ClusterParams {
+    count: Option<[i64; 2]>,
+    range: Option<i32>,
+}
+
+pub fn cluster2(ctx: &GenContext, scene: &Scene2) -> Group {
+    let mut rng = ctx.make_rng();
+
+    let mut params: ClusterParams = ctx.params();
+    let count_range = params.count.get_or_insert([12, 24]);
+    let range = *params.range.get_or_insert(48);
+
+    const MAX_ATTEMPTS: usize = 128;
+    const CLOSEST_DISTANCE: f32 = 12.0;
+    let mut count = rng.range(count_range[0]..=count_range[1]);
+
+    let mut group = Group::new();
+
+    let mut point_set = PointSet::new();
+    for _ in 0..MAX_ATTEMPTS {
+        let model_id = *rng.select_weighted(&vec![
+            (10, "tree1"), //
+            (10, "tree2"),
+            (80, "pine_tree"),
+        ]);
+        let position = IVec3::new(rng.range(-range..=range), rng.range(-range..=range), 0);
+        let position = position + ctx.center;
+
+        let d = point_set.nearest_distance(&position).unwrap_or(f32::MAX);
+        if d < CLOSEST_DISTANCE {
+            continue;
+        }
+
+        point_set.add(position);
+
+        let seed = rng.seed8k();
+        let voxel_set: VoxelSet = match model_id {
+            "tree1" => generators::tree1(&ctx.fork("tree1", seed), scene),
+            "tree2" => generators::tree2(&ctx.fork("tree2", seed), scene),
+            "pine_tree" => generators::pine_tree(&ctx.fork("pine_tree", seed), scene),
+            _ => panic!("unknown model_id"),
+        };
+
+        group.objects.push(Object {
+            generator_id: model_id.to_string(),
+            seed,
+            params: serde_json::Value::Null,
+            position,
+            imp: ObjectImp::VoxelSet(Box::new(voxel_set)),
+        });
+
+        count -= 1;
+        if count == 0 {
+            break;
+        }
+    }
+    group
+}
+
+fn hill(ctx: &GenContext, scene: &mut Scene2) -> VoxelSet {
+    let mut rng = ctx.make_rng();
 
     let mut model = VoxelSet::new();
     model.register_block(Block::color("dirt", 25, 20, 10));
@@ -28,7 +111,7 @@ pub fn hill_with_road(seed: u64, ctx: &GenContext) -> VoxelSet {
             let h3 = 64.0 * jitter_radius * (0.5 + 0.5 * jitter_angle.cos());
             let h = h3.powf(1.15);
 
-            let base_z = ctx.ground_height_at(x, y).unwrap_or(1);
+            let base_z = scene.terrain.height_at(x, y).unwrap_or(1);
 
             // Draw the voxels
             for z in 0..=(h.round() as i32) {
@@ -38,37 +121,43 @@ pub fn hill_with_road(seed: u64, ctx: &GenContext) -> VoxelSet {
         }
     }
 
-    for _ in 0..4 {
-        if road(rng.range(1..=8192), &mut model).is_ok() {
-            break;
-        }
-    }
-
     model
 }
 
-fn road(seed: u64, model: &mut VoxelSet) -> Result<(), String> {
-    let mut rng = RNG::new(seed);
+fn road(ctx: &GenContext, scene: &mut Scene2) {
+    let mut rng = ctx.make_rng();
+    for _ in 0..4 {
+        let ctx = ctx.fork("road", rng.seed8k());
+        if road_imp(&ctx, scene).is_ok() {
+            return;
+        }
+    }
+}
+
+fn road_imp(ctx: &GenContext, scene: &mut Scene2) -> Result<(), String> {
+    use std::f32::consts::PI;
+
+    let mut rng = ctx.make_rng();
+    let model = &mut scene.terrain;
     let mut dirt_block = rng.select_fn(vec!["dirt", "dirt2"]);
 
     //
     // Choose the start and end points of the road segment.
     //
-    // Ensure they are in different quadrants of the rectangular
-    // area and are not too close to the center.
-    //
-    let quadrants = vec![(1, 1), (-1, 1), (-1, -1), (1, -1)];
-    let selected = rng.select_n(2, &quadrants);
-
-    let mut gen_range = || rng.range(200..=250);
-    let mut goal: (i32, i32, i32) = (gen_range(), gen_range(), 0);
-    goal.0 *= selected[0].0;
-    goal.1 *= selected[0].1;
-    goal.2 = model.height_at(goal.0, goal.1).unwrap_or(0);
-    let mut start: (i32, i32, i32) = (gen_range(), gen_range(), 0);
-    start.0 *= selected[1].0;
-    start.1 *= selected[1].1;
-    start.2 = model.height_at(start.0, start.1).unwrap_or(0);
+    let start_radius = rng.range(200.0..=250.0);
+    let start_ang = rng.radians();
+    let end_radius = rng.range(200.0..=250.0);
+    let end_ang = start_ang + PI + rng.range(-PI / 10.0..PI / 10.0);
+    let start = (
+        (start_radius * start_ang.cos()).round() as i32,
+        (start_radius * start_ang.sin()).round() as i32,
+        0 as i32,
+    );
+    let end = (
+        (end_radius * end_ang.cos()).round() as i32,
+        (end_radius * end_ang.sin()).round() as i32,
+        0 as i32,
+    );
 
     //
     // Cache the height look-ups since there are many look-ups
@@ -86,7 +175,7 @@ fn road(seed: u64, model: &mut VoxelSet) -> Result<(), String> {
     let mut count = 0;
     let result = pathfinding::prelude::astar(
         &start,
-        |&(x, y, z)| {
+        |&(x, y, _z)| {
             let moves = vec![
                 (1, 0), //
                 (-1, 0),
@@ -129,8 +218,8 @@ fn road(seed: u64, model: &mut VoxelSet) -> Result<(), String> {
 
             costs.into_iter()
         },
-        |&(x, y, z)| 100 * (goal.0.abs_diff(x) + goal.1.abs_diff(y) + goal.2.abs_diff(z)),
-        |&p| p == goal,
+        |&(x, y, z)| 100 * (end.0.abs_diff(x) + end.1.abs_diff(y) + end.2.abs_diff(z)),
+        |&p| p.0 == end.0 && p.1 == end.1,
     );
 
     //

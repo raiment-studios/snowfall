@@ -1,6 +1,6 @@
 use crate::internal::*;
 
-pub fn fence(seed: u64, ctx: &GenContext) -> VoxelSet {
+pub fn fence(ctx: &GenContext, scene: &Scene2) -> VoxelSet {
     let mut model = VoxelSet::new();
     model.register_block(Block::color("wood", 30, 12, 5));
     model.register_block(Block::color("wood2", 22, 11, 8));
@@ -9,7 +9,7 @@ pub fn fence(seed: u64, ctx: &GenContext) -> VoxelSet {
     model.register_block(Block::color("blue", 31, 8, 255));
 
     use std::f32::consts::PI;
-    let mut rng = RNG::new(seed);
+    let mut rng = ctx.make_rng();
     let offset = rng.range(0.0..PI);
     let mut wood_select = rng.select_fn(vec!["wood", "wood2", "wood3"]);
 
@@ -23,7 +23,7 @@ pub fn fence(seed: u64, ctx: &GenContext) -> VoxelSet {
         let x = x.floor() as i32;
         let y = y.floor() as i32;
 
-        let z = ctx.ground_height_at(x, y).unwrap_or(0);
+        let z = scene.terrain.height_at(x, y).unwrap_or(0);
         base_pts.push(IVec3::new(x, y, z));
     }
     base_pts.push(base_pts[0]); // close the loop
@@ -41,7 +41,7 @@ pub fn fence(seed: u64, ctx: &GenContext) -> VoxelSet {
                 continue;
             }
 
-            let gz = ctx.ground_height_at(v.x, v.y).unwrap_or(0);
+            let gz = scene.terrain.height_at(v.x, v.y).unwrap_or(0);
 
             let block = wood_select();
             for dz in 0..6 {

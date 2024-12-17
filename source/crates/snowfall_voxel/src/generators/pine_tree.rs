@@ -1,7 +1,7 @@
 use crate::internal::*;
 
-pub fn pine_tree(seed: u64, ctx: &GenContext) -> VoxelSet {
-    let mut rng = RNG::new(seed);
+pub fn pine_tree(ctx: &GenContext, scene: &Scene2) -> VoxelSet {
+    let mut rng = ctx.make_rng();
 
     let mut model = VoxelSet::new();
     model.register_block(Block::color("leaves", 10, 140, 30));
@@ -19,7 +19,7 @@ pub fn pine_tree(seed: u64, ctx: &GenContext) -> VoxelSet {
     let mut leaf_select = rng.select_fn(vec!["leaves", "leaves2", "leaves3"]);
     let mut wood_select = rng.select_fn(vec!["wood", "wood2", "wood3"]);
 
-    let base_z = ctx.ground_height_at(0, 0).unwrap_or(0);
+    let base_z = scene.terrain.height_at(0, 0).unwrap_or(0);
 
     for z in base_z..=base_z + base_height {
         model.set_voxel((0, 0, z), wood_select());

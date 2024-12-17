@@ -1,7 +1,7 @@
 use crate::internal::*;
 
-pub fn small_hill(seed: u64, ctx: &GenContext) -> VoxelSet {
-    let mut rng = RNG::new(seed);
+pub fn small_hill(ctx: &GenContext, scene: &Scene2) -> VoxelSet {
+    let mut rng = ctx.make_rng();
 
     let mut model = VoxelSet::new();
     model.register_block(Block::color("dirt", 25, 20, 10));
@@ -36,7 +36,7 @@ pub fn small_hill(seed: u64, ctx: &GenContext) -> VoxelSet {
             let h = 16.0 * cos01(u * 0.5).powf(power) * cos01(v * 0.5).powf(power) - 8.25;
             let h = 3.0 * h;
             let zh = h.floor() as i32;
-            let base_z = ctx.ground_height_at(x, y).unwrap_or(0);
+            let base_z = scene.terrain.height_at(x, y).unwrap_or(0);
 
             for z in 0..=zh {
                 let block = if z < zh {

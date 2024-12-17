@@ -1,15 +1,14 @@
 use crate::internal::*;
 
-pub fn tree_hill(seed: u64) -> VoxelScene {
+pub fn tree_hill(seed: u64, scene: &Scene2) -> VoxelScene {
     let mut rng = RNG::new(seed);
-
-    let mut scene = VoxelScene::new();
 
     let hill_seed = rng.range(1..8192);
     let tree_cluster_seed = rng.range(1..8192);
 
-    let ctx = GenContext::new();
-    let hill = generators::small_hill(hill_seed, &ctx);
+    let ctx = GenContext::new("small_hill", hill_seed);
+    let hill = generators::small_hill(&ctx, scene);
+    let mut scene = VoxelScene::new();
     scene.add_object(
         0,
         VoxelModelRef {

@@ -1,14 +1,14 @@
 use crate::internal::*;
 
 pub struct Scene2 {
-    pub terrain: VoxelGrid, // Eventually EditableVoxel
+    pub terrain: VoxelSet, // Eventually EditableVoxel
     pub root: Object,
 }
 
 impl Scene2 {
     pub fn new() -> Self {
         Self {
-            terrain: VoxelGrid::new(),
+            terrain: VoxelSet::new(),
             root: Object {
                 generator_id: "".to_string(),
                 seed: 0,
@@ -45,6 +45,18 @@ pub enum ObjectImp {
     Actor(Box<dyn Actor>),
     VoxelSet(Box<VoxelSet>),
     Group(Box<Group>),
+}
+
+impl ObjectImp {
+    pub fn type_str(&self) -> &'static str {
+        match self {
+            ObjectImp::Empty => "Empty",
+            ObjectImp::Stub => "Stub",
+            ObjectImp::Actor(_) => "Actor",
+            ObjectImp::VoxelSet(_) => "VoxelSet",
+            ObjectImp::Group(_) => "Group",
+        }
+    }
 }
 
 pub trait Actor {

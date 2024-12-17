@@ -20,17 +20,40 @@ pub struct Model {
 }
 
 pub struct GenContext<'a> {
+    pub generator: String,
+    pub seed: u64,
     pub center: IVec3,
-    pub ground_objects: Vec<&'a Model>,
     pub params: serde_json::Value,
+
+    // 🪦 DEPRECATED: moving towards generators accessing the terrain
+    // more explicitly (and objects it wants to avoid colliding with)
+    pub ground_objects: Vec<&'a Model>,
 }
 
 impl<'a> GenContext<'a> {
-    pub fn new() -> Self {
+    pub fn new<T>(generator: T, seed: u64) -> Self
+    where
+        T: Into<String>,
+    {
         Self {
+            generator: generator.into(),
+            seed,
             center: IVec3::new(0, 0, 0),
             ground_objects: Vec::new(),
             params: serde_json::Value::Null,
+        }
+    }
+
+    pub fn fork<T>(&self, generator: T, seed: u64) -> Self
+    where
+        T: Into<String>,
+    {
+        Self {
+            generator: generator.into(),
+            seed,
+            center: self.center,
+            ground_objects: self.ground_objects.clone(),
+            params: self.params.clone(),
         }
     }
 
@@ -42,24 +65,7 @@ impl<'a> GenContext<'a> {
         t.unwrap_or_default()
     }
 
-    pub fn ground_height_at(&self, x: i32, y: i32) -> Option<i32> {
-        let x = x + self.center.x;
-        let y = y + self.center.y;
-
-        let mut max_value: Option<i32> = None;
-        for obj in &self.ground_objects {
-            let mx = x - obj.position.x;
-            let my = y - obj.position.y;
-            let value = match &obj.model {
-                VoxelModel::VoxelSet(m) => m.height_at(mx, my),
-                VoxelModel::VoxelScene(_m) => None,
-                _ => None,
-            };
-            let Some(value) = value else {
-                continue;
-            };
-            max_value = Some(max_value.unwrap_or(value).max(value));
-        }
-        max_value
+    pub fn make_rng(&self) -> RNG {
+        RNG::new(self.seed)
     }
 }

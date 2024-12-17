@@ -14,8 +14,15 @@ pub struct RNG {
 }
 
 impl RNG {
+    pub fn seed(&self) -> u64 {
+        self.seed
+    }
     pub fn generate_seed() -> u64 {
         rand::random()
+    }
+
+    pub fn seed8k(&mut self) -> u64 {
+        self.range(1..8192)
     }
 
     pub fn new_random() -> Self {
@@ -53,6 +60,10 @@ impl RNG {
 
     pub fn bool(&mut self) -> bool {
         self.gen()
+    }
+
+    pub fn radians(&mut self) -> f32 {
+        self.range(0.0..std::f32::consts::PI * 2.0)
     }
 
     pub fn range<T, R>(&mut self, range: R) -> T

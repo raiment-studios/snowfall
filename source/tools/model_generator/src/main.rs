@@ -14,21 +14,26 @@ struct ProcessArgs {
 fn main() {
     let ProcessArgs { generator, seed } = ProcessArgs::parse();
 
-    let ctx = GenContext::new();
-    let model: VoxelModel = generate_model(generator.as_str(), seed, &ctx);
+    let mut scene = Scene2::new();
+    let ctx = GenContext::new(generator, seed);
+    let model: VoxelModel = generate_model(&ctx, &mut scene);
     match model {
         VoxelModel::Empty => {
-            eprintln!("Unknown generator: {}", generator);
+            eprintln!("Unknown generator: {}", ctx.generator);
             std::process::exit(1);
         }
         VoxelModel::VoxelSet(model) => {
-            model.serialize_to_file(&format!("content/{}-{}.bin", generator, seed));
+            model.serialize_to_file(&format!("content/{}-{}.bin", ctx.generator, seed));
         }
         VoxelModel::VoxelScene(model) => {
-            let filename = format!("content/{}-{}.yaml", generator, seed);
+            let filename = format!("content/{}-{}.yaml", ctx.generator, seed);
             let file = VoxelSceneFile::new(*model);
             serde_yaml::to_writer(std::fs::File::create(&filename).unwrap(), &file).unwrap();
         }
+        _ => {
+            eprintln!("Unsupported model type: {}", ctx.generator);
+            std::process::exit(1);
+        }
     }
-    println!("Generated model {} (seed={})", generator, seed);
+    println!("Generated model {} (seed={})", ctx.generator, seed);
 }

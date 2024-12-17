@@ -1,7 +1,7 @@
 use crate::internal::*;
 
-pub fn hill2(seed: u64, ctx: &GenContext) -> VoxelSet {
-    let mut rng = RNG::new(seed);
+pub fn hill2(ctx: &GenContext, scene: &Scene2) -> VoxelSet {
+    let mut rng = ctx.make_rng();
 
     let mut model = VoxelSet::new();
     model.register_block(Block::color("dirt", 25, 20, 10));
@@ -42,7 +42,7 @@ pub fn hill2(seed: u64, ctx: &GenContext) -> VoxelSet {
             let h = (h * scale).round() as i32;
 
             let dirt_patch = noise12.gen_2d(u0, v0) < noise20.gen_2d(u0, v0) * 0.9;
-            let base_z = ctx.ground_height_at(x, y).unwrap_or(0);
+            let base_z = scene.terrain.height_at(x, y).unwrap_or(0);
 
             // Draw the voxels
             for z in 0..=h {

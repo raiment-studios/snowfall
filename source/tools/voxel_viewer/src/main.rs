@@ -118,6 +118,8 @@ fn startup_scene(
         &mut scene,
     );
 
+    println!("Root type: {}", scene.root.imp.type_str());
+
     //
     // Create the Bevy graphics from the generator models
     //
@@ -125,6 +127,21 @@ fn startup_scene(
         IVec3::new(i32::MAX, i32::MAX, i32::MAX),
         IVec3::new(i32::MIN, i32::MIN, i32::MIN),
     );
+
+    spawn_model(
+        &Object {
+            generator_id: "".to_string(),
+            seed: 0,
+            params: serde_json::Value::Null,
+            position: IVec3::ZERO,
+            imp: ObjectImp::VoxelSet(Box::new(scene.terrain)),
+        },
+        &mut scene_bounds,
+        &mut commands,
+        &mut meshes,
+        &mut materials,
+    );
+
     spawn_model(
         &scene.root,
         &mut scene_bounds,
@@ -136,7 +153,7 @@ fn startup_scene(
     let bounds = scene_bounds;
     let max_extent = (((bounds.1.x - bounds.0.x + 1).pow(2)
         + (bounds.1.y - bounds.0.y + 1).pow(2)
-        + (bounds.1.z - 0 + 1).pow(2)) as f32)
+        + (bounds.1.z + 1).pow(2)) as f32)
         .sqrt();
     let center_point = Vec3::new(
         (bounds.0.x + bounds.1.x) as f32 / 2.0,
@@ -144,8 +161,8 @@ fn startup_scene(
         (bounds.0.z + bounds.1.z) as f32 / 2.0,
     );
 
-    state.look_at = center_point.into();
-    state.view_radius = max_extent as f32 * 0.25;
+    state.look_at = center_point;
+    state.view_radius = max_extent * 0.25;
 }
 
 fn spawn_model(
@@ -169,7 +186,7 @@ fn spawn_model(
             scene_bounds.1.z = scene_bounds.1.z.max(bounds.1.z);
 
             VoxelMeshComponent::spawn_from_model(
-                &model,
+                model,
                 commands,
                 meshes,
                 materials,
@@ -182,7 +199,7 @@ fn spawn_model(
         }
         ObjectImp::Group(group) => {
             for object in &group.objects {
-                spawn_model(&object, scene_bounds, commands, meshes, materials);
+                spawn_model(object, scene_bounds, commands, meshes, materials);
             }
         }
     }
@@ -195,12 +212,9 @@ fn generate(
     params: serde_json::Value,
     scene: &mut Scene2,
 ) -> Object {
-    let mut ctx = GenContext::new();
+    let mut ctx = GenContext::new(generator, seed);
     ctx.center = center;
     ctx.params = params.clone();
-    /*for i in 0..scene.models.len() {
-        ctx.ground_objects.push(&scene.models[i]);
-    }*/
     let filename = format!("content/{}-{}.yaml", generator, seed);
 
     // Check if filename exists
@@ -211,50 +225,39 @@ fn generate(
         VoxelModel::VoxelScene(Box::new(file.scene))
     } else {
         println!("Generating model: {}", &filename);
-        generate_model(generator, seed, &ctx)
+        generate_model(&ctx, scene)
     };
 
-    match model {
-        VoxelModel::Empty => {
-            println!("Empty model: {} {}", generator, seed);
-            Object {
-                generator_id: generator.to_string(),
-                seed,
-                params: params.clone(),
-                position: center,
-                imp: ObjectImp::Empty,
+    Object {
+        generator_id: generator.to_string(),
+        seed,
+        params: params.clone(),
+        position: center,
+        imp: match model {
+            VoxelModel::Empty => {
+                println!("Empty model: {} {}", generator, seed);
+                ObjectImp::Empty
             }
-        }
-        VoxelModel::VoxelSet(voxel_set) => Object {
-            generator_id: generator.to_string(),
-            seed,
-            params: params.clone(),
-            position: center,
-            imp: ObjectImp::VoxelSet(voxel_set),
-        },
-        VoxelModel::VoxelScene(model) => {
-            let mut group = Group::new();
-            for layer in &model.layers {
-                for object in &layer.models {
-                    println!("{} {:#?}", &object.model_id, &object.params);
-                    let obj = generate(
-                        object.model_id.clone().as_str(),
-                        object.seed,
-                        object.position,
-                        object.params.clone(),
-                        scene,
-                    );
-                    group.objects.push(obj);
+            VoxelModel::Group(group) => ObjectImp::Group(group),
+            VoxelModel::VoxelSet(voxel_set) => ObjectImp::VoxelSet(voxel_set),
+            VoxelModel::VoxelScene(model) => {
+                let mut group = Group::new();
+                for layer in &model.layers {
+                    for object in &layer.models {
+                        println!("{} {:#?}", &object.model_id, &object.params);
+                        let obj = generate(
+                            object.model_id.clone().as_str(),
+                            object.seed,
+                            object.position,
+                            object.params.clone(),
+                            scene,
+                        );
+                        group.objects.push(obj);
+                    }
                 }
+                ObjectImp::Group(Box::new(group))
             }
-            Object {
-                generator_id: generator.to_string(),
-                seed,
-                params: params.clone(),
-                position: center,
-                imp: ObjectImp::Group(Box::new(group)),
-            }
-        }
+        },
     }
 }
 

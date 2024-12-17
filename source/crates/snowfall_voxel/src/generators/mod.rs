@@ -24,21 +24,20 @@ pub use tree_hill::*;
 
 use crate::internal::*;
 
-pub fn generate_model(model_id: &str, seed: u64, ctx: &GenContext) -> VoxelModel {
-    match model_id {
-        "tree1" => tree1(seed, ctx).into(),
-        "tree2" => tree2(seed, ctx).into(),
-        "pine_tree" => pine_tree(seed, ctx).into(),
-        "small_hill" => small_hill(seed, ctx).into(),
-        "fence" => fence(seed, ctx).into(),
-        "hill2" => hill2(seed, ctx).into(),
-        "hill3" => hill3(seed, ctx).into(),
-        "hill_with_road" => hill_with_road(seed, ctx).into(),
+pub fn generate_model(ctx: &GenContext, scene: &mut Scene2) -> VoxelModel {
+    let seed = ctx.seed;
+    match ctx.generator.as_str() {
         "cluster" => cluster(seed, ctx).into(),
-
+        "fence" => fence(ctx, scene).into(),
+        "hill_with_road" => hill_with_road(ctx, scene).into(),
+        "hill2" => hill2(ctx, scene).into(),
+        "hill3" => hill3(ctx, scene).into(),
+        "pine_tree" => pine_tree(ctx, scene).into(),
+        "small_hill" => small_hill(ctx, scene).into(),
         "tree_cluster" => tree_cluster(seed).into(),
-        "tree_hill" => tree_hill(seed).into(),
-
+        "tree_hill" => tree_hill(seed, scene).into(),
+        "tree1" => tree1(ctx, scene).into(),
+        "tree2" => tree2(ctx, scene).into(),
         _ => VoxelModel::Empty,
     }
 }
