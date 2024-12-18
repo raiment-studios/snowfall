@@ -6,63 +6,92 @@ pub fn maple(ctx: &GenContext, scene: &mut Scene2) -> Group {
     let mut rng = ctx.make_rng();
 
     let mut group = Group::new();
-    let mut clusters = Vec::new();
 
-    let mut angle = rng.range(0.0..(PI * 2.0));
-    let mut height: f32 = rng.range(10.0..=15.0);
-    let mut reach = rng.range(4.0..6.0);
-    for _ in 0..6 {
-        let actual_reach = rng.range(0.5..1.0) * reach;
-        let x = (actual_reach * angle.cos()).round() as i32;
-        let y = (actual_reach * angle.sin()).round() as i32;
-        let z = height.round() as i32;
+    for _ in 0..8 {
+        let angle = rng.range(0.0..=2.0 * PI);
+        let radius = 1.25 * rng.range(16.0..=48.0);
+        let x = radius * angle.cos();
+        let y = radius * angle.sin();
+        let base = IVec3::new(x as i32, y as i32, 0);
 
-        let position = IVec3::new(x, y, z);
-        clusters.push(position.clone());
+        let sub = ctx.fork("trunk", rng.seed8());
+        let trunk = bare_tree(&sub, scene);
 
-        let seed = rng.seed8();
-        ctx.fork("leaf_cluster", seed);
-
-        let voxel_set = leaf_cluster(ctx, scene);
         group.objects.push(Object {
-            generator_id: "leaf_cluster".to_string(),
-            seed,
-            position,
+            generator_id: "trunk".to_string(),
+            seed: 0,
+            position: base,
             params: serde_json::Value::Null,
-            imp: ObjectImp::VoxelSet(Box::new(voxel_set)),
+            imp: ObjectImp::VoxelSet(Box::new(trunk)),
         });
-
-        angle += rng.range((0.2 * PI)..=(2.2 * PI));
-        height += rng.range(1.5..2.5);
-        reach += rng.range(0.5..1.0);
     }
-
-    let mut trunk = VoxelSet::new();
-    trunk.register_block(Block::color("brown", 60, 40, 20));
-
-    for p in clusters {
-        let base_z = ((p.z as f32) * rng.range(0.15..=0.5)).round() as i32;
-
-        let line = bresenham3d((0, 0, 0).into(), (0, 0, base_z).into());
-        for q in line {
-            trunk.set_voxel((q.x, q.y, q.z), "brown");
-        }
-
-        let line = bresenham3d((0, 0, base_z).into(), p);
-        for q in line {
-            trunk.set_voxel((q.x, q.y, q.z), "brown");
-        }
-    }
-
-    group.objects.push(Object {
-        generator_id: "trunk".to_string(),
-        seed: 0,
-        position: IVec3::ZERO.clone(),
-        params: serde_json::Value::Null,
-        imp: ObjectImp::VoxelSet(Box::new(trunk)),
-    });
 
     group
+}
+
+pub fn bare_tree(ctx: &GenContext, _scene: &Scene2) -> VoxelSet {
+    let mut rng = ctx.make_rng();
+
+    let mut trunk = VoxelSet::new();
+    trunk.register_block(Block::color("brown1", 60, 40, 20));
+    trunk.register_block(Block::color("brown2", 30, 20, 5));
+    trunk.register_block(Block::color("brown3", 22, 15, 4));
+    trunk.register_block(Block::color("c1", 255, 0, 0));
+    trunk.register_block(Block::color("c2", 0, 255, 0));
+    trunk.register_block(Block::color("c3", 0, 0, 255));
+    trunk.register_block(Block::color("c4", 255, 255, 0));
+    trunk.register_block(Block::color("c5", 255, 0, 255));
+    trunk.register_block(Block::color("c6", 0, 255, 255));
+
+    let mut base_points = vec![(IVec3::ZERO.clone(), 10)];
+    let mut count = 0;
+    let mut segment = 0;
+    while !base_points.is_empty() {
+        let set = base_points.drain(..).collect::<Vec<_>>();
+        for (p, h) in set {
+            let mut branches = Vec::new();
+
+            let len = h - rng.range(1..=2);
+            if len <= 2 {
+                continue;
+            }
+
+            let bcount = match segment {
+                0 => 1,
+                1 => 2,
+                _ => rng.range(1..=(1 + segment)),
+            };
+            for _ in 0..bcount {
+                let dirs = vec![(1, 0), (0, 1), (1, 1)];
+                let mut dir = *rng.select(&dirs);
+                let sign = *rng.select(&vec![-1, 1]);
+                let scale = rng.range(1..=(1 + segment * 2).min(len + 1));
+                dir.0 *= scale * sign;
+                dir.1 *= scale * sign;
+
+                let dp = IVec3::new(dir.0, dir.1, len);
+                branches.push((p + dp, len));
+            }
+
+            let colors = if false {
+                vec!["c1", "c2", "c3", "c4", "c5", "c6"]
+            } else {
+                vec!["brown1", "brown2", "brown2", "brown3"]
+            };
+
+            for (q, len) in branches {
+                let line = bresenham3d(p, q);
+                for r in line {
+                    let block = *rng.select(&colors);
+                    trunk.set_voxel((r.x, r.y, r.z), block);
+                }
+                count += 1;
+                base_points.push((q, len));
+            }
+        }
+        segment += 1;
+    }
+    trunk
 }
 
 pub fn leaf_cluster(ctx: &GenContext, scene: &mut Scene2) -> VoxelSet {
