@@ -1,13 +1,14 @@
 use crate::internal::*;
 
-pub fn road(ctx: &GenContext, scene: &mut Scene2) {
+pub fn road(ctx: &GenContext, scene: &mut Scene2) -> VoxelModel {
     let mut rng = ctx.make_rng();
     for _ in 0..4 {
         let ctx = ctx.fork("road", rng.seed8());
         if road_imp(&ctx, scene).is_ok() {
-            return;
+            break;
         }
     }
+    VoxelModel::Empty
 }
 
 fn road_imp(ctx: &GenContext, scene: &mut Scene2) -> Result<(), String> {

@@ -1,4 +1,5 @@
 mod bare_tree;
+mod cloud;
 mod cluster;
 mod cluster2;
 mod desolate_hill;
@@ -18,6 +19,7 @@ mod tree_cluster;
 mod tree_hill;
 
 pub use bare_tree::*;
+pub use cloud::*;
 pub use cluster::*;
 pub use cluster2::*;
 pub use desolate_hill::*;
@@ -43,6 +45,8 @@ pub fn generate_model(ctx: &GenContext, scene: &mut Scene2) -> VoxelModel {
     match ctx.generator.as_str() {
         "bare_tree" => bare_tree(ctx, scene).into(),
         "cluster" => cluster(seed, ctx).into(),
+        "cloud" => cloud(ctx, scene).into(),
+        "cloud_cluster" => cloud_cluster(ctx, scene).into(),
         "cluster2" => cluster2(ctx, scene).into(),
         "fence" => fence(ctx, scene).into(),
         "flower" => flower(ctx, scene).into(),
@@ -59,14 +63,8 @@ pub fn generate_model(ctx: &GenContext, scene: &mut Scene2) -> VoxelModel {
         "tree_hill" => tree_hill(seed, scene).into(),
         "tree1" => tree1(ctx, scene).into(),
         "tree2" => tree2(ctx, scene).into(),
-        "road" => {
-            road(ctx, scene);
-            VoxelModel::Empty
-        }
-        "rocks" => {
-            rocks(ctx, scene);
-            VoxelModel::Empty
-        }
+        "road" => road(ctx, scene),
+        "rocks" => rocks(ctx, scene),
         _ => {
             panic!("unknown generator: {}", ctx.generator);
         }

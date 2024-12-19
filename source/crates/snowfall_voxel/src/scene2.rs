@@ -37,6 +37,17 @@ impl Group {
     pub fn new() -> Self {
         Self { objects: vec![] }
     }
+
+    pub fn merge(&mut self, model: VoxelModel) {
+        match model {
+            VoxelModel::Group(model_group) => {
+                for object in model_group.objects {
+                    self.objects.push(object);
+                }
+            }
+            _ => panic!("expected group"),
+        }
+    }
 }
 
 pub enum ObjectImp {

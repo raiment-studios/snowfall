@@ -11,7 +11,7 @@ pub fn hill_with_road(ctx: &GenContext, scene: &mut Scene2) -> Group {
     let mut group = Group::new();
 
     let model = generate_model(&ctx.fork("flower_field", rng.seed8()), scene);
-    merge_into_group(model, &mut group);
+    group.merge(model);
 
     for _ in 0..4 {
         let seed = rng.seed8();
@@ -21,18 +21,11 @@ pub fn hill_with_road(ctx: &GenContext, scene: &mut Scene2) -> Group {
             "range": 248,
         });
         let model = generate_model(&ctx, scene);
-        merge_into_group(model, &mut group);
+        group.merge(model);
     }
-    group
-}
 
-fn merge_into_group(model: VoxelModel, group: &mut Group) {
-    match model {
-        VoxelModel::Group(model_group) => {
-            for object in model_group.objects {
-                group.objects.push(object);
-            }
-        }
-        _ => panic!("expected group"),
-    }
+    let model = generate_model(&ctx.fork("cloud_cluster", rng.seed8()), scene);
+    group.merge(model);
+
+    group
 }

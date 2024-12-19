@@ -1,6 +1,6 @@
 use crate::internal::*;
 
-pub fn rocks(ctx: &GenContext, scene: &mut Scene2) {
+pub fn rocks(ctx: &GenContext, scene: &mut Scene2) -> VoxelModel {
     let model = &mut scene.terrain;
     model.register_block(Block::color("stone1", 10, 10, 11).modify(|b| b.occupied = true));
     model.register_block(Block::color("stone2", 5, 6, 5).modify(|b| b.occupied = true));
@@ -37,4 +37,5 @@ pub fn rocks(ctx: &GenContext, scene: &mut Scene2) {
             }
         }
     }
+    VoxelModel::Empty
 }

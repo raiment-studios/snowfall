@@ -6,6 +6,7 @@ struct ClusterParams {
     range: Option<i32>,
     closest_distance: Option<f32>,
     generators: Option<Vec<(u32, String)>>,
+    drop_to_ground: Option<bool>,
 }
 
 pub fn cluster2(ctx: &GenContext, scene: &mut Scene2) -> Group {
@@ -23,6 +24,7 @@ pub fn cluster2(ctx: &GenContext, scene: &mut Scene2) -> Group {
         ])
         .clone();
     let closest_distance = *params.closest_distance.get_or_insert(12.0);
+    let drop_to_ground = *params.drop_to_ground.get_or_insert(true);
 
     const MAX_ATTEMPTS: usize = 128;
 
@@ -34,7 +36,9 @@ pub fn cluster2(ctx: &GenContext, scene: &mut Scene2) -> Group {
     for _ in 0..MAX_ATTEMPTS {
         let position = IVec3::new(rng.range(-range..=range), rng.range(-range..=range), 0);
         let mut position = position + ctx.center;
-        position.z = scene.terrain.height_at(position.x, position.y).unwrap_or(0);
+        if drop_to_ground {
+            position.z = scene.terrain.height_at(position.x, position.y).unwrap_or(0);
+        }
 
         //
         // Reject the position if the nearest distance is too close to another tree
