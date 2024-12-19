@@ -8,10 +8,7 @@ pub fn tree1(ctx: &GenContext, scene: &Scene2) -> VoxelSet {
 
     const R: i32 = 8;
     const H: i32 = 20;
-    let base_z = scene
-        .terrain
-        .height_at(ctx.center.x, ctx.center.y)
-        .unwrap_or(0);
+    let base_z = 0;
 
     for z in 0..=H {
         model.set_voxel((0, 0, base_z + z), "wood");

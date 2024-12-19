@@ -37,10 +37,7 @@ pub fn tree2(ctx: &GenContext, scene: &Scene2) -> VoxelSet {
     const R: i32 = 8;
     let height: i32 = rng.range(12..=20);
     let noise = rng.open_simplex().scale(3.0).build();
-    let base_z = scene
-        .terrain
-        .height_at(ctx.center.x, ctx.center.y)
-        .unwrap_or(0);
+    let base_z = 0;
 
     for z in 0..=height {
         let block_name = wood_select();

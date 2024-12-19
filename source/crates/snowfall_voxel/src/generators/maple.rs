@@ -1,97 +1,42 @@
 use crate::internal::*;
 
 pub fn maple(ctx: &GenContext, scene: &mut Scene2) -> Group {
-    use std::f32::consts::PI;
-
     let mut rng = ctx.make_rng();
+
+    let mut ctx = ctx.fork("hill4", rng.seed8());
+    ctx.params = serde_json::json!({
+        "ground_type": "dirt",
+    });
+    scene.terrain = generators::hill4(&ctx, scene);
+
+    generators::rocks(&ctx.fork("rocks", rng.seed8()), scene);
+
+    for _ in 0..2 {
+        road(&ctx.fork("road", rng.seed8()), scene);
+    }
 
     let mut group = Group::new();
 
-    for _ in 0..8 {
-        let angle = rng.range(0.0..=2.0 * PI);
-        let radius = 1.25 * rng.range(16.0..=48.0);
-        let x = radius * angle.cos();
-        let y = radius * angle.sin();
-        let base = IVec3::new(x as i32, y as i32, 0);
-
-        let sub = ctx.fork("trunk", rng.seed8());
-        let trunk = bare_tree(&sub, scene);
-
-        group.objects.push(Object {
-            generator_id: "trunk".to_string(),
-            seed: 0,
-            position: base,
-            params: serde_json::Value::Null,
-            imp: ObjectImp::VoxelSet(Box::new(trunk)),
+    const R: i32 = 255 - 32;
+    for _ in 0..32 {
+        let mut ctx = ctx.fork("cluster2", rng.seed8());
+        ctx.center = IVec3::new(rng.range(-R..=R), rng.range(-R..=R), 0);
+        ctx.params = serde_json::json!({
+            "count": [3, 8],
+            "range": 32,
+            "generators": [
+                (10, "bare_tree".to_string()), //
+            ],
         });
-    }
-
-    group
-}
-
-pub fn bare_tree(ctx: &GenContext, _scene: &Scene2) -> VoxelSet {
-    let mut rng = ctx.make_rng();
-
-    let mut trunk = VoxelSet::new();
-    trunk.register_block(Block::color("brown1", 60, 40, 20));
-    trunk.register_block(Block::color("brown2", 30, 20, 5));
-    trunk.register_block(Block::color("brown3", 22, 15, 4));
-    trunk.register_block(Block::color("c1", 255, 0, 0));
-    trunk.register_block(Block::color("c2", 0, 255, 0));
-    trunk.register_block(Block::color("c3", 0, 0, 255));
-    trunk.register_block(Block::color("c4", 255, 255, 0));
-    trunk.register_block(Block::color("c5", 255, 0, 255));
-    trunk.register_block(Block::color("c6", 0, 255, 255));
-
-    let mut base_points = vec![(IVec3::ZERO.clone(), 10)];
-    let mut count = 0;
-    let mut segment = 0;
-    while !base_points.is_empty() {
-        let set = base_points.drain(..).collect::<Vec<_>>();
-        for (p, h) in set {
-            let mut branches = Vec::new();
-
-            let len = h - rng.range(1..=2);
-            if len <= 2 {
-                continue;
-            }
-
-            let bcount = match segment {
-                0 => 1,
-                1 => 2,
-                _ => rng.range(1..=(1 + segment)),
-            };
-            for _ in 0..bcount {
-                let dirs = vec![(1, 0), (0, 1), (1, 1)];
-                let mut dir = *rng.select(&dirs);
-                let sign = *rng.select(&vec![-1, 1]);
-                let scale = rng.range(1..=(1 + segment * 2).min(len + 1));
-                dir.0 *= scale * sign;
-                dir.1 *= scale * sign;
-
-                let dp = IVec3::new(dir.0, dir.1, len);
-                branches.push((p + dp, len));
-            }
-
-            let colors = if false {
-                vec!["c1", "c2", "c3", "c4", "c5", "c6"]
-            } else {
-                vec!["brown1", "brown2", "brown2", "brown3"]
-            };
-
-            for (q, len) in branches {
-                let line = bresenham3d(p, q);
-                for r in line {
-                    let block = *rng.select(&colors);
-                    trunk.set_voxel((r.x, r.y, r.z), block);
-                }
-                count += 1;
-                base_points.push((q, len));
-            }
+        let g: VoxelModel = generate_model(&ctx, scene);
+        let VoxelModel::Group(g) = g else {
+            panic!("expected group");
+        };
+        for object in g.objects {
+            group.objects.push(object);
         }
-        segment += 1;
     }
-    trunk
+    group
 }
 
 pub fn leaf_cluster(ctx: &GenContext, scene: &mut Scene2) -> VoxelSet {
@@ -101,8 +46,7 @@ pub fn leaf_cluster(ctx: &GenContext, scene: &mut Scene2) -> VoxelSet {
     const R: i32 = 6;
 
     let mut rng = ctx.make_rng();
-
-    let mut noise = rng.open_simplex().scale(0.25).build();
+    let noise = rng.open_simplex().scale(0.25).build();
 
     for dz in -R..=R {
         for dy in -R..=R {
@@ -132,4 +76,207 @@ pub fn leaf_cluster(ctx: &GenContext, scene: &mut Scene2) -> VoxelSet {
     }
 
     voxel_set
+}
+
+fn road(ctx: &GenContext, scene: &mut Scene2) {
+    let mut rng = ctx.make_rng();
+    for _ in 0..4 {
+        let ctx = ctx.fork("road", rng.seed8());
+        if road_imp(&ctx, scene).is_ok() {
+            return;
+        }
+    }
+}
+
+fn road_imp(ctx: &GenContext, scene: &mut Scene2) -> Result<(), String> {
+    use std::f32::consts::PI;
+
+    let mut rng = ctx.make_rng();
+    let model = &mut scene.terrain;
+
+    model.register_block(Block::color("road1", 25, 20, 10).modify(|b| b.walk_cost = 0.15));
+    model.register_block(Block::color("road2", 20, 15, 10).modify(|b| b.walk_cost = 0.15));
+
+    let mut road_block = rng.select_fn(vec!["road1", "road2"]);
+
+    //
+    // Choose the start and end points of the road segment.
+    //
+    let start_radius = 300.0;
+    let start_ang = rng.radians();
+    let end_radius = 300.0;
+    let end_ang = start_ang + PI + rng.range(-PI / 10.0..PI / 10.0);
+    let mut start = (
+        (start_radius * start_ang.cos()).round() as i32,
+        (start_radius * start_ang.sin()).round() as i32,
+        0 as i32,
+    );
+    let mut end = (
+        (end_radius * end_ang.cos()).round() as i32,
+        (end_radius * end_ang.sin()).round() as i32,
+        0 as i32,
+    );
+
+    start.0 = start.0.max(-254).min(254);
+    start.1 = start.1.max(-254).min(254);
+    end.0 = end.0.max(-254).min(254);
+    end.1 = end.1.max(-254).min(254);
+
+    //
+    // Cache the height look-ups since there are many look-ups
+    //
+    let mut cache: HashMap<(i32, i32), i32> = HashMap::new();
+
+    // Call the A* pathfinding algorithm to generate the connection
+    // from start to end.
+    //
+    // Be wary:
+    // - If no path exists, astar() never returns (!)
+    // - If the heuristic is *less expensive* than the actual
+    //   lowest cost path, then the algorithm breaks
+    //
+    let mut iterations = 0;
+    let result = pathfinding::prelude::astar(
+        &start,
+        |&(x, y, _z)| {
+            let moves = vec![
+                (1, 0), //
+                (-1, 0),
+                (0, 1),
+                (0, -1),
+                (1, 1),
+                (-1, 1),
+                (1, -1),
+                (-1, -1),
+            ];
+
+            const MAX_COST: f32 = 25_000.0;
+            fn cost_as_u32(cost: f32) -> u32 {
+                (cost.min(MAX_COST) * 1000.0).round() as u32
+            }
+
+            let costs = moves
+                .iter()
+                .filter_map(|&(dx, dy)| {
+                    let new_x = x + dx;
+                    let new_y = y + dy;
+                    let z: i32 = *cache
+                        .entry((x, y))
+                        .or_insert_with(|| model.height_at(x, y).unwrap_or(0));
+                    let new_z: i32 = *cache
+                        .entry((new_x, new_y))
+                        .or_insert_with(|| model.height_at(new_x, new_y).unwrap_or(0));
+                    let dz = new_z - z;
+
+                    let block = model.get_voxel((new_x, new_y, new_z));
+                    let walk_cost = block.walk_cost;
+
+                    let distance_xy: f32 = ((dx.pow(2) + dy.pow(2)) as f32).sqrt();
+                    let dz_factor: f32 = if dz < -8 {
+                        100.0
+                    } else if dz < -4 {
+                        2.0
+                    } else if dz < -2 {
+                        1.5
+                    } else if dz < 0 {
+                        0.75
+                    } else if dz == 0 {
+                        1.0
+                    } else if dz < 2 {
+                        1.25
+                    } else if dz < 4 {
+                        1.5
+                    } else if dz < 8 {
+                        2.0
+                    } else if dz < 16 {
+                        5.0
+                    } else {
+                        100.0
+                    };
+
+                    let cost = distance_xy * dz_factor * (1.0 + 10.0 * walk_cost);
+                    let cost = cost_as_u32(cost);
+                    Some(((new_x, new_y, new_z), cost))
+                })
+                .collect::<Vec<_>>();
+
+            iterations += 1;
+            if iterations > 1_000_000 {
+                panic!("too many iterations");
+            }
+
+            costs.into_iter()
+        },
+        |&(x, y, z)| {
+            let d = end.0.abs_diff(x) + end.1.abs_diff(y) + end.2.abs_diff(z);
+            d * 1000 * 100 * 10
+        },
+        |&p| p.0 == end.0 && p.1 == end.1,
+    );
+
+    //
+    // Segmentize.
+    //
+    // Given the found path, break it into a series of straight line segments
+    // which "feels" more natural of a constructed road than exact path finding
+    //
+    let path = match result {
+        Some((path, _cost)) => path,
+        None => {
+            return Err("No path found".to_string());
+        }
+    };
+
+    let mut posts = Vec::new();
+    for i in (0..path.len() - 6).step_by(12) {
+        posts.push(path[i]);
+    }
+    posts.push(path[path.len() - 1]);
+
+    //
+    // Connect the segments.
+    //
+    // Do this by flattening the terrain in a brief radius around the
+    // path and painting the ground voxels to the road color.
+    //
+    for pair in posts.windows(2) {
+        let p = IVec3::new(pair[0].0, pair[0].1, pair[0].2);
+        let q = IVec3::new(pair[1].0, pair[1].1, pair[1].2);
+
+        const R: i32 = 3;
+        const R2: i32 = R + 4;
+
+        let line = bresenham3d(p, q);
+        for IVec3 { x, y, z } in &line {
+            for dx in -R..=R {
+                for dy in -R..=R {
+                    for dz in 1..=12 {
+                        model.clear_voxel((x + dx, y + dy, z + dz));
+                    }
+                }
+            }
+        }
+        for IVec3 { x, y, z } in &line {
+            for dx in -R..=R {
+                for dy in -R..=R {
+                    let z = model.height_at(x + dx, y + dy).unwrap_or(0);
+                    let p = (x + dx, y + dy, z);
+                    let block = road_block();
+                    model.set_voxel(p, block);
+                }
+            }
+        }
+
+        // Mark the road and area around it as "occupied" so other objects
+        // are not placed on top of it.
+        for IVec3 { x, y, z } in &line {
+            for dx in -R2..=R2 {
+                for dy in -R2..=R2 {
+                    let z = model.height_at(x + dx, y + dy).unwrap_or(0);
+                    model.modify_voxel((x + dx, y + dy, z), |block| block.with_occupied(true));
+                }
+            }
+        }
+    }
+    Ok(())
 }

@@ -1,9 +1,9 @@
-use crate::{internal::*, voxel_set};
+use crate::internal::*;
 
 pub fn hill_with_road(ctx: &GenContext, scene: &mut Scene2) -> Group {
     let mut rng = ctx.make_rng();
 
-    scene.terrain = hill(&ctx.fork("hill", rng.seed8()), scene);
+    scene.terrain = generators::hill4(&ctx.fork("hill", rng.seed8()), scene);
     for _ in 0..4 {
         road(&ctx.fork("road", rng.seed8()), scene);
     }
@@ -11,131 +11,22 @@ pub fn hill_with_road(ctx: &GenContext, scene: &mut Scene2) -> Group {
     let mut group = Group::new();
     for _ in 0..4 {
         let seed = rng.seed8();
-        let mut ctx = ctx.fork("cluster", seed);
+
+        let mut ctx = ctx.fork("cluster2", seed);
         //ctx.center = IVec3::new(rng.range(-200..=200), rng.range(-200..=200), 0);
         ctx.params = serde_json::json!({
             "count": [320, 400],
             "range": 248,
         });
-        let g = cluster2(&ctx, scene);
+        let g: VoxelModel = generate_model(&ctx, scene);
+        let VoxelModel::Group(g) = g else {
+            panic!("expected group");
+        };
         for object in g.objects {
             group.objects.push(object);
         }
     }
     group
-}
-
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
-struct ClusterParams {
-    count: Option<[i64; 2]>,
-    range: Option<i32>,
-}
-
-pub fn cluster2(ctx: &GenContext, scene: &Scene2) -> Group {
-    let mut rng = ctx.make_rng();
-
-    let mut params: ClusterParams = ctx.params();
-    let count_range = params.count.get_or_insert([12, 24]);
-    let range = *params.range.get_or_insert(48);
-
-    const MAX_ATTEMPTS: usize = 128;
-    const CLOSEST_DISTANCE: f32 = 12.0;
-    let mut count = rng.range(count_range[0]..=count_range[1]);
-
-    let mut group = Group::new();
-
-    let mut point_set = PointSet::new();
-    for _ in 0..MAX_ATTEMPTS {
-        let position = IVec3::new(rng.range(-range..=range), rng.range(-range..=range), 0);
-        let position = position + ctx.center;
-
-        //
-        // Reject the position if the nearest distance is too close to another tree
-        // in the cluster (perhaps this should be too close to **any** object?) OR
-        // if the block it would be placed on is marked as occupied already.
-        //
-        let d = point_set.nearest_distance_2d(&position).unwrap_or(f32::MAX);
-        if d < CLOSEST_DISTANCE {
-            continue;
-        }
-        if let Some(block) = scene.terrain.top_block_at(position.x, position.y) {
-            if block.occupied {
-                continue;
-            }
-        }
-
-        point_set.add(position);
-
-        let model_id = *rng.select_weighted(&vec![
-            (10, "tree1"), //
-            (10, "tree2"),
-            (80, "pine_tree"),
-        ]);
-        let seed = rng.seed8();
-        let mut sctx = ctx.fork(model_id, seed);
-        sctx.center = position;
-        let voxel_set: VoxelSet = match model_id {
-            "tree1" => generators::tree1(&sctx, scene),
-            "tree2" => generators::tree2(&sctx, scene),
-            "pine_tree" => generators::pine_tree(&sctx, scene),
-            _ => panic!("unknown model_id"),
-        };
-
-        group.objects.push(Object {
-            generator_id: model_id.to_string(),
-            seed,
-            params: serde_json::Value::Null,
-            position,
-            imp: ObjectImp::VoxelSet(Box::new(voxel_set)),
-        });
-
-        count -= 1;
-        if count == 0 {
-            break;
-        }
-    }
-    group
-}
-
-fn hill(ctx: &GenContext, scene: &mut Scene2) -> VoxelSet {
-    let mut rng = ctx.make_rng();
-
-    let mut model = VoxelSet::new();
-    model.register_block(Block::color("dirt", 25, 20, 10));
-    model.register_block(Block::color("dirt2", 20, 15, 10));
-    model.register_block(Block::color("grass1", 5, 60, 10));
-    model.register_block(Block::color("grass2", 3, 45, 2));
-    model.register_block(Block::color("red", 255, 0, 0));
-    model.register_block(Block::color("blue", 0, 0, 255));
-
-    use std::f32::consts::PI;
-    const R: i32 = 256;
-    let noise4 = rng.open_simplex().scale(0.25).build();
-    let noise3 = rng.open_simplex().scale(0.5).build();
-
-    let mut grass_block = rng.select_fn(vec!["grass1", "grass2"]);
-
-    for y in -R..=R {
-        for x in -R..=R {
-            let u0 = (x as f32) / (R as f32);
-            let v0 = (y as f32) / (R as f32);
-
-            let jitter_radius = 1.5 * noise4.gen_2d(u0, v0);
-            let jitter_angle = 2.0 * PI * noise3.gen_2d(u0, v0);
-            let h3 = 64.0 * jitter_radius * (0.5 + 0.5 * jitter_angle.cos());
-            let h = h3.powf(1.15);
-
-            let base_z = scene.terrain.height_at(x, y).unwrap_or(1);
-
-            // Draw the voxels
-            for z in 0..=(h.round() as i32) {
-                let block = grass_block();
-                model.set_voxel((x, y, base_z + z), block);
-            }
-        }
-    }
-
-    model
 }
 
 fn road(ctx: &GenContext, scene: &mut Scene2) {
