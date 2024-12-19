@@ -1,13 +1,15 @@
 mod bare_tree;
 mod cluster;
 mod cluster2;
+mod desolate_hill;
 mod fence;
+mod flower;
 mod hill2;
 mod hill3;
 mod hill4;
 mod hill_with_road;
-mod maple;
 mod pine_tree;
+mod road;
 mod rocks;
 mod small_hill;
 mod tree1;
@@ -18,13 +20,15 @@ mod tree_hill;
 pub use bare_tree::*;
 pub use cluster::*;
 pub use cluster2::*;
+pub use desolate_hill::*;
 pub use fence::*;
+pub use flower::*;
 pub use hill2::*;
 pub use hill3::*;
 pub use hill4::*;
 pub use hill_with_road::*;
-pub use maple::*;
 pub use pine_tree::*;
+pub use road::*;
 pub use rocks::*;
 pub use small_hill::*;
 pub use tree1::*;
@@ -41,7 +45,10 @@ pub fn generate_model(ctx: &GenContext, scene: &mut Scene2) -> VoxelModel {
         "cluster" => cluster(seed, ctx).into(),
         "cluster2" => cluster2(ctx, scene).into(),
         "fence" => fence(ctx, scene).into(),
-        "maple" => maple(ctx, scene).into(),
+        "flower" => flower(ctx, scene).into(),
+        "flower_cluster" => flower_cluster(ctx, scene).into(),
+        "flower_field" => flower_field(ctx, scene).into(),
+        "desolate_hill" => desolate_hill(ctx, scene).into(),
         "hill_with_road" => hill_with_road(ctx, scene).into(),
         "hill2" => hill2(ctx, scene).into(),
         "hill3" => hill3(ctx, scene).into(),
@@ -52,10 +59,16 @@ pub fn generate_model(ctx: &GenContext, scene: &mut Scene2) -> VoxelModel {
         "tree_hill" => tree_hill(seed, scene).into(),
         "tree1" => tree1(ctx, scene).into(),
         "tree2" => tree2(ctx, scene).into(),
+        "road" => {
+            road(ctx, scene);
+            VoxelModel::Empty
+        }
         "rocks" => {
             rocks(ctx, scene);
             VoxelModel::Empty
         }
-        _ => VoxelModel::Empty,
+        _ => {
+            panic!("unknown generator: {}", ctx.generator);
+        }
     }
 }

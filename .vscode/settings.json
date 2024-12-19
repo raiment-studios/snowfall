@@ -51,7 +51,7 @@
     "editor.tokenColorCustomizations": {
         "comments": "#2c9da1"
     },
-    "editor.defaultColorDecorators": true,
+    "editor.defaultColorDecorators": "auto",
     "workbench.editor.editorActionsLocation": "default",
     "window.commandCenter": true
 }

@@ -1,9 +1,10 @@
-use crate::internal::*;
+use crate::{internal::*, voxel_set};
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 struct ClusterParams {
     count: Option<[i64; 2]>,
     range: Option<i32>,
+    closest_distance: Option<f32>,
     generators: Option<Vec<(u32, String)>>,
 }
 
@@ -21,9 +22,10 @@ pub fn cluster2(ctx: &GenContext, scene: &mut Scene2) -> Group {
             (80, "pine_tree".to_string()),
         ])
         .clone();
+    let closest_distance = *params.closest_distance.get_or_insert(12.0);
 
     const MAX_ATTEMPTS: usize = 128;
-    const CLOSEST_DISTANCE: f32 = 12.0;
+
     let mut count = rng.range(count_range[0]..=count_range[1]);
 
     let mut group = Group::new();
@@ -32,7 +34,7 @@ pub fn cluster2(ctx: &GenContext, scene: &mut Scene2) -> Group {
     for _ in 0..MAX_ATTEMPTS {
         let position = IVec3::new(rng.range(-range..=range), rng.range(-range..=range), 0);
         let mut position = position + ctx.center;
-        position.z = scene.terrain.height_at(position.x, position.y).unwrap_or(1);
+        position.z = scene.terrain.height_at(position.x, position.y).unwrap_or(0);
 
         //
         // Reject the position if the nearest distance is too close to another tree
@@ -40,7 +42,7 @@ pub fn cluster2(ctx: &GenContext, scene: &mut Scene2) -> Group {
         // if the block it would be placed on is marked as occupied already.
         //
         let d = point_set.nearest_distance_2d(&position).unwrap_or(f32::MAX);
-        if d < CLOSEST_DISTANCE {
+        if d < closest_distance {
             continue;
         }
         if let Some(block) = scene.terrain.top_block_at(position.x, position.y) {
@@ -55,17 +57,30 @@ pub fn cluster2(ctx: &GenContext, scene: &mut Scene2) -> Group {
         let seed = rng.seed8();
         let mut ctx = ctx.fork(model_id.clone(), seed);
         ctx.center = position;
-        let VoxelModel::VoxelSet(voxel_set) = generate_model(&ctx, scene) else {
-            panic!("expected voxel set");
-        };
 
-        group.objects.push(Object {
-            generator_id: model_id.to_string(),
-            seed,
-            params: serde_json::Value::Null,
-            position,
-            imp: ObjectImp::VoxelSet(voxel_set),
-        });
+        match generate_model(&ctx, scene) {
+            VoxelModel::VoxelSet(voxel_set) => {
+                group.objects.push(Object {
+                    generator_id: ctx.generator.clone(),
+                    seed: seed,
+                    params: ctx.params.clone(),
+                    position: ctx.center.clone(),
+                    imp: ObjectImp::VoxelSet(voxel_set),
+                });
+            }
+            VoxelModel::Group(g) => {
+                group.objects.push(Object {
+                    generator_id: ctx.generator.clone(),
+                    seed: seed,
+                    params: ctx.params.clone(),
+                    position: ctx.center.clone(),
+                    imp: ObjectImp::Group(g),
+                });
+            }
+            _ => {
+                panic!("Unexpected model type");
+            }
+        };
 
         count -= 1;
         if count == 0 {

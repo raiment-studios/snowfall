@@ -4511,6 +4511,7 @@ dependencies = [
 name = "snowfall_voxel"
 version = "0.1.0"
 dependencies = [
+ "bevy_color",
  "bevy_math",
  "line_drawing",
  "pathfinding",

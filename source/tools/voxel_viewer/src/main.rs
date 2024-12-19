@@ -75,7 +75,7 @@ fn startup(
     ));
     commands.spawn((
         DirectionalLight {
-            illuminance: light_consts::lux::FULL_DAYLIGHT * 0.5,
+            illuminance: light_consts::lux::FULL_DAYLIGHT * 0.35,
             color: Color::srgb(1.0, 1.0, 0.9),
             shadows_enabled: true,
             ..default()
@@ -84,7 +84,7 @@ fn startup(
     ));
     commands.spawn((
         DirectionalLight {
-            illuminance: light_consts::lux::FULL_DAYLIGHT * 0.15,
+            illuminance: light_consts::lux::FULL_DAYLIGHT * 0.10,
             color: Color::srgb(0.9, 0.9, 1.0),
             shadows_enabled: false,
             ..default()
@@ -96,7 +96,7 @@ fn startup(
         Mesh3d(meshes.add(Plane3d::default().mesh().size(256.0, 256.0))),
         MeshMaterial3d(materials.add(Color::srgb(0.25, 0.25, 0.25))),
         Transform::from_rotation(Quat::from_rotation_x(FRAC_PI_2))
-            .with_translation(Vec3::new(0.0, 0.0, 1.0)),
+            .with_translation(Vec3::new(0.0, 0.0, 0.0)),
     ));
 }
 
@@ -162,7 +162,7 @@ fn startup_scene(
     );
 
     state.look_at = center_point;
-    state.view_radius = max_extent * 0.40;
+    state.view_radius = max_extent * 0.20;
 }
 
 fn spawn_model(
@@ -177,7 +177,13 @@ fn spawn_model(
         ObjectImp::Stub => {}
         ObjectImp::Actor(_) => {}
         ObjectImp::VoxelSet(model) => {
-            let bounds = model.bounds();
+            let mut bounds = model.bounds();
+            bounds.0.x += obj.position.x;
+            bounds.0.y += obj.position.y;
+            bounds.0.z += obj.position.z;
+            bounds.1.x += obj.position.x;
+            bounds.1.y += obj.position.y;
+            bounds.1.z += obj.position.z;
             scene_bounds.0.x = scene_bounds.0.x.min(bounds.0.x);
             scene_bounds.0.y = scene_bounds.0.y.min(bounds.0.y);
             scene_bounds.0.z = scene_bounds.0.z.min(bounds.0.z);
