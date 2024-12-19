@@ -75,7 +75,7 @@ fn startup(
     ));
     commands.spawn((
         DirectionalLight {
-            illuminance: light_consts::lux::FULL_DAYLIGHT * 0.35,
+            illuminance: light_consts::lux::FULL_DAYLIGHT * 0.10,
             color: Color::srgb(1.0, 1.0, 0.9),
             shadows_enabled: true,
             ..default()
@@ -84,7 +84,7 @@ fn startup(
     ));
     commands.spawn((
         DirectionalLight {
-            illuminance: light_consts::lux::FULL_DAYLIGHT * 0.10,
+            illuminance: light_consts::lux::FULL_DAYLIGHT * 0.035,
             color: Color::srgb(0.9, 0.9, 1.0),
             shadows_enabled: false,
             ..default()
@@ -162,7 +162,7 @@ fn startup_scene(
     );
 
     state.look_at = center_point;
-    state.view_radius = max_extent * 0.42;
+    state.view_radius = max_extent * 0.10;
 }
 
 fn spawn_model(
@@ -277,6 +277,8 @@ fn update_camera_rotation(
     let x = state.view_radius * angle.cos() + state.look_at.x;
     let y = state.view_radius * angle.sin() + state.look_at.y;
     let z = state.view_radius / 3.0 * angle_z.sin() + state.view_radius / 2.0 + state.look_at.z;
+
+    let z = z / 1.5;
 
     let mut transform = camera_query.single_mut();
     *transform = Transform::from_xyz(x, y, z).looking_at(state.look_at, Vec3::Z);

@@ -37,7 +37,7 @@ pub fn cluster2(ctx: &GenContext, scene: &mut Scene2) -> Group {
         let position = IVec3::new(rng.range(-range..=range), rng.range(-range..=range), 0);
         let mut position = position + ctx.center;
         if drop_to_ground {
-            position.z = scene.terrain.height_at(position.x, position.y).unwrap_or(0);
+            position.z = scene.terrain.height_at(position.x, position.y).unwrap_or(0) + 1;
         }
 
         //
