@@ -2,8 +2,10 @@ use crate::internal::*;
 
 pub fn rocks(ctx: &GenContext, scene: &mut Scene2) -> VoxelModel {
     let model = &mut scene.terrain;
-    model.register_block(Block::color("stone1", 10, 10, 11).modify(|b| b.occupied = true));
-    model.register_block(Block::color("stone2", 5, 6, 5).modify(|b| b.occupied = true));
+    let stone1 =
+        model.register_block(Block::color("stone1", 10, 10, 11).modify(|b| b.occupied = true));
+    let stone2 =
+        model.register_block(Block::color("stone2", 5, 6, 5).modify(|b| b.occupied = true));
 
     let mut rng = ctx.make_rng();
 
@@ -16,7 +18,7 @@ pub fn rocks(ctx: &GenContext, scene: &mut Scene2) -> VoxelModel {
             * if noise0.gen_2d(u, v) > 0.45 { 0.0 } else { 1.0 };
         n
     };
-    let mut gen_block = rng.select_fn(vec!["stone1", "stone2"]);
+    let mut gen_block = rng.select_fn(vec![stone1, stone2]);
 
     const R: i32 = 256;
     for y in -R..=R {
@@ -33,7 +35,7 @@ pub fn rocks(ctx: &GenContext, scene: &mut Scene2) -> VoxelModel {
             let base_z = model.height_at(x, y).unwrap_or(1);
             for z in 1..=(h.round() as i32) {
                 let block = gen_block();
-                model.set_voxel((x, y, base_z + z), block);
+                model.set((x, y, base_z + z), block);
             }
         }
     }

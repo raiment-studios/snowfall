@@ -94,7 +94,7 @@ impl VoxelGrid {
     /// Used for mesh generation. If a block is an occluder, it means its six
     /// faces are fully opaque (i.e. neither transparent, empty, nor composed
     /// of sub-voxels that leave portions).
-    pub fn is_occuluder(&self, p: IVec3) -> bool {
+    pub fn is_occuluder(&self, _p: IVec3) -> bool {
         todo!()
     }
 

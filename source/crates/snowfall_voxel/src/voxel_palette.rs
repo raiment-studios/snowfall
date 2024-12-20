@@ -13,6 +13,28 @@ impl PaletteIndex {
     }
 }
 
+pub trait PaletteIndexAlias {
+    fn as_index(&self, palette: &VoxelPalette) -> PaletteIndex;
+}
+
+impl PaletteIndexAlias for PaletteIndex {
+    fn as_index(&self, _palette: &VoxelPalette) -> PaletteIndex {
+        *self
+    }
+}
+
+impl PaletteIndexAlias for &str {
+    fn as_index(&self, palette: &VoxelPalette) -> PaletteIndex {
+        palette.index_for_id(self)
+    }
+}
+
+impl PaletteIndexAlias for String {
+    fn as_index(&self, palette: &VoxelPalette) -> PaletteIndex {
+        palette.index_for_id(self)
+    }
+}
+
 /// By definition, index 0 is **always** an empty block.
 ///
 #[derive(Serialize, Deserialize, Clone)]
@@ -29,12 +51,15 @@ impl VoxelPalette {
 
     /// Adds the block to the palette for this voxel set.  If a block with the
     /// same name already exists, it will **replace** that definition.
-    pub fn register(&mut self, block: Block) {
-        if let Some(index) = self.blocks.iter().position(|b| b.id == block.id) {
+    pub fn register(&mut self, block: Block) -> PaletteIndex {
+        let index = if let Some(index) = self.blocks.iter().position(|b| b.id == block.id) {
             self.blocks[index] = block;
+            index
         } else {
             self.blocks.push(block);
-        }
+            self.blocks.len() - 1
+        };
+        PaletteIndex(index as u16)
     }
 
     /// Adds the block to the palette if there is not already such a block.
@@ -52,7 +77,7 @@ impl VoxelPalette {
         self.blocks.get(index.0 as usize)
     }
 
-    pub fn index_for_name(&self, name: &str) -> PaletteIndex {
+    pub fn index_for_id(&self, name: &str) -> PaletteIndex {
         match self
             .blocks
             .iter()

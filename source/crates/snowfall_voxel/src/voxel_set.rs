@@ -32,8 +32,8 @@ impl VoxelSet {
     // Block palette
     // ------------------------------------------------------------------------
 
-    pub fn register_block(&mut self, block: Block) {
-        self.palette.register(block);
+    pub fn register_block(&mut self, block: Block) -> PaletteIndex {
+        self.palette.register(block)
     }
 
     pub fn ensure_block(&mut self, block: Block) -> PaletteIndex {
@@ -143,13 +143,24 @@ impl VoxelSet {
         column.remove(&vc.z);
     }
 
+    pub fn set<P, I>(&mut self, vc: P, id: I)
+    where
+        P: Into<IVec3>,
+        I: PaletteIndexAlias,
+    {
+        let vc = vc.into();
+        let index = id.as_index(&self.palette);
+        let column = self.data.entry((vc.x, vc.y)).or_insert(HashMap::new());
+        column.insert(vc.z, index);
+    }
+
     pub fn set_voxel<S, T>(&mut self, vc: S, id: T)
     where
         S: Into<IVec3>,
         T: Into<String>,
     {
         let id = id.into();
-        let index = self.palette.index_for_name(id.as_str());
+        let index = self.palette.index_for_id(id.as_str());
 
         // Get the column or create it
         let vc = vc.into();
@@ -368,5 +379,23 @@ pub fn build_mesh_arrays(voxel_set: &VoxelSet) -> VoxelMesh {
         positions,
         normals,
         colors,
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_voxel_set_new() {
+        let mut model = VoxelSet::new();
+        let index = model.register_block(Block::color("test", 255, 0, 0));
+
+        model.set((0, 0, 0), index);
+        model.set((0, 0, 1), "test");
+
+        assert_eq!(model.get_voxel((0, 0, 0)).id, "test");
+        assert_eq!(model.get_voxel((0, 0, 1)).id, "test");
+        assert_eq!(model.get_voxel((0, 0, 2)).id, "empty");
     }
 }

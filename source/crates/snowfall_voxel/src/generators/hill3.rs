@@ -15,9 +15,7 @@ pub fn hill3(ctx: &GenContext, scene: &Scene2) -> VoxelSet {
     const R: i32 = 256;
     let noise4 = rng.open_simplex().scale(2.0).build();
     let noise3 = rng.open_simplex().scale(1.5).build();
-    let noise12 = rng.open_simplex().scale(6.0).build();
 
-    let mut dirt_block = rng.select_fn(vec!["dirt", "dirt2"]);
     let mut grass_block = rng.select_fn(vec!["grass1", "grass2"]);
 
     for y in -R..=R {
@@ -42,10 +40,4 @@ pub fn hill3(ctx: &GenContext, scene: &Scene2) -> VoxelSet {
     }
 
     model
-}
-
-fn rotate_2d(u: f32, v: f32, angle: f32) -> (f32, f32) {
-    let u2 = u * angle.cos() - v * angle.sin();
-    let v2 = u * angle.sin() + v * angle.cos();
-    (u2, v2)
 }
