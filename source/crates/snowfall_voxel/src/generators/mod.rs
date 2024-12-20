@@ -1,5 +1,6 @@
 mod bare_tree;
 mod chest;
+mod chest_and_key;
 mod cloud;
 mod cluster;
 mod cluster2;
@@ -22,6 +23,7 @@ mod tree_hill;
 
 pub use bare_tree::*;
 pub use chest::*;
+pub use chest_and_key::*;
 pub use cloud::*;
 pub use cluster::*;
 pub use cluster2::*;
@@ -51,6 +53,7 @@ pub fn generate_model(ctx: &GenContext, scene: &mut Scene2) -> VoxelModel {
         "chest" => chest(ctx, scene).into(),
         "chest_cluster" => chest_cluster(ctx, scene).into(),
         "cloud_cluster" => cloud_cluster(ctx, scene).into(),
+        "chest_and_key" => chest_and_key(ctx, scene).into(),
         "flat_ground" => flat_ground(ctx, scene).into(),
         "cloud" => cloud(ctx, scene).into(),
         "cluster" => cluster(seed, ctx).into(),

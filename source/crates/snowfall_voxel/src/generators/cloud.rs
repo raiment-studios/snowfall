@@ -11,13 +11,7 @@ pub fn cloud_cluster(ctx: &GenContext, scene: &mut Scene2) -> Group {
         ctx.center = IVec3::new(rng.range(-R..=R), rng.range(-R..=R), rng.range(96..=162));
 
         let set = cloud(&ctx, scene);
-        group.objects.push(Object {
-            generator_id: ctx.generator.clone(),
-            seed: rng.seed8(),
-            params: ctx.params.clone(),
-            position: ctx.center,
-            imp: ObjectImp::VoxelSet(Box::new(set)),
-        });
+        group.push(&ctx, set);
     }
     group
 }

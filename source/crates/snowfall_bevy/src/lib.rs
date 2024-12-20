@@ -1,5 +1,6 @@
 pub mod prelude {
     pub use crate::NaiveVoxelComponent;
+    pub use crate::VoxelBillboard;
     pub use crate::VoxelMeshComponent;
 }
 
@@ -15,6 +16,7 @@ mod internal {
 use crate::internal::*;
 
 use bevy::render::{render_asset::RenderAssetUsages, render_resource::PrimitiveTopology};
+use snowfall_core::prelude::*;
 
 /// NaiveVoxelComponent is an intentionally simple Bevy component for rendering
 /// a mesh mesh.  It is **not** efficient and is intended to be as simple as
@@ -98,6 +100,17 @@ pub struct VoxelMeshComponent {
     material: Handle<StandardMaterial>,
 }
 
+#[derive(Component, Debug)]
+pub struct VoxelBillboard {
+    pub z_rotation: f32,
+}
+
+impl Default for VoxelBillboard {
+    fn default() -> Self {
+        Self { z_rotation: 0.0 }
+    }
+}
+
 impl VoxelMeshComponent {
     pub fn spawn_from_model(
         model: &VoxelSet,
@@ -105,7 +118,10 @@ impl VoxelMeshComponent {
         meshes: &mut ResMut<Assets<Mesh>>,
         materials: &mut ResMut<Assets<StandardMaterial>>,
         translation: Vec3,
+        scale: f32,
     ) {
+        let mut rng = RNG::new_random();
+
         let arrays = build_mesh_arrays(model);
 
         let mut mesh = Mesh::new(
@@ -135,8 +151,15 @@ impl VoxelMeshComponent {
                 mesh,
                 material,
             },
-            Transform::from_translation(translation),
+            Transform::from_scale(Vec3::splat(scale)).with_translation(translation),
         ));
+
+        if scale < 1.0 {
+            let zr = rng.sign() as f32 * rng.range(0.025..=0.10);
+            commands
+                .entity(parent)
+                .insert(VoxelBillboard { z_rotation: zr });
+        }
     }
 
     pub fn despawn(

@@ -52,6 +52,33 @@ impl GenContext {
             params: self.params.clone(),
         }
     }
+    pub fn with_params(&self, params: serde_json::Value) -> Self {
+        Self {
+            generator: self.generator.clone(),
+            seed: self.seed,
+            center: self.center,
+            params,
+        }
+    }
+    pub fn with_center(&self, center: IVec3) -> Self {
+        Self {
+            generator: self.generator.clone(),
+            seed: self.seed,
+            center,
+            params: self.params.clone(),
+        }
+    }
+
+    pub fn to_object(&self, model: VoxelSet) -> Object {
+        Object {
+            generator_id: self.generator.clone(),
+            seed: self.seed,
+            params: self.params.clone(),
+            position: self.center,
+            scale: 1.0,
+            imp: ObjectImp::VoxelSet(Box::new(model)),
+        }
+    }
 
     pub fn params<T>(&self) -> T
     where

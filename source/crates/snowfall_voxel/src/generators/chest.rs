@@ -33,13 +33,7 @@ pub fn chest_cluster(ctx: &GenContext, scene: &mut Scene2) -> Group {
         ctx.center = position;
         ctx.params = serde_json::Value::Null;
         let voxel_set = generators::pine_tree(&ctx, scene);
-        group.objects.push(Object {
-            generator_id: ctx.generator.clone(),
-            seed: ctx.seed,
-            position: ctx.center.clone(),
-            params: ctx.params.clone(),
-            imp: ObjectImp::VoxelSet(Box::new(voxel_set)),
-        });
+        group.push(&ctx, voxel_set);
     }
 
     group

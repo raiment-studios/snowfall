@@ -6,7 +6,6 @@ mod internal {
 }
 
 use crate::internal::*;
-
 use clap::Parser;
 
 #[derive(Parser)]
@@ -48,13 +47,14 @@ fn main() {
             Startup,
             (
                 startup, //
-                startup_scene,
+                startup_scene.after(startup),
             ),
         )
         .add_systems(
             Update,
             (
                 update_camera_rotation, //
+                update_models,
             ),
         )
         .run();
@@ -129,6 +129,7 @@ fn startup_scene(
             seed: 0,
             params: serde_json::Value::Null,
             position: IVec3::ZERO,
+            scale: 1.0,
             imp: ObjectImp::VoxelSet(Box::new(scene.terrain)),
         },
         &mut scene_bounds,
@@ -151,7 +152,7 @@ fn startup_scene(
         .sqrt();
 
     state.look_at = scene_bounds.center_f32();
-    state.view_radius = max_extent * 0.10;
+    state.view_radius = (max_extent * 0.20).max(20.0);
 }
 
 fn spawn_model(
@@ -180,6 +181,7 @@ fn spawn_model(
                     obj.position.y as f32,
                     obj.position.z as f32,
                 ),
+                obj.scale,
             );
         }
         ObjectImp::Group(group) => {
@@ -218,6 +220,7 @@ fn generate(
         seed,
         params: params.clone(),
         position: center,
+        scale: 1.0,
         imp: match model {
             VoxelModel::Empty => {
                 println!("Empty model: {} {}", generator, seed);
@@ -261,4 +264,12 @@ fn update_camera_rotation(
 
     let mut transform = camera_query.single_mut();
     *transform = Transform::from_xyz(x, y, z).looking_at(state.look_at, Vec3::Z);
+}
+
+fn update_models(
+    mut query_billboards: Query<(&mut Transform, &VoxelBillboard), With<VoxelBillboard>>,
+) {
+    for (mut transform, billboard) in query_billboards.iter_mut() {
+        transform.rotate(Quat::from_rotation_z(billboard.z_rotation));
+    }
 }

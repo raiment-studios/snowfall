@@ -64,13 +64,7 @@ pub fn cluster2(ctx: &GenContext, scene: &mut Scene2) -> Group {
 
         match generate_model(&ctx, scene) {
             VoxelModel::VoxelSet(voxel_set) => {
-                group.objects.push(Object {
-                    generator_id: ctx.generator.clone(),
-                    seed: seed,
-                    params: ctx.params.clone(),
-                    position: ctx.center.clone(),
-                    imp: ObjectImp::VoxelSet(voxel_set),
-                });
+                group.push(&ctx, *voxel_set);
             }
             VoxelModel::Group(g) => {
                 group.objects.push(Object {
@@ -78,6 +72,7 @@ pub fn cluster2(ctx: &GenContext, scene: &mut Scene2) -> Group {
                     seed: seed,
                     params: ctx.params.clone(),
                     position: ctx.center.clone(),
+                    scale: 1.0,
                     imp: ObjectImp::Group(g),
                 });
             }
