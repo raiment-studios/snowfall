@@ -108,8 +108,14 @@ if [ -f "$HOME/.config/snowfall-dev/profile.sh" ]; then
     source "$HOME/.config/snowfall-dev/profile.sh"
 fi
 
+
+
 sea system
 sea versions
+
+cprint 
+cprint "{557:Writing merged .vscode/settings.json}"
+deno --allow-all $MONOREPO_ROOT/tools/scripts/merge_vscode_settings.ts 
 
 cprint
 cprint "Environment:"

@@ -1,0 +1,59 @@
+{
+  "deno.enable": true,
+
+  "files.autoSave": "off",
+  "editor.formatOnSave": true,
+
+  "prettier.tabWidth": 4,
+  "prettier.printWidth": 100,
+  "prettier.singleQuote": true,
+
+  // Visual behaviors
+  "explorer.openEditors.visible": 8,
+  "editor.inlayHints.enabled": "offUnlessPressed",
+  "editor.minimap.enabled": false,
+  "rust-analyzer.lens.enable": false,
+
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[markdown]": {
+    "editor.quickSuggestions": {
+      "comments": "off",
+      "other": "off",
+      "strings": "off"
+    },
+    "editor.wordWrap": "wordWrapColumn",
+    "editor.wordWrapColumn": 80
+  },
+  "[mdx]": {
+    "editor.quickSuggestions": {
+      "comments": "off",
+      "other": "off",
+      "strings": "off"
+    },
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.wordWrap": "wordWrapColumn",
+    "editor.wordWrapColumn": 80
+  },
+
+  "explorer.incrementalNaming": "smart",
+  "explorer.excludeGitIgnore": false,
+  "workbench.colorTheme": "Gruvbox Dark Medium",
+  "workbench.colorCustomizations": {
+    "tab.activeBackground": "#555",
+    "editor.background": "#111",
+    "titleBar.activeBackground": "#359",
+    "titleBar.activeForeground": "#ddd",
+    "titleBar.inactiveBackground": "#359"
+  },
+  "editor.tokenColorCustomizations": {
+    "comments": "#2c9da1"
+  },
+  "editor.defaultColorDecorators": "auto",
+  "workbench.editor.editorActionsLocation": "default",
+  "window.commandCenter": true
+}

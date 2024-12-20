@@ -11,7 +11,6 @@
 
 ## P3 (nice to have)
 
--   [ ] Update `sea` to display available commands if no args provided
 -   [ ] Run **all** tests on push
 -   [ ] GitHub Workflows to check test and build status
 -   [ ] Export VoxelSet to `.vox` format
