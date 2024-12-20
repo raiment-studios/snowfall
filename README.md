@@ -1,4 +1,4 @@
-# snowfall
+# ❄️ snowfall
 
 [![license: Unlicense](https://img.shields.io/badge/license-Unlicense-blue.svg)](http://unlicense.org/) [![status: pre-alpha](https://img.shields.io/badge/status-pre--alpha-purple.svg)](http://unlicense.org/) ![Tests](https://github.com/raiment-studios/snowfall/actions/workflows/ci.yml/badge.svg) [![Bluesky](https://img.shields.io/badge/Bluesky-0285FF?logo=bluesky&logoColor=fff&style=flat)](https://bsky.app/profile/ridleywinters.bsky.social)
 
