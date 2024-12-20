@@ -1,5 +1,7 @@
 # snowfall
 
+![CI](https://github.com/raiment-studios/snowfall/actions/workflows/ci.yml/badge.svg)
+
 Snowfall is a broad project:
 
 -   It is a open source voxel engine
