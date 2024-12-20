@@ -13,6 +13,13 @@ impl PaletteIndex {
     }
 }
 
+/// PaletteIndexAlias is a trait to allow VoxelSet and other structs to accept
+/// **either** palette indices or strings as block identifiers.
+///
+/// Using an index directly is almost always going to be more efficient, but
+/// for non-performance sensitive / prototype code, being able to refer to
+/// blocks by ID is very convenient.
+///
 pub trait PaletteIndexAlias {
     fn as_index(&self, palette: &VoxelPalette) -> PaletteIndex;
 }
@@ -77,11 +84,11 @@ impl VoxelPalette {
         self.blocks.get(index.0 as usize)
     }
 
-    pub fn index_for_id(&self, name: &str) -> PaletteIndex {
+    pub fn index_for_id(&self, id: &str) -> PaletteIndex {
         match self
             .blocks
             .iter()
-            .position(|b| b.id == name)
+            .position(|b| b.id == id)
             .map(|i| PaletteIndex(i as u16))
         {
             Some(index) => index,
