@@ -11,22 +11,19 @@ use snowfall_core::prelude::*;
 ///
 #[derive(Serialize, Deserialize)]
 pub struct VoxelSet {
-    generation: u64,         // Generation number used to track changes
-    pub palette: Vec<Block>, // Palette of blocks used in the set
+    generation: u64, // Generation number used to track changes
+    pub palette: VoxelPalette,
 
     // Storing the data by z-column is *much* faster in any context where
     // "height at x,y" is a common operation.
-    data: HashMap<(i32, i32), HashMap<i32, u16>>,
+    data: HashMap<(i32, i32), HashMap<i32, PaletteIndex>>,
 }
 
 impl VoxelSet {
     pub fn new() -> Self {
-        let mut palette = Vec::new();
-        palette.push(Block::empty());
-
         VoxelSet {
             generation: 0,
-            palette,
+            palette: VoxelPalette::new(),
             data: HashMap::new(),
         }
     }
@@ -35,24 +32,12 @@ impl VoxelSet {
     // Block palette
     // ------------------------------------------------------------------------
 
-    /// Adds the block to the palette for this voxel set.  If a block with the
-    /// same name already exists, it will **replace** that definition.
     pub fn register_block(&mut self, block: Block) {
-        if let Some(index) = self.palette.iter().position(|b| b.id == block.id) {
-            self.palette[index] = block;
-        } else {
-            self.palette.push(block);
-        }
+        self.palette.register(block);
     }
 
-    /// Adds the block to the palette if there is not already such a block.
-    pub fn ensure_block(&mut self, block: Block) -> u16 {
-        if let Some(index) = self.palette.iter().position(|b| b.is_equivalent(&block)) {
-            index as u16
-        } else {
-            self.palette.push(block);
-            (self.palette.len() - 1) as u16
-        }
+    pub fn ensure_block(&mut self, block: Block) -> PaletteIndex {
+        self.palette.ensure(block)
     }
 
     // ------------------------------------------------------------------------
@@ -60,18 +45,12 @@ impl VoxelSet {
     // ------------------------------------------------------------------------
 
     /// Returns the inclusive bounds of the voxel set.
-    pub fn bounds(&self) -> (IVec3, IVec3) {
-        let mut min = IVec3::new(i32::MAX, i32::MAX, i32::MAX);
-        let mut max = IVec3::new(i32::MIN, i32::MIN, i32::MIN);
+    pub fn bounds(&self) -> IBox3 {
+        let mut bounds = IBox3::new();
         for (vc, _) in self.voxel_iter(false) {
-            min.x = min.x.min(vc.x);
-            min.y = min.y.min(vc.y);
-            min.z = min.z.min(vc.z);
-            max.x = max.x.max(vc.x);
-            max.y = max.y.max(vc.y);
-            max.z = max.z.max(vc.z);
+            bounds.add(vc);
         }
-        (min, max)
+        bounds
     }
 
     // Returns the z-coordinate of the highest non-empty voxel
@@ -84,7 +63,7 @@ impl VoxelSet {
 
         let mut height: Option<i32> = None;
         for (z, id) in column.iter() {
-            if *id == 0 {
+            if id.is_zero() {
                 continue;
             }
             match height {
@@ -107,7 +86,7 @@ impl VoxelSet {
         let mut height: Option<i32> = None;
         let mut top_block: Option<&Block> = None;
         for (z, id) in column.iter() {
-            if *id == 0 {
+            if id.is_zero() {
                 continue;
             }
             if match height {
@@ -115,7 +94,7 @@ impl VoxelSet {
                 None => true,
             } {
                 height = Some(*z);
-                top_block = Some(&self.palette[*id as usize]);
+                top_block = self.palette.get(*id);
             }
         }
         top_block
@@ -129,7 +108,10 @@ impl VoxelSet {
         let Some(col) = self.data.get(&(vc.x, vc.y)) else {
             return true;
         };
-        *col.get(&vc.z).unwrap_or(&0) == 0
+        match col.get(&vc.z) {
+            Some(id) => id.is_zero(),
+            None => true,
+        }
     }
 
     pub fn is_empty_f32(&self, x: f32, y: f32, z: f32) -> bool {
@@ -141,12 +123,15 @@ impl VoxelSet {
         S: Into<IVec3>,
     {
         let vc = vs.into();
-        let id = if let Some(column) = self.data.get(&(vc.x, vc.y)) {
-            *column.get(&vc.z).unwrap_or(&0)
+        let palette_index = if let Some(column) = self.data.get(&(vc.x, vc.y)) {
+            match column.get(&vc.z) {
+                Some(id) => *id,
+                None => PaletteIndex::zero(),
+            }
         } else {
-            0
+            PaletteIndex::zero()
         };
-        self.palette.get(id as usize).unwrap()
+        self.palette.get(palette_index).unwrap()
     }
 
     pub fn clear_voxel<S>(&mut self, vc: S)
@@ -155,7 +140,7 @@ impl VoxelSet {
     {
         let vc = vc.into();
         let column = self.data.entry((vc.x, vc.y)).or_insert(HashMap::new());
-        column.insert(vc.z, 0);
+        column.remove(&vc.z);
     }
 
     pub fn set_voxel<S, T>(&mut self, vc: S, id: T)
@@ -164,10 +149,7 @@ impl VoxelSet {
         T: Into<String>,
     {
         let id = id.into();
-        let index = match self.palette.iter().position(|b| b.id == id) {
-            Some(i) => i as u16,
-            _ => 0,
-        };
+        let index = self.palette.index_for_name(id.as_str());
 
         // Get the column or create it
         let vc = vc.into();
@@ -182,8 +164,8 @@ impl VoxelSet {
         let vc: IVec3 = vc.into();
         let (index, new_block) = {
             let column = self.data.entry((vc.x, vc.y)).or_insert(HashMap::new());
-            let index = *column.get(&vc.z).unwrap_or(&0);
-            let block = &self.palette[index as usize];
+            let index = *column.get(&vc.z).unwrap_or(&PaletteIndex::zero());
+            let block = &self.palette.get(index).unwrap();
             (index, cb(block))
         };
         let new_index = self.ensure_block(new_block);
@@ -200,7 +182,7 @@ impl VoxelSet {
         for (x, column) in self.data.iter() {
             for (z, id) in column.iter() {
                 let vc = IVec3::new(x.0, x.1, *z);
-                let block = &self.palette[*id as usize];
+                let block = self.palette.get(*id).unwrap();
                 if block.is_empty() && !include_empty {
                     continue;
                 }
@@ -263,9 +245,7 @@ pub struct VoxelMesh {
 
 pub fn build_mesh_arrays(voxel_set: &VoxelSet) -> VoxelMesh {
     let bounds = voxel_set.bounds();
-    let max_voxel_count = (bounds.1.x - bounds.0.x + 1)
-        * (bounds.1.y - bounds.0.y + 1)
-        * (bounds.1.z - bounds.0.z + 1);
+    let max_voxel_count = bounds.volume();
     let count = max_voxel_count as usize;
 
     // Over-allocate (and shrink when we're done)

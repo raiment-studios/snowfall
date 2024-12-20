@@ -1,19 +1,25 @@
 {
     "deno.enable": true,
+
     "files.autoSave": "off",
     "editor.formatOnSave": true,
-    "editor.minimap.enabled": false,
-    "explorer.openEditors.visible": 8,
+
     "prettier.tabWidth": 4,
     "prettier.printWidth": 100,
     "prettier.singleQuote": true,
 
+    // Visual behaviors
+    "explorer.openEditors.visible": 8,
+    "editor.inlayHints.enabled": "offUnlessPressed",
+    "editor.minimap.enabled": false,
+    "rust-analyzer.lens.enable": false,
+    "window.zoomLevel": 0.8,
+    "editor.fontSize": 14,
+
     "[javascript]": {
-        "editor.formatOnSave": true,
         "editor.defaultFormatter": "esbenp.prettier-vscode"
     },
     "[json]": {
-        "editor.formatOnSave": true,
         "editor.defaultFormatter": "esbenp.prettier-vscode"
     },
     "[markdown]": {
@@ -22,7 +28,6 @@
             "other": "off",
             "strings": "off"
         },
-        "editor.formatOnSave": true,
         "editor.wordWrap": "wordWrapColumn",
         "editor.wordWrapColumn": 80
     },
@@ -32,7 +37,6 @@
             "other": "off",
             "strings": "off"
         },
-        "editor.formatOnSave": true,
         "editor.defaultFormatter": "esbenp.prettier-vscode",
         "editor.wordWrap": "wordWrapColumn",
         "editor.wordWrapColumn": 80
@@ -53,5 +57,11 @@
     },
     "editor.defaultColorDecorators": "auto",
     "workbench.editor.editorActionsLocation": "default",
-    "window.commandCenter": true
+    "window.commandCenter": true,
+
+    // Tabs
+    "workbench.editor.limit.enabled": true,
+    "workbench.editor.limit.value": 8,
+    "workbench.editor.revealIfOpen": true,
+    "workbench.editor.tabActionLocation": "left"
 }

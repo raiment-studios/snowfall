@@ -118,15 +118,10 @@ fn startup_scene(
         &mut scene,
     );
 
-    println!("Root type: {}", scene.root.imp.type_str());
-
     //
     // Create the Bevy graphics from the generator models
     //
-    let mut scene_bounds = (
-        IVec3::new(i32::MAX, i32::MAX, i32::MAX),
-        IVec3::new(i32::MIN, i32::MIN, i32::MIN),
-    );
+    let mut scene_bounds = IBox3::new();
 
     spawn_model(
         &Object {
@@ -150,24 +145,18 @@ fn startup_scene(
         &mut materials,
     );
 
-    let bounds = scene_bounds;
-    let max_extent = (((bounds.1.x - bounds.0.x + 1).pow(2)
-        + (bounds.1.y - bounds.0.y + 1).pow(2)
-        + (bounds.1.z + 1).pow(2)) as f32)
+    let max_extent = ((scene_bounds.length_x().pow(2)
+        + scene_bounds.length_y().pow(2)
+        + scene_bounds.max.z.pow(2)) as f32)
         .sqrt();
-    let center_point = Vec3::new(
-        (bounds.0.x + bounds.1.x) as f32 / 2.0,
-        (bounds.0.y + bounds.1.y) as f32 / 2.0,
-        (bounds.0.z + bounds.1.z) as f32 / 2.0,
-    );
 
-    state.look_at = center_point;
+    state.look_at = scene_bounds.center_f32();
     state.view_radius = max_extent * 0.10;
 }
 
 fn spawn_model(
     obj: &Object,
-    scene_bounds: &mut (IVec3, IVec3),
+    scene_bounds: &mut IBox3,
     commands: &mut Commands,
     meshes: &mut ResMut<Assets<Mesh>>,
     materials: &mut ResMut<Assets<StandardMaterial>>,
@@ -178,18 +167,8 @@ fn spawn_model(
         ObjectImp::Actor(_) => {}
         ObjectImp::VoxelSet(model) => {
             let mut bounds = model.bounds();
-            bounds.0.x += obj.position.x;
-            bounds.0.y += obj.position.y;
-            bounds.0.z += obj.position.z;
-            bounds.1.x += obj.position.x;
-            bounds.1.y += obj.position.y;
-            bounds.1.z += obj.position.z;
-            scene_bounds.0.x = scene_bounds.0.x.min(bounds.0.x);
-            scene_bounds.0.y = scene_bounds.0.y.min(bounds.0.y);
-            scene_bounds.0.z = scene_bounds.0.z.min(bounds.0.z);
-            scene_bounds.1.x = scene_bounds.1.x.max(bounds.1.x);
-            scene_bounds.1.y = scene_bounds.1.y.max(bounds.1.y);
-            scene_bounds.1.z = scene_bounds.1.z.max(bounds.1.z);
+            bounds.translate(obj.position);
+            scene_bounds.merge(&bounds);
 
             VoxelMeshComponent::spawn_from_model(
                 model,

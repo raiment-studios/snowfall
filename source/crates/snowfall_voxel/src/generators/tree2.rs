@@ -1,6 +1,6 @@
 use crate::internal::*;
 
-pub fn tree2(ctx: &GenContext, scene: &Scene2) -> VoxelSet {
+pub fn tree2(ctx: &GenContext, _scene: &Scene2) -> VoxelSet {
     let mut rng = ctx.make_rng();
 
     let mut model = VoxelSet::new();
