@@ -1,6 +1,6 @@
 # snowfall
 
-![CI](https://github.com/raiment-studios/snowfall/actions/workflows/ci.yml/badge.svg)
+[![license: Unlicense](https://img.shields.io/badge/license-Unlicense-blue.svg)](http://unlicense.org/) [![status: pre-alpha](https://img.shields.io/badge/status-pre--alpha-purple.svg)](http://unlicense.org/) ![Tests](https://github.com/raiment-studios/snowfall/actions/workflows/ci.yml/badge.svg) [![Bluesky](https://img.shields.io/badge/Bluesky-0285FF?logo=bluesky&logoColor=fff&style=flat)](https://bsky.app/profile/ridleywinters.bsky.social)
 
 Snowfall is a broad project:
 
@@ -8,6 +8,8 @@ Snowfall is a broad project:
 -   It is a open source content repository
 -   It is a set of open source games
 -   It is a standardized set of tools to make contribution & support easier
+
+For news and more info, see the following social accounts:
 
 ## Goal of Snowfall
 
@@ -23,13 +25,15 @@ If you're looking to contribute see [TODO.md](TODO.md).
 
 ## Development
 
-Clone the repository and **source `setup.sh`** to set up the development environment with all the necessary dependencies.
+Clone the repository and **source `setup.sh`** to set up the environment:
 
 ```bash
 git clone git@github.com:raiment-studios/snowfall.git
 cd snowfall
 source setup.sh
 ```
+
+Note `setup.sh` does a non-trivial amount of setup to attempt to ensure a common development environment for all users.
 
 ## Components
 

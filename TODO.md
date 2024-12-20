@@ -4,15 +4,14 @@
 
 ## P2 (should do soon)
 
+-   [ ] Sprites
+-   [ ] First-person camera + sprite
+-   [ ] Proper scene objects with bounds to avoid intersecting objects
 -   [ ] Update fence to conform to the hill shape
--   [x] Update `model_generator` to take a geneator name and seed as arguments
--   [ ] `Painter` struct for snowfall_voxel
--   [x] Some way to quickly preview generated voxel models
+-   [ ] Add a `Painter` utility to creating procgen voxel models more easily
 
 ## P3 (nice to have)
 
--   [ ] Run **all** tests on push
--   [ ] GitHub Workflows to check test and build status
 -   [ ] Export VoxelSet to `.vox` format
 
 ## P4 (wishlist)
