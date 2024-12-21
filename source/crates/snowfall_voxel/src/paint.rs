@@ -75,7 +75,6 @@ impl GenContext {
             seed: self.seed,
             params: self.params.clone(),
             position: self.center,
-            scale: 1.0,
             imp: ObjectImp::VoxelSet(Box::new(model)),
         }
     }

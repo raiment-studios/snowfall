@@ -1,6 +1,7 @@
 pub mod prelude {
+    pub use crate::ModelBillboard;
+    pub use crate::ModelRotateZ;
     pub use crate::NaiveVoxelComponent;
-    pub use crate::VoxelBillboard;
     pub use crate::VoxelMeshComponent;
 }
 
@@ -50,14 +51,16 @@ impl NaiveVoxelComponent {
 
         // Now iterate over all the non-empty voxels and create a child entity for each
         for (IVec3 { x, y, z }, block) in model.voxel_iter(false) {
-            let material = cache.entry(block.id.to_string()).or_insert_with(|| {
-                let (r, g, b) = match block.shader {
-                    BlockShader::Empty => panic!("Should have been filtered out!"),
-                    BlockShader::RGB(ref rgb) => rgb.clone(),
-                }
-                .to_srgb();
-                materials.add(Color::srgb(r, g, b))
-            });
+            let material =
+                cache
+                    .entry(block.id.to_string())
+                    .or_insert_with(|| match block.shader {
+                        BlockShader::Empty => panic!("Should have been filtered out!"),
+                        BlockShader::RGB(ref rgb) => {
+                            let (r, g, b) = rgb.clone().to_srgb();
+                            materials.add(Color::srgb(r, g, b))
+                        }
+                    });
 
             let child = commands
                 .spawn((
@@ -101,11 +104,14 @@ pub struct VoxelMeshComponent {
 }
 
 #[derive(Component, Debug)]
-pub struct VoxelBillboard {
+pub struct ModelRotateZ {
     pub z_rotation: f32,
 }
 
-impl Default for VoxelBillboard {
+#[derive(Component, Debug)]
+pub struct ModelBillboard {}
+
+impl Default for ModelRotateZ {
     fn default() -> Self {
         Self { z_rotation: 0.0 }
     }
@@ -118,7 +124,6 @@ impl VoxelMeshComponent {
         meshes: &mut ResMut<Assets<Mesh>>,
         materials: &mut ResMut<Assets<StandardMaterial>>,
         translation: Vec3,
-        scale: f32,
     ) {
         let mut rng = RNG::new_random();
 
@@ -134,11 +139,29 @@ impl VoxelMeshComponent {
         mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, arrays.colors);
         let mesh = meshes.add(mesh);
 
-        //let material = materials.add(Color::WHITE);
+        let unlit = model.attributes.iter().any(|a| match a {
+            VoxelSetAttribute::Unlit => true,
+            _ => false,
+        });
+        let scale = model
+            .attributes
+            .iter()
+            .find_map(|a| match a {
+                VoxelSetAttribute::Scale(s) => Some(*s),
+                _ => None,
+            })
+            .unwrap_or(1.0);
+
+        let rotate_z = model.attributes.iter().find_map(|a| match a {
+            VoxelSetAttribute::RotateZ(r) => Some(*r),
+            _ => None,
+        });
+
         let material = materials.add(StandardMaterial {
             base_color: Color::WHITE,
             specular_transmission: 0.0,
             reflectance: 0.0,
+            unlit: unlit,
             ..Default::default()
         });
 
@@ -154,11 +177,16 @@ impl VoxelMeshComponent {
             Transform::from_scale(Vec3::splat(scale)).with_translation(translation),
         ));
 
-        if scale < 1.0 {
-            let zr = rng.sign() as f32 * rng.range(0.025..=0.10);
+        if let Some(zr) = rotate_z {
             commands
                 .entity(parent)
-                .insert(VoxelBillboard { z_rotation: zr });
+                .insert(ModelRotateZ { z_rotation: zr });
+        }
+        if model.attributes.iter().any(|a| match a {
+            VoxelSetAttribute::BillboardZ => true,
+            _ => false,
+        }) {
+            commands.entity(parent).insert(ModelBillboard {});
         }
     }
 

@@ -16,7 +16,7 @@ pub fn chest_and_key(ctx: &GenContext, scene: &mut Scene2) -> Group {
 
     generators::rocks(&ctx.fork("rocks", rng.seed8()), scene);
 
-    for _ in 0..48 {
+    for i in 0..8 {
         const R: i32 = 72;
         let hue = rng.range(0.0..360.0);
 
@@ -45,17 +45,47 @@ pub fn chest_and_key(ctx: &GenContext, scene: &mut Scene2) -> Group {
         }
 
         p.z = z;
-        let ctx = ctx
-            .fork("key", rng.seed8())
-            .with_center(p)
-            .with_params(serde_json::json!({
+        let ctx = ctx.fork("key", rng.seed8()).with_center(p);
+        let voxels = if i != 0 {
+            let ctx = ctx.with_params(serde_json::json!({
                 "color": rgb,
             }));
-        let voxels = key(&ctx, scene);
-        let mut obj = ctx.to_object(voxels);
-        obj.scale = 0.35;
+            key(&ctx, scene)
+        } else {
+            generators::kestrel(&ctx, scene)
+        };
+        let obj = ctx.to_object(voxels);
         model.objects.push(obj);
     }
+
+    {
+        const R: i32 = 255 - 32;
+        for _ in 0..20 {
+            let mut ctx = ctx.fork("cluster2", rng.seed8());
+            ctx.center = IVec3::new(rng.range(-R..=R), rng.range(-R..=R), 0);
+            ctx.params = serde_json::json!({
+                "count": [3, 6],
+                "range": 32,
+                "generators": [
+                    (10, "bare_tree".to_string()), //
+                ],
+            });
+            let g: VoxelModel = generate_model(&ctx, scene);
+            model.merge(g);
+        }
+    }
+
+    let mut ctx = ctx.fork("cluster2", rng.seed8());
+    ctx.params = serde_json::json!({
+        "count": [4, 5],
+        "range": 60,
+        "closest_distance": 12.0,
+        "generators": [
+            (10, "chest".to_string()), //
+        ],
+    });
+    let g = generate_model(&ctx, scene);
+    model.merge(g);
 
     model
 }
@@ -75,6 +105,7 @@ struct Params {
 }
 
 pub fn key(ctx: &GenContext, scene: &mut Scene2) -> VoxelSet {
+    let mut rng = ctx.make_rng();
     let params: Params = ctx.params();
     let base_color = params.color;
 
@@ -116,5 +147,10 @@ pub fn key(ctx: &GenContext, scene: &mut Scene2) -> VoxelSet {
         }
     }
 
+    model.attributes.push(VoxelSetAttribute::Scale(0.20));
+
+    let zr = rng.sign() as f32 * rng.range(0.025..=0.10);
+    model.attributes.push(VoxelSetAttribute::RotateZ(zr));
+    model.attributes.push(VoxelSetAttribute::Unlit);
     model
 }

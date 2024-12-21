@@ -6,6 +6,7 @@ mod internal {
 }
 
 use crate::internal::*;
+use bevy::ui::update;
 use clap::Parser;
 
 #[derive(Parser)]
@@ -54,7 +55,8 @@ fn main() {
             Update,
             (
                 update_camera_rotation, //
-                update_models,
+                update_model_rotate_z,
+                update_model_billboard,
             ),
         )
         .run();
@@ -129,7 +131,6 @@ fn startup_scene(
             seed: 0,
             params: serde_json::Value::Null,
             position: IVec3::ZERO,
-            scale: 1.0,
             imp: ObjectImp::VoxelSet(Box::new(scene.terrain)),
         },
         &mut scene_bounds,
@@ -181,7 +182,6 @@ fn spawn_model(
                     obj.position.y as f32,
                     obj.position.z as f32,
                 ),
-                obj.scale,
             );
         }
         ObjectImp::Group(group) => {
@@ -220,7 +220,6 @@ fn generate(
         seed,
         params: params.clone(),
         position: center,
-        scale: 1.0,
         imp: match model {
             VoxelModel::Empty => {
                 println!("Empty model: {} {}", generator, seed);
@@ -266,10 +265,33 @@ fn update_camera_rotation(
     *transform = Transform::from_xyz(x, y, z).looking_at(state.look_at, Vec3::Z);
 }
 
-fn update_models(
-    mut query_billboards: Query<(&mut Transform, &VoxelBillboard), With<VoxelBillboard>>,
+fn update_model_rotate_z(
+    mut query_rotate_z: Query<(&mut Transform, &ModelRotateZ), With<ModelRotateZ>>,
 ) {
-    for (mut transform, billboard) in query_billboards.iter_mut() {
-        transform.rotate(Quat::from_rotation_z(billboard.z_rotation));
+    for (mut transform, component) in query_rotate_z.iter_mut() {
+        transform.rotate(Quat::from_rotation_z(component.z_rotation));
+    }
+}
+
+fn update_model_billboard(
+    camera_query: Query<&Transform, With<Camera>>,
+    mut query_billboards: Query<
+        (&mut Transform, &ModelBillboard),
+        (With<ModelBillboard>, Without<Camera>),
+    >,
+) {
+    use std::f32::consts::PI;
+
+    let camera_transform = camera_query.single();
+
+    for (mut transform, _component) in query_billboards.iter_mut() {
+        let cam_pos = camera_transform.translation;
+        let ent_pos = transform.translation;
+        let look_at = (cam_pos - ent_pos).normalize();
+
+        // Compute the rotation around the x,y plane
+        let angle = look_at.y.atan2(look_at.x) - PI / 2.0;
+
+        transform.rotation = Quat::from_rotation_z(angle);
     }
 }

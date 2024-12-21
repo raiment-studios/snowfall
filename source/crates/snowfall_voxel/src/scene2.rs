@@ -14,7 +14,6 @@ impl Scene2 {
                 seed: 0,
                 params: serde_json::Value::Null,
                 position: IVec3::ZERO.clone(),
-                scale: 1.0,
                 imp: ObjectImp::Empty,
             },
         }
@@ -26,7 +25,6 @@ pub struct Object {
     pub seed: u64,
     pub params: serde_json::Value,
     pub position: IVec3,
-    pub scale: f32,
     pub imp: ObjectImp,
 }
 
@@ -57,7 +55,6 @@ impl Group {
             generator_id: ctx.generator.clone(),
             seed: ctx.seed,
             position: ctx.center,
-            scale: 1.0,
             params: ctx.params.clone(),
             imp: model.into_object_imp(ctx),
         });

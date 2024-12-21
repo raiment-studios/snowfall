@@ -72,7 +72,6 @@ pub fn cluster2(ctx: &GenContext, scene: &mut Scene2) -> Group {
                     seed: seed,
                     params: ctx.params.clone(),
                     position: ctx.center.clone(),
-                    scale: 1.0,
                     imp: ObjectImp::Group(g),
                 });
             }

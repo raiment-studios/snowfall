@@ -62,6 +62,30 @@ impl RNG {
         self.gen()
     }
 
+    pub fn d4(&mut self) -> u32 {
+        self.range(1..=4)
+    }
+
+    pub fn d6(&mut self) -> u32 {
+        self.range(1..=6)
+    }
+
+    pub fn d8(&mut self) -> u32 {
+        self.range(1..=8)
+    }
+
+    pub fn d10(&mut self) -> u32 {
+        self.range(1..=10)
+    }
+
+    pub fn d20(&mut self) -> u32 {
+        self.range(1..=20)
+    }
+
+    pub fn d100(&mut self) -> u32 {
+        self.range(1..=100)
+    }
+
     pub fn radians(&mut self) -> f32 {
         self.range(0.0..std::f32::consts::PI * 2.0)
     }

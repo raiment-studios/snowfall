@@ -2,6 +2,14 @@ use crate::internal::*;
 use bevy_math::{Vec2, Vec3};
 use snowfall_core::prelude::*;
 
+#[derive(Serialize, Deserialize)]
+pub enum VoxelSetAttribute {
+    Unlit,
+    RotateZ(f32),
+    Scale(f32),
+    BillboardZ,
+}
+
 /// VoxelSet is simplified voxel representation designed for smaller models
 /// that are bounded and can have all chunks loaded into memory at once.
 ///
@@ -13,6 +21,7 @@ use snowfall_core::prelude::*;
 pub struct VoxelSet {
     generation: u64, // Generation number used to track changes
     pub palette: VoxelPalette,
+    pub attributes: Vec<VoxelSetAttribute>,
 
     // Storing the data by z-column is *much* faster in any context where
     // "height at x,y" is a common operation.
@@ -24,6 +33,7 @@ impl VoxelSet {
         VoxelSet {
             generation: 0,
             palette: VoxelPalette::new(),
+            attributes: Vec::new(),
             data: HashMap::new(),
         }
     }
@@ -296,7 +306,7 @@ pub fn build_mesh_arrays(voxel_set: &VoxelSet) -> VoxelMesh {
                 rgb.b as f32 / 255.0,
                 1.0,
             ],
-            _ => [1.0, 1.0, 1.0, 1.0],
+            BlockShader::Empty => [1.0, 1.0, 1.0, 1.0],
         };
 
         //
