@@ -3366,20 +3366,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "model_generator"
-version = "0.1.0"
-dependencies = [
- "bevy_math",
- "clap",
- "line_drawing",
- "serde",
- "serde_json",
- "serde_yaml",
- "snowfall_core",
- "snowfall_voxel",
-]
-
-[[package]]
 name = "naga"
 version = "23.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
