@@ -11,6 +11,8 @@ function Flex({
     h,
     minHeight,
     m,
+    style,
+    className,
     children,
 }: {
     row?: boolean;
@@ -22,46 +24,55 @@ function Flex({
     h?: React.CSSProperties['height'];
     minHeight?: React.CSSProperties['minHeight'];
     m?: React.CSSProperties['margin'];
+    style?: React.CSSProperties;
+    className?: string;
     children?: React.ReactNode;
 }): JSX.Element {
-    const style: React.CSSProperties = {
+    const computed: React.CSSProperties = {
         display: 'flex',
         flexDirection: 'row',
         alignItems: 'center',
         gap: '2px',
     };
     if (row) {
-        style.flexDirection = 'row';
-        style.alignItems = 'center';
-        style.flexGrow = 1;
+        computed.flexDirection = 'row';
+        computed.alignItems = 'center';
+        computed.flexGrow = 1;
     }
     if (col) {
-        style.flexDirection = 'column';
-        style.alignItems = 'stretch';
+        computed.flexDirection = 'column';
+        computed.alignItems = 'stretch';
     }
     if (flex !== undefined) {
-        style.flex = flex;
+        computed.flex = flex;
     }
     if (g !== undefined) {
-        style.flexGrow = g;
+        computed.flexGrow = g;
     }
     if (align !== undefined) {
-        style.alignItems = align;
+        computed.alignItems = align;
     }
     if (gap !== undefined) {
-        style.gap = gap;
+        computed.gap = gap;
     }
     if (h !== undefined) {
-        style.height = h;
+        computed.height = h;
     }
     if (minHeight !== undefined) {
-        style.minHeight = minHeight;
+        computed.minHeight = minHeight;
     }
     if (m !== undefined) {
-        style.margin = m;
+        computed.margin = m;
+    }
+    if (style !== undefined) {
+        Object.assign(computed, style);
     }
 
-    return <div style={style}>{children}</div>;
+    return (
+        <div className={className} style={computed}>
+            {children}
+        </div>
+    );
 }
 
 class RNG {
@@ -127,6 +138,15 @@ class RNG {
             }
         }
         return arr[arr.length - 1][1];
+    }
+
+    shuffle<T>(arr: T[]): T[] {
+        const copy = arr.slice();
+        for (let i = copy.length - 1; i > 0; i--) {
+            const j = this.rangei(0, i + 1);
+            [copy[i], copy[j]] = [copy[j], copy[i]];
+        }
+        return copy;
     }
 }
 
@@ -454,6 +474,7 @@ export function App(): JSX.Element {
 
             <DiceTable seed={seed} />
             <Table seed={seed} />
+            <CharacterTable seed={seed} />
         </Flex>
     );
 }
@@ -502,6 +523,85 @@ function DiceTable({ seed }: { seed: number }): JSX.Element {
     );
 }
 
+function CharacterTable({ seed }: { seed: number }): JSX.Element {
+    const rng = new RNG(seed);
+
+    const values: string[] = rng.shuffle(['independence', 'knowledge', 'security']);
+
+    const table: { [k: string]: [string, string] } = {
+        name: ['Kestrel', 'Name'],
+        primary_value: [values[0], 'Primary value'],
+        secondary_value: [values[1], 'Secondary value'],
+        trigger_value: [rng.selectWeighted(table_values), 'Trigger value'],
+    };
+
+    const Row = ({ k }: { k: string }) => (
+        <Flex row>
+            <Flex flex="0 0 10em">{table[k][1]}</Flex>
+            <Flex>{table[k][0]}</Flex>
+        </Flex>
+    );
+
+    const Example = ({ children }: { children: React.ReactNode }): JSX.Element => (
+        <span style={{ color: '#687' }}>🎲 {children}</span>
+    );
+
+    return (
+        <Flex col>
+            <h3>Character</h3>
+            <Flex row gap={32} align="start">
+                <Flex col flex="0 0 40em">
+                    {Object.entries(table).map(([k]) => (
+                        <Row key={k} k={k} />
+                    ))}
+                </Flex>
+                <Flex col g={0}>
+                    <div style={{ maxWidth: '50em' }}>
+                        <p style={{ marginTop: 0 }}>
+                            <strong>Primary value</strong> is something the lens through which the
+                            character views every single decision they make. Which action will best
+                            support this value they hold?
+                            <Example>
+                                A character's friend has been dishonored and mocked by the captain
+                                of the caravan the party needs to travel with. The character's
+                                primary value is "loyalty." From the lens of this value, the need to
+                                forgo taking caravan to stay by their friend.
+                            </Example>
+                        </p>
+                        <p>
+                            <strong>Secondary value</strong> is the fallback for cases where either
+                            (a) it is unclear how an action or trade-off would affect the primary
+                            value, or (b) the secondary value clearly applies an obvious choice.{' '}
+                            <Example>
+                                A character sees ten gold on the table left on the table by a
+                                careless merchant who has already left the inn. Their cousin is in
+                                prison and they need ten gold more to bail the cousin out before
+                                harm comes to her. The character's primary value is "glory" and
+                                their second value is "family". The value of "family" is a clear fit
+                                to the situation so the characters takes the coins.
+                            </Example>
+                        </p>
+                        <p>
+                            The <strong>Trigger value</strong> comes into play when the character
+                            sees that value being threatened or violated when it is a postive value
+                            or enacted and encouraged when it is a negative value. In such cases,
+                            the character <em>must</em> act to stop the offense and does so with{' '}
+                            <em>irrational haste and fervor</em>, usually in ways that defy common
+                            sense and in a way that damages the character and/or the party's greater
+                            goals.{' '}
+                            <Example>
+                                A character with a trigger value of "strength" sees a man picking on
+                                a child; they rush up to stop the man though it will undoubtedly get
+                                them beaten up, arrested, and derail the party's plans.
+                            </Example>
+                        </p>
+                    </div>
+                </Flex>
+            </Flex>
+        </Flex>
+    );
+}
+
 function Table({ seed }: { seed: number }): JSX.Element {
     const rng = new RNG(seed);
 
@@ -540,8 +640,8 @@ function Table({ seed }: { seed: number }): JSX.Element {
                         </Flex>
                     ))}
                 </Flex>
-                <Flex col g={0}>
-                    <div style={{ maxWidth: '50em' }}>
+                <Flex col g={0} style={{ maxWidth: '50em' }}>
+                    <div>
                         It is <V k="time_of_day" /> and the weather is <V k="weather" />. The party
                         is at a <V k="location" />. There is <V k="threat" /> threating{' '}
                         <V k="target" />. The party sees <V k="event" />. The party knows they must
@@ -550,6 +650,29 @@ function Table({ seed }: { seed: number }): JSX.Element {
                         However, there's the problem that <V k="obstacle" />. Will it work:{' '}
                         <V k="yes_no" />.
                     </div>
+                    <p>...</p>
+                    <p>
+                        <strong>A Scene</strong> is composed, a minimum of:
+                        {[
+                            '- a time, a place, and the current conditions',
+                            '- A broader overarching threat targeting the region, party, character, etc.',
+                            '- Some event that forces the party to act',
+                            '- A value that tells them how they must act',
+                            '- A feeling that shapes how they feel',
+                            '- The action they are taking in response to the event',
+                            '- An obstable that makes that action more difficult',
+                            '- An outcome as to whether the action succeeds',
+                        ].map((l) => (
+                            <div key={l}>{l}</div>
+                        ))}
+                    </p>
+
+                    <p>
+                        <strong>A Sequence</strong> is a Scene where, if the outcome fails, the
+                        failure is a new event demanding a new action motivated by potentially
+                        updated values and feelings. The obstacle should change to reflect new
+                        event.
+                    </p>
                 </Flex>
             </Flex>
         </Flex>
