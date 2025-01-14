@@ -481,19 +481,22 @@ function DiceTable({ seed }: { seed: number }): JSX.Element {
     );
 
     return (
-        <Flex row m="0 0 32px 0" align="start">
-            <Flex col flex="0 0 14em">
-                <Row k="d4" />
-                <Row k="d6" />
-                <Row k="d8" />
-                <Row k="d10" />
-                <Row k="d12" />
-            </Flex>
-            <Flex col flex="0 0 14em">
-                <Row k="d20" />
-                <Row k="d100" />
-                <Row k="coin" />
-                <Row k="yes/no" />
+        <Flex col>
+            <h3>General</h3>
+            <Flex row m="0 0 32px 0" align="start">
+                <Flex col flex="0 0 14em">
+                    <Row k="d4" />
+                    <Row k="d6" />
+                    <Row k="d8" />
+                    <Row k="d10" />
+                    <Row k="d12" />
+                </Flex>
+                <Flex col flex="0 0 14em">
+                    <Row k="d20" />
+                    <Row k="d100" />
+                    <Row k="coin" />
+                    <Row k="yes/no" />
+                </Flex>
             </Flex>
         </Flex>
     );
