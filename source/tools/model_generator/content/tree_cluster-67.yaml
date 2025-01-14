@@ -1,0 +1,35 @@
+identifier: SNOWFALL_VOXEL_SCENE
+version: 0.0.1
+scene:
+  layers:
+  - objects:
+    - model_id: tree1
+      seed: 6112
+      position:
+      - -2
+      - 7
+      - 0
+    - model_id: pine_tree
+      seed: 6929
+      position:
+      - -11
+      - 13
+      - 0
+    - model_id: pine_tree
+      seed: 2423
+      position:
+      - -15
+      - 16
+      - 0
+    - model_id: tree2
+      seed: 7313
+      position:
+      - -3
+      - -3
+      - 0
+    - model_id: tree2
+      seed: 4215
+      position:
+      - -12
+      - 11
+      - 0

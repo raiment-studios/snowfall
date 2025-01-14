@@ -1,10 +1,13 @@
-import React, { JSX, use } from 'react';
+import React, { JSX } from 'react';
 import { randomSeeded, Prng } from '@std/random';
 
 function Flex({
     row,
     col,
     flex,
+    g,
+    gap,
+    align,
     h,
     minHeight,
     m,
@@ -13,6 +16,9 @@ function Flex({
     row?: boolean;
     col?: boolean;
     flex?: React.CSSProperties['flex'];
+    g?: React.CSSProperties['flexGrow'];
+    gap?: React.CSSProperties['gap'];
+    align?: React.CSSProperties['alignItems'];
     h?: React.CSSProperties['height'];
     minHeight?: React.CSSProperties['minHeight'];
     m?: React.CSSProperties['margin'];
@@ -32,10 +38,18 @@ function Flex({
     if (col) {
         style.flexDirection = 'column';
         style.alignItems = 'stretch';
-        style.width = '100%';
     }
     if (flex !== undefined) {
         style.flex = flex;
+    }
+    if (g !== undefined) {
+        style.flexGrow = g;
+    }
+    if (align !== undefined) {
+        style.alignItems = align;
+    }
+    if (gap !== undefined) {
+        style.gap = gap;
     }
     if (h !== undefined) {
         style.height = h;
@@ -80,6 +94,9 @@ class RNG {
         return this.bool() ? 'heads' : 'tails';
     }
 
+    d4(): number {
+        return 1 + this.rangei(0, 4);
+    }
     d6(): number {
         return 1 + this.rangei(0, 6);
     }
@@ -136,9 +153,20 @@ const table_weather: [number, string][] = [
     [1000, 'clear'], //
     [1000, 'sunny'], //
     [1000, 'clear'], //
+    [250, 'humid'],
+    [500, 'light breeze'],
+    [500, 'windy'],
+    [500, 'light fog'],
     [1000, 'foggy'], //
     [1000, 'cloudy'], //
     [1000, 'partly cloudy'], //
+    [500, 'raining'],
+    [250, 'drizzling rain'],
+    [500, 'snowing'],
+    [500, 'heavy snow'],
+    [250, 'hailing'],
+    [500, 'thunderstorm'],
+    [250, 'blizzard'],
 ];
 
 const table_location: [number, string][] = [
@@ -164,6 +192,10 @@ const table_location: [number, string][] = [
     [1000, 'cave'], //
     [2500, 'ruins'], //
     [250, 'city'], //
+    [500, 'bay'],
+    [500, 'lake'],
+    [1000, 'river'],
+    [500, 'crossroads'],
     [1000, 'town'], //
     [1000, 'village'], //
     [1000, 'road'], //
@@ -248,7 +280,7 @@ const table_motivation: [number, string][] = [
     [500, 'to learn more'],
 ];
 
-const table_barriers: [number, string][] = [
+const table_obstacles: [number, string][] = [
     [1000, "it's broken"],
     [1000, "it's locked"],
     [1000, "it's only part of what is needed"],
@@ -315,6 +347,7 @@ const table_feeling: [number, string][] = [
     [1000, 'anxiety'],
     [1000, 'coersion'],
     [1000, 'comfort'],
+    [1000, 'confusion'],
     [1000, 'disappointment'],
     [1000, 'exhaustion'],
     [1000, 'fear'],
@@ -403,18 +436,65 @@ export function App(): JSX.Element {
 
     return (
         <Flex col m="12px 64px">
-            <h1>Tables</h1>
-
-            <Flex row>
-                <button
-                    onClick={() => {
-                        setSeed(RNG.make_seed8k());
-                    }}
-                >
-                    re-roll
-                </button>
+            <Flex row align="end" m="0 0 12px">
+                <h1 style={{ margin: '0 12px 0 0' }}>Tables {seed}</h1>
+                <Flex row m="0 0 4px">
+                    <a
+                        href="#"
+                        onClick={(evt) => {
+                            evt.preventDefault();
+                            evt.stopPropagation();
+                            setSeed(RNG.make_seed8k());
+                        }}
+                    >
+                        re-roll
+                    </a>
+                </Flex>
             </Flex>
+
+            <DiceTable seed={seed} />
             <Table seed={seed} />
+        </Flex>
+    );
+}
+
+function DiceTable({ seed }: { seed: number }): JSX.Element {
+    const rng = new RNG(seed);
+
+    const table: { [k: string]: number | string } = {
+        d4: rng.d4(), //
+        d6: rng.d6(), //
+        d8: rng.d8(), //
+        d10: rng.d10(), //
+        d12: rng.d12(), //
+        d20: rng.d20(), //
+        d100: rng.d100(), //
+        coin: rng.coin(), //
+        'yes/no': rng.selectWeighted(table_yes_no), //
+    };
+
+    const Row = ({ k }: { k: string }) => (
+        <Flex row>
+            <Flex flex="0 0 5em">{k}</Flex>
+            <Flex>{table[k]}</Flex>
+        </Flex>
+    );
+
+    return (
+        <Flex row m="0 0 32px 0" align="start">
+            <Flex col flex="0 0 14em">
+                <Row k="d4" />
+                <Row k="d6" />
+                <Row k="d8" />
+                <Row k="d10" />
+                <Row k="d12" />
+            </Flex>
+            <Flex col flex="0 0 14em">
+                <Row k="d20" />
+                <Row k="d100" />
+                <Row k="coin" />
+                <Row k="yes/no" />
+            </Flex>
         </Flex>
     );
 }
@@ -423,28 +503,18 @@ function Table({ seed }: { seed: number }): JSX.Element {
     const rng = new RNG(seed);
 
     const table: [string, number | string][] = [
-        ['seed', seed], //
-        ['', ''], //
-        ['d6', rng.d6()], //
-        ['d8', rng.d8()], //
-        ['d10', rng.d10()], //
-        ['d12', rng.d12()], //
-        ['d20', rng.d20()], //
-        ['d100', rng.d100()], //
-        ['coin', rng.coin()], //
-        ['yes/no', rng.selectWeighted(table_yes_no)], //
-        ['', ''], //
         ['time of day', rng.selectWeighted(table_time_of_day)],
         ['weather', rng.selectWeighted(table_weather)],
         ['location', rng.selectWeighted(table_location)],
         ['threat', rng.selectWeighted(table_threats)],
         ['target', rng.selectWeighted(table_target)],
         ['event', rng.selectWeighted(table_events)],
-        ['motivation', rng.selectWeighted(table_motivation)],
-        ['value', rng.selectWeighted(table_values)],
-        ['feeling', rng.selectWeighted(table_feeling)],
         ['action', rng.selectWeighted(table_actions)],
-        ['barrier', rng.selectWeighted(table_barriers)],
+        ['motivation', rng.selectWeighted(table_motivation)],
+        ['rationale', rng.selectWeighted(table_values)],
+        ['feeling', rng.selectWeighted(table_feeling)],
+        ['obstacle', rng.selectWeighted(table_obstacles)],
+        ['yes/no', rng.selectWeighted(table_yes_no)], //
     ];
 
     const v: { [k: string]: string } = {};
@@ -457,24 +527,27 @@ function Table({ seed }: { seed: number }): JSX.Element {
 
     return (
         <Flex col>
-            <Flex col>
-                {table.map(([name, value], index) => (
-                    <Flex key={name || index} minHeight="1em">
-                        <Flex flex="0 0 10em">{name}</Flex>
-                        <Flex>{value}</Flex>
-                    </Flex>
-                ))}
-            </Flex>
-            <Flex col m="32px 0">
-                <h3>Scene template</h3>
-                <p style={{ maxWidth: '50em' }}>
-                    It is <V k="time_of_day" /> and the weather is <V k="weather" />. The party is
-                    at a <V k="location" />. There is <V k="threat" /> threating <V k="target" />.
-                    The party sees <V k="event" />. The party knows they must act{' '}
-                    <V k="motivation" /> so, driven by a sense of <V k="value" /> and shaped by a
-                    feeling of <V k="feeling" />, they decide to <V k="action" />. However, there's
-                    the problem that <V k="barrier" />. Will it work: <V k="yes_no" />.
-                </p>
+            <h3>Scene template</h3>
+            <Flex row gap={32} align="start">
+                <Flex col flex="0 0 40em">
+                    {table.map(([name, value], index) => (
+                        <Flex key={name || index} minHeight="1em">
+                            <Flex flex="0 0 10em">{name}</Flex>
+                            <Flex>{value}</Flex>
+                        </Flex>
+                    ))}
+                </Flex>
+                <Flex col g={0}>
+                    <div style={{ maxWidth: '50em' }}>
+                        It is <V k="time_of_day" /> and the weather is <V k="weather" />. The party
+                        is at a <V k="location" />. There is <V k="threat" /> threating{' '}
+                        <V k="target" />. The party sees <V k="event" />. The party knows they must
+                        act <V k="motivation" /> so, driven by a sense of <V k="rationale" /> and
+                        shaped by a feeling of <V k="feeling" />, they decide to <V k="action" />.
+                        However, there's the problem that <V k="obstacle" />. Will it work:{' '}
+                        <V k="yes_no" />.
+                    </div>
+                </Flex>
             </Flex>
         </Flex>
     );

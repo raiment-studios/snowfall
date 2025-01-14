@@ -1,0 +1,126 @@
+identifier: SNOWFALL_VOXEL_SCENE
+version: 0.0.1
+scene:
+  layers:
+  - objects:
+    - model_id: small_hill
+      seed: 7503
+      position:
+      - 0
+      - 0
+      - 0
+  - objects:
+    - model_id: pine_tree
+      seed: 1996
+      position:
+      - 35
+      - -45
+      - 5
+    - model_id: pine_tree
+      seed: 7993
+      position:
+      - -11
+      - 27
+      - 18
+    - model_id: pine_tree
+      seed: 2027
+      position:
+      - -35
+      - -48
+      - 5
+    - model_id: pine_tree
+      seed: 6341
+      position:
+      - 2
+      - 43
+      - 11
+    - model_id: pine_tree
+      seed: 4876
+      position:
+      - 33
+      - 2
+      - 19
+    - model_id: pine_tree
+      seed: 408
+      position:
+      - -4
+      - -48
+      - 8
+    - model_id: pine_tree
+      seed: 1958
+      position:
+      - -40
+      - -9
+      - 16
+    - model_id: pine_tree
+      seed: 8151
+      position:
+      - -47
+      - 37
+      - 6
+    - model_id: pine_tree
+      seed: 602
+      position:
+      - -30
+      - 25
+      - 16
+    - model_id: pine_tree
+      seed: 2140
+      position:
+      - -46
+      - -32
+      - 8
+    - model_id: tree2
+      seed: 1851
+      position:
+      - 45
+      - 27
+      - 11
+    - model_id: pine_tree
+      seed: 3891
+      position:
+      - -21
+      - 46
+      - 7
+    - model_id: pine_tree
+      seed: 7476
+      position:
+      - -15
+      - -24
+      - 19
+    - model_id: tree1
+      seed: 5886
+      position:
+      - 5
+      - 6
+      - 23
+    - model_id: pine_tree
+      seed: 4990
+      position:
+      - 17
+      - -37
+      - 13
+    - model_id: pine_tree
+      seed: 4240
+      position:
+      - 16
+      - 35
+      - 14
+    - model_id: pine_tree
+      seed: 5961
+      position:
+      - 30
+      - 33
+      - 13
+    - model_id: pine_tree
+      seed: 6395
+      position:
+      - -21
+      - 6
+      - 22
+    - model_id: pine_tree
+      seed: 1681
+      position:
+      - -48
+      - 20
+      - 12

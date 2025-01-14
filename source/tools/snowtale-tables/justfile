@@ -10,6 +10,7 @@ default:
 ###############################################################################
 
 ensure:
+    cp -Rf $MONOREPO_ROOT/.vscode/ .vscode/
     @which mprocs > /dev/null || cargo binstall --root $(MONOREPO_ROOT)/bin/cargo mprocs -y
     npm install
 
