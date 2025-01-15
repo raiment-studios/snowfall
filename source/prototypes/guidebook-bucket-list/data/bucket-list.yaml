@@ -1,0 +1,53 @@
+items:
+  - id: zFL5TX0X6S_NLcQT
+    name: Run a half-marathon every month for a year
+    category: fitness
+    status: done
+    value: 7
+    year: 2022
+    month: 0
+    rating: 0
+    description: ''
+    review: |
+      One of the best bucket list items I've ever pursued.
+      Got me in back into the shape I'd been in 5+ years before.
+  - id: ywU2ud6V9ZJXhrvi
+    name: Run a marathon every month for a year
+    category: fitness
+    status: wip
+    value: 7
+    year: 2024
+    month: 0
+    rating: 0
+    description: ''
+    review: ''
+  - id: fr2qysexnmC1njWy
+    name: Play Sea to Starts
+    category: games
+    status: wip
+    value: 3
+    year: 0
+    month: 0
+    rating: 0
+    description: ''
+    review: ''
+  - id: Pm6vK1Sd2kq-Uvg_
+    name: 'Guidebook: Bucket List - complete a prototype'
+    category: raiment
+    status: wip
+    value: 6
+    year: 0
+    month: 0
+    rating: 0
+    description: ''
+    review: ''
+  - id: kjVCkiTDLOtHHIPt
+    name: Visit Paris
+    category: travel
+    status: todo
+    value: 0
+    year: 0
+    month: 0
+    rating: 0
+    description: ''
+    review: ''
