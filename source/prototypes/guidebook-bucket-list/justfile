@@ -2,23 +2,27 @@
 # Preamble
 ###############################################################################
 
+[private]
 default:
-  @just --list
+  @just --list --unsorted
 
 ###############################################################################
 # Core commands
 ###############################################################################
 
+# idempotent installation of dependencies & configuration
 ensure:
     cp -Rf $MONOREPO_ROOT/.vscode/ .vscode/
     @which mprocs > /dev/null || cargo binstall --root $(MONOREPO_ROOT)/bin/cargo mprocs -y
     npm install
 
+# build the project
 build: ensure
     just _build-bundle ./src/main.tsx ./dist/main.bundle.js
     cp -f ./src/index.html ./dist/index.html
     echo $(date) > ./dist/build.timestamp
 
+# run the project with hot-reloading on changes
 dev: build
     mprocs \
         --names "client,server" \
