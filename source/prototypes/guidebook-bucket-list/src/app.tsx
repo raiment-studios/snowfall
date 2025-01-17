@@ -118,6 +118,9 @@ class BucketItem {
     get id(): string {
         return this.data.id;
     }
+    get generation(): number {
+        return this.data.generation;
+    }
     get name(): string {
         return this.data.name;
     }
@@ -296,6 +299,29 @@ function useUpdateOnModified(obj: any) {
 }
 
 function BucketListView({ database }: { database: Database }): JSX.Element {
+    type SortItem = {
+        field: keyof BucketItemData;
+        reverse: boolean;
+    };
+    const [sortOrder, setSortOrder] = React.useState<SortItem[]>([
+        { field: 'status', reverse: false },
+        { field: 'year', reverse: false },
+        { field: 'value', reverse: false },
+        { field: 'name', reverse: false },
+    ]);
+
+    function pushOrder(s: keyof BucketItemData) {
+        setSortOrder((order) => {
+            if (order[0]?.field == s) {
+                order[0].reverse = !order[0].reverse;
+            } else {
+                order = [{ field: s, reverse: false }, ...order.filter((o) => o.field != s)];
+            }
+            console.log(order);
+            return [...order];
+        });
+    }
+
     // Wrapping the sorting in an effect without dependencies ensures
     // the items are sorted only once when the component is mounted.
     // This is good for UX as we don't want the item to "jump" to a new
@@ -304,35 +330,55 @@ function BucketListView({ database }: { database: Database }): JSX.Element {
     React.useEffect(() => {
         const items = [...database.items];
         items.sort((a: BucketItem, b: BucketItem): number => {
-            if (a.status !== b.status) {
-                const table: { [k in BucketItemData['status']]: number } = {
-                    wip: 0,
-                    todo: 1,
-                    done: 2,
-                };
-                return table[a.status] - table[b.status];
-            }
-
-            if (a.status !== 'wip') {
-                if (a.category !== b.category) {
-                    return a.category.localeCompare(b.category);
+            // "Hack" to put new items on the bottom of the list
+            if (a.generation !== b.generation) {
+                if (a.generation === 1) {
+                    return 1;
+                } else if (b.generation === 1) {
+                    return -1;
                 }
             }
 
-            if (a.value !== b.value) {
-                return b.value - a.value;
+            for (const { field, reverse } of sortOrder) {
+                const r = reverse ? -1 : 1;
+                switch (field) {
+                    case 'status':
+                        if (a.status !== b.status) {
+                            const table: { [k in BucketItemData['status']]: number } = {
+                                wip: 0,
+                                todo: 1,
+                                done: 2,
+                            };
+                            return r * (table[a.status] - table[b.status]);
+                        }
+                        break;
+                    case 'category':
+                        if (a.category !== b.category) {
+                            return r * a.category.localeCompare(b.category);
+                        }
+                        break;
+                    case 'value':
+                        if (a.value !== b.value) {
+                            return r * (b.value - a.value);
+                        }
+                        break;
+                    case 'year':
+                        if (a.year !== b.year) {
+                            return r * (b.year - a.year);
+                        }
+                        break;
+                    case 'name':
+                        if (a.name !== b.name) {
+                            return r * a.name.localeCompare(b.name);
+                        }
+                        break;
+                }
             }
-            if (a.year !== b.year) {
-                return b.year - a.year;
-            }
-            if (a.category !== b.category) {
-                return a.category.localeCompare(b.category);
-            }
-            return a.name.localeCompare(b.name);
+            return 0;
         });
 
         setItems(items);
-    }, [database.generation]);
+    }, [database.generation, sortOrder]);
 
     useUpdateOnModified(database);
 
@@ -391,9 +437,9 @@ function BucketListView({ database }: { database: Database }): JSX.Element {
                     backgroundColor: 'rgba(0,0,0,0.1)',
                 }}
             >
-                <div>Name</div>
-                <div>Category</div>
-                <div>Status</div>
+                <div onClick={() => pushOrder('name')}>Name</div>
+                <div onClick={() => pushOrder('category')}>Category</div>
+                <div onClick={() => pushOrder('status')}>Status</div>
                 <div>Value</div>
                 <div>Description</div>
                 <div>Year</div>

@@ -5,3 +5,5 @@ default:
 	@echo "Use 'just <recipe>' to run commands"
 	@echo
 	@just
+
+*: default

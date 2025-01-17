@@ -1,4 +1,4 @@
-generation: 4
+generation: 16
 items:
   - id: zFL5TX0X6S_NLcQT
     generation: 3
@@ -14,7 +14,7 @@ items:
       One of the best bucket list items I've ever pursued.
       Got me in back into the shape I'd been in 5+ years before.
   - id: ywU2ud6V9ZJXhrvi
-    generation: 1
+    generation: 3
     name: Run a marathon every month for a year
     category: fitness
     status: wip
@@ -36,7 +36,7 @@ items:
     description: ''
     review: ''
   - id: Pm6vK1Sd2kq-Uvg_
-    generation: 1
+    generation: 3
     name: 'Guidebook: Bucket List - complete a prototype'
     category: raiment
     status: wip
@@ -58,22 +58,22 @@ items:
     description: ''
     review: ''
   - id: LwMRlABM4n-ZMHa3
-    generation: 1
-    name: New item
-    category: ''
+    generation: 20
+    name: Ski Whistler
+    category: travel
     status: todo
-    value: 0
+    value: 4
     year: 0
     month: 0
     rating: 0
     description: ''
     review: ''
   - id: vtRlVmeHPWEDxS77
-    generation: 1
-    name: New item
-    category: ''
-    status: todo
-    value: 0
+    generation: 39
+    name: Roadtrip across the US
+    category: travel
+    status: done
+    value: 7
     year: 0
     month: 0
     rating: 0
@@ -113,22 +113,22 @@ items:
     description: ''
     review: ''
   - id: ZhEnj7wtLRrWB_fK
-    generation: 1
-    name: New bucket list item
-    category: ''
+    generation: 30
+    name: Write my autobiography
+    category: writing
     status: todo
-    value: 0
+    value: 2
     year: 0
     month: 0
     rating: 0
     description: ''
     review: ''
   - id: ulzpSXrii-PwmGAJ
-    generation: 1
-    name: New bucket list item
-    category: ''
+    generation: 43
+    name: Write a complete draft of a novel
+    category: writing
     status: todo
-    value: 0
+    value: 4
     year: 0
     month: 0
     rating: 0
@@ -179,8 +179,8 @@ items:
     description: ''
     review: ''
   - id: W2hG_wa1rGycF5Mn
-    generation: 13
-    name: 11/20/63
+    generation: 15
+    name: 11/22/63
     category: reading
     status: done
     value: 0
@@ -201,12 +201,12 @@ items:
     description: ''
     review: ''
   - id: W_AWNzAhslyIphKR
-    generation: 32
+    generation: 33
     name: 'Dungeon Crawl Carl: Book 2'
     category: reading
     status: done
     value: 0
-    year: 2025
+    year: 2024
     month: 4
     rating: 0
     description: ''
@@ -229,6 +229,138 @@ items:
     status: todo
     value: 3
     year: 2025
+    month: 0
+    rating: 0
+    description: ''
+    review: ''
+  - id: gKYwQViJ2mfy7Sbt
+    generation: 33
+    name: Read 50 books in a year
+    category: reading
+    status: wip
+    value: 6
+    year: 2025
+    month: 0
+    rating: 0
+    description: ''
+    review: ''
+  - id: HMu61bMQHGX3oLtX
+    generation: 22
+    name: Play the Witcher 1
+    category: games
+    status: todo
+    value: 2
+    year: 0
+    month: 0
+    rating: 0
+    description: ''
+    review: ''
+  - id: CMxwSFnjo7KT_IjK
+    generation: 29
+    name: 'Do #vanlife for a year'
+    category: travel
+    status: todo
+    value: 3
+    year: 0
+    month: 0
+    rating: 0
+    description: ''
+    review: ''
+  - id: zs7GwsxoP-r3D9fF
+    generation: 28
+    name: Play the Witcher 2
+    category: games
+    status: todo
+    value: 2
+    year: 0
+    month: 0
+    rating: 0
+    description: ''
+    review: ''
+  - id: TCw4L0GjCmWgZQK7
+    generation: 80
+    name: Earn $10k/year in passive income from open source software
+    category: raiment
+    status: todo
+    value: 4
+    year: 0
+    month: 0
+    rating: 0
+    description: ''
+    review: ''
+  - id: y4WPliXyKNMB-YCd
+    generation: 32
+    name: Run the Boston marathon
+    category: fitness
+    status: todo
+    value: 5
+    year: 0
+    month: 0
+    rating: 0
+    description: ''
+    review: ''
+  - id: KjtR-w9H0wTWKKE5
+    generation: 28
+    name: Run the Dublin marathon
+    category: fitness
+    status: todo
+    value: 3
+    year: 0
+    month: 0
+    rating: 0
+    description: Requires sign-up in November the year before!
+    review: ''
+  - id: dPl8YZOf0r60HFuT
+    generation: 28
+    name: Run the London marathon
+    category: fitness
+    status: todo
+    value: 1
+    year: 0
+    month: 0
+    rating: 0
+    description: ''
+    review: ''
+  - id: jxt3pwLXdGePYviz
+    generation: 8
+    name: Play Doors of Trithus
+    category: games
+    status: todo
+    value: 4
+    year: 2025
+    month: 0
+    rating: 0
+    description: ''
+    review: ''
+  - id: aFFK3e6e2KUrtXHB
+    generation: 1
+    name: Another new item
+    category: ''
+    status: todo
+    value: 0
+    year: 0
+    month: 0
+    rating: 0
+    description: ''
+    review: ''
+  - id: ZG34zDrKxbE1wtv6
+    generation: 1
+    name: Another new item
+    category: ''
+    status: todo
+    value: 0
+    year: 0
+    month: 0
+    rating: 0
+    description: ''
+    review: ''
+  - id: LNfZJPjVjP0qBqZg
+    generation: 1
+    name: Another new item
+    category: ''
+    status: todo
+    value: 0
+    year: 0
     month: 0
     rating: 0
     description: ''
