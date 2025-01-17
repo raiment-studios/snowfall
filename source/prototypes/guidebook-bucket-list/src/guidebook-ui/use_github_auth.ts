@@ -1,0 +1,182 @@
+import React from 'react';
+
+// Returns the access token
+//
+// TODO:
+// - Token expiration is not considered
+export function useGitHubAuthToken(): string | null {
+    // Get the existing value if there is one
+    const accessToken = localStorage.getItem('github_auth/access_token');
+
+    React.useLayoutEffect(() => {
+        const url = new URL(window.location.href);
+
+        // --- If there's already an access token... ---
+        //
+        // We're already authenticated, so update the state and return
+        // it to the caller. If we just got the access token, clean up
+        // the URL to remove our handshake parameters.
+        //
+        if (accessToken) {
+            // Clear any auth callback parameters from the URL if necessary
+            // and reload.
+            const scrubbed = new URL(window.location.href);
+            scrubbed.searchParams.delete('auth');
+            scrubbed.searchParams.delete('code');
+            scrubbed.searchParams.delete('state');
+            if (scrubbed.toString() !== url.toString()) {
+                window.location.href = scrubbed.toString();
+            }
+            return;
+        }
+
+        const auth = url.searchParams.get('auth');
+        const code = url.searchParams.get('code');
+
+        // --- Callback from GitHub after sign-in? ---
+        //
+        // Redirect to the guidebook auth server to get an access token from
+        // the "code" provided by GitHub.  We need the indirect auth server to
+        // avoid CORS issues (GitHub won't accept the callback from the browser).
+        //
+        if (auth === 'github' && code?.length) {
+            const isLocalAuth = window.location.hostname === 'localhost';
+            const clientID = isLocalAuth ? 'Ov23lilAyyeHVnqZ1pGc' : 'Ov23li89ZvKkoY3YqFDj';
+
+            console.log('Resolving GitHub auth callback', auth, code, clientID);
+            const go = async () => {
+                const url = 'https://guidebook-auth-server.deno.dev/';
+
+                const body = {
+                    url: `https://github.com/login/oauth/access_token`,
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                    },
+                    body: {
+                        client_id: clientID,
+                        code,
+                    },
+                };
+
+                const resp = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                        'cache-control': 'no-cache',
+                    },
+                    body: JSON.stringify(body),
+                });
+
+                const json = await resp.json();
+                if (json.access_token) {
+                    console.log('Got access token', json);
+                    localStorage.setItem('github_auth/access_token', json.access_token);
+                    window.location.reload();
+                    return;
+                }
+            };
+
+            go();
+        }
+
+        // Otherwise, we don't have an access token or a code, so there's nothing
+        // for this hook to do!
+    }, []);
+
+    return accessToken ?? '';
+}
+
+export class GitHubAPI {
+    _token: string;
+
+    _cache: { [key: string]: any } = {};
+
+    constructor(token: string) {
+        this._token = token;
+    }
+
+    get token(): string {
+        return this._token;
+    }
+
+    async user() {
+        return this.cachedFetch(`https://api.github.com/user`);
+    }
+
+    async fetch(method: string, url: string, body: any = null): Promise<any> {
+        const resp = await fetch(url, {
+            method,
+            headers: {
+                Authorization: `Bearer ${this._token}`,
+                Accept: 'application/vnd.github+json',
+                'X-GitHub-Api-Version': '2022-11-28',
+                'User-Agent': 'raiment-studios-guidebook',
+            },
+            body: body ? JSON.stringify(body) : undefined,
+        });
+        const json = await resp.json();
+        return json;
+    }
+
+    async cachedFetch(url: string): Promise<any> {
+        const cached = this._cache[url];
+        if (cached) {
+            return cached;
+        }
+        const json = await this.fetch('GET', url);
+        this._cache[url] = json;
+        return json;
+    }
+
+    async readFileContents(filename: string): Promise<string> {
+        const user = await this.user();
+        const username = user.login;
+        const repo = 'guidebook-data';
+        const url = `https://api.github.com/repos/${username}/${repo}/contents/${filename}`;
+
+        const existing = await this.fetch('GET', url);
+        const encoded = existing.content;
+        const content = atob(encoded);
+        return content;
+    }
+
+    async updateFileContents(filename: string, content: string): Promise<void> {
+        const user = await this.user();
+        const username = user.login;
+        const repo = 'guidebook-data';
+        const url = `https://api.github.com/repos/${username}/${repo}/contents/${filename}`;
+
+        let sha;
+        {
+            const existing = await this.fetch('GET', url);
+            sha = existing.sha;
+        }
+
+        // Base64 encode the content
+        const encoded = btoa(content);
+        this.fetch('PUT', url, {
+            message: 'Update from guidebook-bucket-list app',
+            committer: {
+                name: 'guidebook-bucket-list',
+                email: 'support@raiment-studios.com',
+            },
+            content: encoded,
+            sha: sha,
+        });
+    }
+}
+
+export function useGitHubAPI(): GitHubAPI | null {
+    const accessToken = useGitHubAuthToken();
+    const api = React.useMemo(() => {
+        if (!accessToken) {
+            return null;
+        }
+        return new GitHubAPI(accessToken);
+    }, [accessToken]);
+
+    return api;
+}

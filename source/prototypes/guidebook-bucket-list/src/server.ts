@@ -10,7 +10,7 @@ import {
     stringify as stringifyYAML,
 } from 'https://deno.land/std@0.203.0/yaml/mod.ts';
 
-const PORT = 3000;
+const PORT = 8080;
 
 async function handler(req: Request): Promise<Response> {
     const url = new URL(req.url);

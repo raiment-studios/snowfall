@@ -1,5 +1,7 @@
 import { nanoid } from 'nanoid';
 import { EventEmitter } from './guidebook-ui/event_emitter.ts';
+import { GitHubAPI } from './guidebook-ui/use_github_auth.ts';
+import yaml from 'js-yaml';
 
 export type BucketItemData = {
     id: string;
@@ -126,9 +128,11 @@ export class BucketItem {
 export class Database {
     data: BucketListData;
     events = new EventEmitter();
+    ghAPI: GitHubAPI;
     _items: BucketItem[];
 
-    constructor(data: Partial<BucketListData>) {
+    constructor(data: Partial<BucketListData>, ghAPI: GitHubAPI) {
+        this.ghAPI = ghAPI;
         this.data = Database.normalize(data);
         this._items = this.data.items.map((item) => new BucketItem(this, item));
     }
@@ -149,45 +153,37 @@ export class Database {
         return norm;
     }
 
-    static async load(): Promise<Database> {
-        const response = await fetch('/api/read', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ path: 'bucket-list.yaml' }),
-        });
-        const data = await response.json();
-        return new Database(data);
+    static async load(ghAPI: GitHubAPI): Promise<Database> {
+        const encoded = await ghAPI.readFileContents('guidebook/bucket-list/bucket-list.yaml');
+        const data = yaml.load(encoded);
+        return new Database(data, ghAPI);
     }
 
+    dirty = false;
+
     _saveTimeout: number | null = null;
-    _saveController: AbortController | null = null;
     save(): Promise<void> {
+        this.dirty = true;
+        this.events.fire('dirty');
         return new Promise((resolve) => {
             if (this._saveTimeout !== null) {
                 clearTimeout(this._saveTimeout);
             }
-            if (this._saveController !== null) {
-                this._saveController.abort();
-            }
+
+            const contentJSON = JSON.stringify(this.data);
+            const contentYAML = yaml.dump(this.data);
+            localStorage.setItem('bucket-list', contentJSON);
 
             this._saveTimeout = setTimeout(async () => {
-                this._saveController = new AbortController();
-                await fetch('/api/write', {
-                    method: 'POST',
-                    signal: this._saveController.signal,
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        path: 'bucket-list.yaml',
-                        content: this.data,
-                    }),
-                });
-                this._saveController = null;
+                console.log('Saving GitHub data...');
+                await this.ghAPI.updateFileContents(
+                    'guidebook/bucket-list/bucket-list.yaml',
+                    contentYAML
+                );
+                this.dirty = false;
+                this.events.fire('dirty');
                 resolve();
-            }, 750);
+            }, 2500);
         });
     }
 

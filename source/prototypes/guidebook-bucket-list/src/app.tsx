@@ -2,62 +2,210 @@ import React, { JSX } from 'react';
 import { css, Flex } from './guidebook-ui/index.ts';
 import { Documentation } from './documentation.tsx';
 import { Database, BucketItem, BucketItemData } from './model.ts';
+import { GitHubAPI, useGitHubAPI, useGitHubAuthToken } from './guidebook-ui/use_github_auth.ts';
 
 export function App(): JSX.Element {
+    return (
+        <Flex col>
+            <ContentGate />
+        </Flex>
+    );
+}
+
+function ContentGate(): JSX.Element {
+    const accessToken = useGitHubAuthToken();
+    return accessToken ? <Content /> : <GitHubSignIn />;
+}
+
+function Content(): JSX.Element {
     const [database, setDatabase] = React.useState<Database | null>(null);
+    const ghAPI = useGitHubAPI();
 
     React.useEffect(() => {
+        if (!ghAPI) {
+            return;
+        }
         const go = async () => {
-            setDatabase(await Database.load());
+            setDatabase(await Database.load(ghAPI));
         };
         go();
-    }, []);
+    }, [ghAPI?.token]);
 
     if (!database) {
         return <p>Loading...</p>;
     }
 
     return (
-        <Flex col m="12px 64px">
-            <Flex row>
-                <h1>Bucket List</h1>
-                <div style={{ width: 32 }} />
-                <button
-                    onClick={() => {
-                        const go = async () => {
-                            await database.save();
-                            window.location.reload();
-                        };
-                        go();
-                    }}
-                >
-                    save
-                </button>
-            </Flex>
-            <BucketListView database={database} />
+        <>
+            <TopNavigation database={database} />
+            <Flex col m="12px 64px">
+                <Flex row>
+                    <h1>Bucket List</h1>
+                    <div style={{ width: 32 }} />
+                    <button
+                        onClick={() => {
+                            const go = async () => {
+                                await database.save();
+                                window.location.reload();
+                            };
+                            go();
+                        }}
+                    >
+                        save
+                    </button>
+                </Flex>
+                <BucketListView database={database} />
 
-            <div>
-                <div
-                    style={{
-                        margin: '128px 0 32px',
-                        borderTop: '1px solid rgba(0,0,0,0.1)',
-                        fontStyle: 'italic',
-                        letterSpacing: '0.5em',
-                        color: 'rgba(0,0,0,0.5)',
-                    }}
-                >
-                    <div>documentation</div>
+                <div>
+                    <div
+                        style={{
+                            margin: '128px 0 32px',
+                            borderTop: '1px solid rgba(0,0,0,0.1)',
+                            fontStyle: 'italic',
+                            letterSpacing: '0.5em',
+                            color: 'rgba(0,0,0,0.5)',
+                        }}
+                    >
+                        <div>documentation</div>
+                    </div>
                 </div>
+                <Documentation />
+            </Flex>
+        </>
+    );
+}
+
+function GitHubSignIn() {
+    const isLocalAuth = window.location.hostname === 'localhost';
+    const clientID = isLocalAuth ? 'Ov23lilAyyeHVnqZ1pGc' : 'Ov23li89ZvKkoY3YqFDj';
+    const paramsHash = {
+        scope: 'read:user, repo, gist',
+        client_id: clientID,
+        state: encodeURIComponent(window.location.href),
+        allow_signup: 'false',
+        prompt: 'select_account',
+    };
+    const params = new URLSearchParams(paramsHash);
+    const url = `https://github.com/login/oauth/authorize?${params}`;
+
+    return (
+        <Flex
+            row
+            css={css`
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                margin: 64px auto;
+
+                .button {
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    gap: 32px;
+
+                    padding: 8px 64px;
+                    background: #000;
+                    color: white;
+                    border-radius: 12px;
+                    line-height: 1.5;
+
+                    cursor: pointer;
+
+                    img {
+                        width: 32px;
+                        height: 32px;
+                    }
+
+                    a {
+                    }
+                }
+            `}
+        >
+            <div
+                className="button"
+                onClick={() => {
+                    window.location.assign(url);
+                }}
+            >
+                <div>Sign in with GitHub</div>
             </div>
-            <Documentation />
         </Flex>
     );
 }
 
-function useRenderOnModified(obj: any) {
+function TopNavigation({ database }: { database: Database }): JSX.Element {
+    const ghAPI = useGitHubAPI();
+    useRenderOnEvent(database, 'dirty');
+
+    return (
+        <Flex
+            row
+            gap={6}
+            css={css`
+                padding: 4px 32px;
+                border-bottom: 1px solid rgba(0, 0, 0, 0.8);
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            `}
+        >
+            <div>guidebook-bucket-list prototype</div>
+            <Flex
+                row
+                gap={8}
+                style={{
+                    opacity: database.dirty ? 1 : 0,
+                }}
+                css={css`
+                    color: #733;
+                    transition: opacity 250ms;
+                `}
+            >
+                <span style={{ fontStyle: 'italic' }}>unsaved changes</span>
+            </Flex>
+            <div style={{ flexGrow: 1 }} />
+            {ghAPI ? <TopNavProfile ghAPI={ghAPI} /> : <div>login</div>}
+        </Flex>
+    );
+}
+
+function TopNavProfile({ ghAPI }: { ghAPI: GitHubAPI }) {
+    const [user, setUser] = React.useState<any | null>(null);
+    React.useEffect(() => {
+        const go = async () => {
+            setUser(await ghAPI?.user());
+        };
+        go();
+    }, []);
+
+    return (
+        <Flex row gap={8}>
+            {user && (
+                <Flex row gap={8}>
+                    <img
+                        src={user.avatar_url}
+                        style={{
+                            height: 16,
+                            width: 16,
+                        }}
+                    />
+                    {user.login}
+                </Flex>
+            )}
+            <button
+                onClick={() => {
+                    localStorage.removeItem('github_auth/access_token');
+                    window.location.reload();
+                }}
+            >
+                logout
+            </button>
+        </Flex>
+    );
+}
+
+function useRenderOnEvent(obj: any, event: string = 'modified') {
     const [_generation, setGeneration] = React.useState(1);
     React.useEffect(() => {
-        return obj.events.on('modified', () => {
+        return obj.events.on(event, () => {
             setGeneration((gen) => gen + 1);
         });
     }, [obj]);
@@ -161,7 +309,7 @@ function BucketListView({ database }: { database: Database }): JSX.Element {
         setItems(items);
     }, [database.generation, sortOrder]);
 
-    useRenderOnModified(database);
+    useRenderOnEvent(database);
 
     const ColumnHeader = ({ field }: { field: keyof BucketItemData }): JSX.Element => {
         return (
@@ -297,7 +445,7 @@ function idToColor(id: string): string {
 }
 
 function BucketItemRow({ item }: { item: BucketItem }): JSX.Element {
-    useRenderOnModified(item);
+    useRenderOnEvent(item);
 
     const categories = item.database().itemCategories().sort();
     const years = item.database().itemYears().sort().reverse();
