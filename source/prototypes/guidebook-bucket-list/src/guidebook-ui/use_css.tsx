@@ -54,7 +54,10 @@ export function useCSS(s?: CSSString): string {
         document.head.appendChild(el);
 
         return () => {
-            const el = document.getElementById(id)!;
+            const el = document.getElementById(id);
+            if (!el) {
+                return;
+            }
             const count = parseInt(el.dataset.count ?? '0');
             el.dataset.count = `${count - 1}`;
             if (count <= 1) {

@@ -6,12 +6,8 @@ export function Documentation(): JSX.Element {
             <style>{`
         .documentation {
             max-width: 86ch;
-            margin: 0 auto;
-            padding: 3ch 3ch 16ch;
-            border: 1px solid #ddd;
-            border-radius: 8px;
+            padding: 3ch 0 16ch;
             color: #555;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
 
             h2 {
                 margin-top: 32px;
@@ -20,7 +16,7 @@ export function Documentation(): JSX.Element {
         }
         `}</style>
             <div className="documentation" style={{}}>
-                <h1 style={{ textAlign: 'center', marginBottom: 48 }}>Guidebook: Bucket List</h1>
+                <h1 style={{ marginBottom: 48 }}>Guidebook: Bucket List</h1>
                 <p>
                     <strong>Guidebook: Bucket List</strong>
                     is a simple application for tracking a life bucket list in a YAML file hosted on

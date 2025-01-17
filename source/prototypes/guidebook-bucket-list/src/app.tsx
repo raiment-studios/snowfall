@@ -1,241 +1,7 @@
 import React, { JSX } from 'react';
-import { nanoid } from 'nanoid';
-import { css } from './raiment-ui/use_css.tsx';
-import { Flex } from './raiment-ui/flex.tsx';
+import { css, Flex } from './guidebook-ui/index.ts';
 import { Documentation } from './documentation.tsx';
-
-type Callback = (...args: any[]) => any;
-export class EventEmitter {
-    _events: { [key: string]: Array<Callback> } = {};
-    _queue: Array<[string, any[]]> = [];
-
-    dispose() {
-        this._events = {};
-        this._queue = [];
-    }
-
-    on(event: string, callback: Callback): () => void {
-        this._events[event] ??= [];
-        this._events[event].push(callback);
-        return () => {
-            this.off(event, callback);
-        };
-    }
-
-    once(event: string, callback: Callback) {
-        const wrapper = (...args: any[]) => {
-            callback(...args);
-            this.off(event, wrapper);
-        };
-        this.on(event, wrapper);
-    }
-
-    off(event: string, callback: Callback) {
-        if (this._events[event] === undefined) {
-            throw new Error(`Cannot remove from unused event: '${event}'`);
-        }
-        this._events[event] = this._events[event].filter((cb) => cb !== callback);
-    }
-
-    fire(event: string, ...args: any[]) {
-        const arr = this._events[event];
-        if (arr && arr.length > 0) {
-            return arr.map((cb) => cb(...args));
-        }
-        return [];
-    }
-}
-
-type BucketItemData = {
-    id: string;
-    generation: number;
-    name: string;
-    category: string;
-    status: 'todo' | 'wip' | 'done';
-    value: number;
-    year: number;
-    month: number;
-    rating: number;
-    description: string;
-    review: string;
-};
-
-type BucketListData = {
-    generation: number;
-    items: BucketItemData[];
-};
-
-function replaceProperties<T>(data: Partial<T>, values: T): T {
-    Object.keys(data).forEach((key: string) => {
-        delete (data as any)[key];
-    });
-    Object.assign(data, values);
-    return data as T;
-}
-
-class BucketItem {
-    // ------------------------------------------------------------------------
-    // Fields
-    // ------------------------------------------------------------------------
-
-    data: BucketItemData;
-    events = new EventEmitter();
-    _database: Database;
-
-    // ------------------------------------------------------------------------
-    // Construction
-    // ------------------------------------------------------------------------
-
-    constructor(database: Database, data: Partial<BucketItemData>) {
-        this._database = database;
-        this.data = BucketItem.normalize(data);
-    }
-
-    static normalize(data: Partial<BucketItemData>): BucketItemData {
-        return replaceProperties(data, {
-            id: data.id ?? nanoid(16),
-            generation: data.generation ?? 1,
-            name: data.name || 'New item',
-            category: data.category ?? '',
-            status: data.status ?? 'todo',
-            value: data.value ?? 0,
-            year: data.year ?? 0,
-            month: data.month ?? 0,
-            rating: data.rating ?? 0,
-            description: data.description ?? '',
-            review: data.review ?? '',
-        });
-    }
-
-    // ------------------------------------------------------------------------
-    // Core properties
-    // ------------------------------------------------------------------------
-
-    database(): Database {
-        return this._database;
-    }
-
-    get id(): string {
-        return this.data.id;
-    }
-    get generation(): number {
-        return this.data.generation;
-    }
-    get name(): string {
-        return this.data.name;
-    }
-    get status(): BucketItemData['status'] {
-        return this.data.status;
-    }
-    get category(): string {
-        return this.data.category;
-    }
-    get value(): number {
-        return this.data.value;
-    }
-    get description(): string {
-        return this.data.description;
-    }
-    get year(): number {
-        return this.data.year;
-    }
-    get month(): number {
-        return this.data.month;
-    }
-    get rating(): number {
-        return this.data.rating;
-    }
-    get review(): string {
-        return this.data.review;
-    }
-
-    // ------------------------------------------------------------------------
-    // Dervied / computer properties
-    // ------------------------------------------------------------------------
-
-    done(): boolean {
-        return this.status === 'done';
-    }
-
-    // ------------------------------------------------------------------------
-    // Mutation
-    // ------------------------------------------------------------------------
-
-    modify(data: Partial<BucketItemData>) {
-        Object.assign(this.data, { ...data, generation: this.data.generation + 1 });
-        this.events.fire('modified');
-        this._database.save();
-    }
-}
-
-class Database {
-    data: BucketListData;
-    events = new EventEmitter();
-    _items: BucketItem[];
-
-    constructor(data: Partial<BucketListData>) {
-        this.data = Database.normalize(data);
-        this._items = this.data.items.map((item) => new BucketItem(this, item));
-    }
-
-    get generation(): number {
-        return this.data.generation;
-    }
-
-    get items(): BucketItem[] {
-        return this._items;
-    }
-
-    static normalize(data: Partial<BucketListData>): BucketListData {
-        const norm: BucketListData = {
-            generation: data.generation ?? 1,
-            items: data.items?.map((item) => BucketItem.normalize(item)) ?? [],
-        };
-        return norm;
-    }
-
-    static async load(): Promise<Database> {
-        const response = await fetch('/api/read', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ path: 'bucket-list.yaml' }),
-        });
-        const data = await response.json();
-        return new Database(data);
-    }
-
-    async save() {
-        await fetch('/api/write', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                path: 'bucket-list.yaml',
-                content: this.data,
-            }),
-        });
-    }
-
-    add(itemData: Partial<BucketItemData>) {
-        const item = new BucketItem(this, itemData);
-        this.data.items.push(item.data);
-        this._items.push(item);
-        this.data.generation += 1;
-        this.events.fire('modified');
-        this.save();
-    }
-
-    categories(): string[] {
-        return Array.from(new Set(this.items.map((item) => item.category)));
-    }
-
-    itemYears(): number[] {
-        return Array.from(new Set(this.items.map((item) => item.year)));
-    }
-}
+import { Database, BucketItem, BucketItemData } from './model.ts';
 
 export function App(): JSX.Element {
     const [database, setDatabase] = React.useState<Database | null>(null);
@@ -275,7 +41,6 @@ export function App(): JSX.Element {
                     style={{
                         margin: '128px 0 32px',
                         borderTop: '1px solid rgba(0,0,0,0.1)',
-                        paddingLeft: 64,
                         fontStyle: 'italic',
                         letterSpacing: '0.5em',
                         color: 'rgba(0,0,0,0.5)',
@@ -289,7 +54,7 @@ export function App(): JSX.Element {
     );
 }
 
-function useUpdateOnModified(obj: any) {
+function useRenderOnModified(obj: any) {
     const [_generation, setGeneration] = React.useState(1);
     React.useEffect(() => {
         return obj.events.on('modified', () => {
@@ -317,7 +82,6 @@ function BucketListView({ database }: { database: Database }): JSX.Element {
             } else {
                 order = [{ field: s, reverse: false }, ...order.filter((o) => o.field != s)];
             }
-            console.log(order);
             return [...order];
         });
     }
@@ -372,6 +136,23 @@ function BucketListView({ database }: { database: Database }): JSX.Element {
                             return r * a.name.localeCompare(b.name);
                         }
                         break;
+                    case 'rating':
+                        if (a.rating !== b.rating) {
+                            return r * (b.rating - a.rating);
+                        }
+                        break;
+                    case 'description':
+                        if (a.description !== b.description) {
+                            return r * a.description.localeCompare(b.description);
+                        }
+                        break;
+                    case 'review':
+                        if (a.review !== b.review) {
+                            return r * a.review.localeCompare(b.review);
+                        }
+                        break;
+                    default:
+                        console.warn('Unknown field:', field);
                 }
             }
             return 0;
@@ -380,7 +161,24 @@ function BucketListView({ database }: { database: Database }): JSX.Element {
         setItems(items);
     }, [database.generation, sortOrder]);
 
-    useUpdateOnModified(database);
+    useRenderOnModified(database);
+
+    const ColumnHeader = ({ field }: { field: keyof BucketItemData }): JSX.Element => {
+        return (
+            <Flex
+                css={css`
+                    cursor: pointer;
+                    user-select: none;
+                    gap: 4px;
+                `}
+                onClick={() => pushOrder(field)}
+            >
+                <div>{field[0].toLocaleUpperCase() + field.slice(1)}</div>
+
+                <div>{sortOrder[0]?.field === field && (sortOrder[0].reverse ? '^' : 'v')}</div>
+            </Flex>
+        );
+    };
 
     return (
         <Flex
@@ -437,15 +235,15 @@ function BucketListView({ database }: { database: Database }): JSX.Element {
                     backgroundColor: 'rgba(0,0,0,0.1)',
                 }}
             >
-                <div onClick={() => pushOrder('name')}>Name</div>
-                <div onClick={() => pushOrder('category')}>Category</div>
-                <div onClick={() => pushOrder('status')}>Status</div>
-                <div>Value</div>
-                <div>Description</div>
-                <div>Year</div>
-                <div>Month</div>
-                <div>Rating</div>
-                <div>Review</div>
+                <ColumnHeader field="name" />
+                <ColumnHeader field="category" />
+                <ColumnHeader field="status" />
+                <ColumnHeader field="value" />
+                <ColumnHeader field="description" />
+                <ColumnHeader field="year" />
+                <ColumnHeader field="month" />
+                <ColumnHeader field="rating" />
+                <ColumnHeader field="review" />
             </Flex>
             {items.map((item) => (
                 <BucketItemRow key={item.id} item={item} />
@@ -499,9 +297,9 @@ function idToColor(id: string): string {
 }
 
 function BucketItemRow({ item }: { item: BucketItem }): JSX.Element {
-    useUpdateOnModified(item);
+    useRenderOnModified(item);
 
-    const categories = item.database().categories().sort();
+    const categories = item.database().itemCategories().sort();
     const years = item.database().itemYears().sort().reverse();
 
     return (
