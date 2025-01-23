@@ -1,2 +1,2 @@
 #!/bin/sh
-$MONOREPO_ROOT/tools/sea/sea validate-commit-msg $1
+$MONOREPO_ROOT/source/tools/sea/sea validate-commit-msg $1

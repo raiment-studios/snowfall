@@ -60,15 +60,10 @@ rm -f "$MONOREPO_ROOT/bin/sea"
 # sea is treated as a script that is executed at the end of the command.
 unalias sea 2> /dev/null
 unset -f sea
-function sea() {
-    eval $MONOREPO_ROOT/tools/sea/sea $@ 2> $MONOREPO_ROOT/temp/__output.sh
-    cat $MONOREPO_ROOT/temp/__output.sh
-    source $MONOREPO_ROOT/temp/__output.sh
-    rm $MONOREPO_ROOT/temp/__output.sh
-}
+alias sea='source $MONOREPO_ROOT/source/tools/sea/sea.sh'
 
 function cprint() {
-    $MONOREPO_ROOT/tools/sea/sea cprintln "$@"
+    sea cprintln "$@"
 }
 
 # Git Log (gslog)

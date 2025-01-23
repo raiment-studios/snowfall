@@ -4,7 +4,7 @@ _common-default:
   @just --list --unsorted
 
 
-cprintln := "$MONOREPO_ROOT/tools/sea/sea cprintln"
+cprintln := "$MONOREPO_ROOT/source/tools/sea/sea cprintln"
 
 _common-ensure-webapp:
     @just _cprint "Copying VSCode settings..."
@@ -41,7 +41,7 @@ _common-build-bundle source target:
 _common-prepend-to-file file content:
 
 _cprint message:
-    @"$MONOREPO_ROOT/tools/sea/sea" "cprintln" "{35a:{{message}}}"
+    @"$MONOREPO_ROOT/source/tools/sea/sea" "cprintln" "{35a:{{message}}}"
 
 generated_file_preamble := '''
     ############################################################
