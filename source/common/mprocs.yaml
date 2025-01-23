@@ -1,0 +1,30 @@
+#
+# NOTE: only edit the copy in /source/common/mprocs.yaml
+#
+# Alas for custom configurations and more config files!
+#
+# This is a workaround for Q not working as expected in `mprocs`
+# when also using `just`.  See https://github.com/casey/just/issues/2473.
+# It seems the default "quit" signal from mprocs is consumed by just, so
+# we remap "q" to send a SIGINT to "all" processes and then quit.
+keymap_procs:
+    <q>:
+        c: batch
+        cmds:
+            - { c: select-proc, index: 0 }
+            - { c: send-key, key: '<C-c>' }
+            - { c: select-proc, index: 1 }
+            - { c: send-key, key: '<C-c>' }
+            - { c: select-proc, index: 2 }
+            - { c: send-key, key: '<C-c>' }
+            - { c: select-proc, index: 3 }
+            - { c: send-key, key: '<C-c>' }
+            - { c: select-proc, index: 4 }
+            - { c: send-key, key: '<C-c>' }
+            - { c: select-proc, index: 5 }
+            - { c: send-key, key: '<C-c>' }
+            - { c: select-proc, index: 6 }
+            - { c: send-key, key: '<C-c>' }
+            - { c: select-proc, index: 7 }
+            - { c: send-key, key: '<C-c>' }
+            - { c: quit }

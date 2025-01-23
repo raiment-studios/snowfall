@@ -1,5 +1,5 @@
 #
-# Only edit the source copy in /config/Makefile.common!!!
+# Only edit the source copy in /source/common/Makefile.common!!!
 #
 .PHONY: default
 default:

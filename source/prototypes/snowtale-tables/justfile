@@ -1,0 +1,27 @@
+# Unfortunately environment variables don't seem to support in the import path
+import "../../common/webapp.justfile"
+
+
+###############################################################################
+# Core commands
+###############################################################################
+
+_default: _common-default
+
+ensure: _common-ensure-webapp
+
+build: ensure
+    just _common-build-bundle ./src/main.tsx ./dist/main.bundle.js
+    cp -f ./src/index.html ./dist/index.html
+
+dev: build
+    mprocs \
+        --names "client,server" \
+        "just _common-dev-watch ./src 'just build'" \
+        "just run"
+
+run: build
+    npx serve ./dist
+
+
+
