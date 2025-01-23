@@ -1,6 +1,6 @@
 export async function upgrade_tools() {
-  console.error(
-    `
+    console.error(
+        `
 #!/bin/env bash
 echo "Refreshing tools..."
 pushd $MONOREPO_ROOT
@@ -31,10 +31,6 @@ asdf plugin add starship
 asdf install starship latest
 asdf local starship latest
 
-asdf plugin-add zellij
-asdf install zellij latest
-asdf local zellij latest
-
 asdf plugin-add bat
 asdf install bat latest
 asdf local bat latest
@@ -44,6 +40,6 @@ asdf install just latest
 asdf local just latest
 
 popd
-`.trim() + "\n"
-  );
+`.trim() + '\n'
+    );
 }
