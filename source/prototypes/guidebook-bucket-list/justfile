@@ -13,6 +13,7 @@ default:
 # idempotent installation of dependencies & configuration
 ensure:
     cp -Rf $MONOREPO_ROOT/.vscode/ .vscode/
+    cp -f $MONOREPO_ROOT/config/mprocs.yaml mprocs.yaml
     @which mprocs > /dev/null
     @which deployctl > /dev/null
     npm install
@@ -47,6 +48,7 @@ dev-watch-server-restart:
     deno -A ./src/server.ts
 
 
+# deploy to guidebook-bucket-list.deno.dev
 publish: build
     @echo "Publishing..."
     cd dist && deployctl \

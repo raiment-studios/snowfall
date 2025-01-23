@@ -582,17 +582,15 @@ function BucketItemRow({ item }: { item: BucketItem }): JSX.Element {
                             value: Math.min((item.value ?? 0) + 1, 10),
                         });
                     }}
-                >
-                    +
-                </SmallButton>
-                <SmallButton
-                    onClick={() => {
+                    onContextMenu={(evt: React.MouseEvent<HTMLDivElement>) => {
+                        evt.preventDefault();
+                        evt.stopPropagation();
                         item.modify({
-                            value: Math.max((item.value ?? 2) - 1, 1),
+                            value: Math.max((item.value ?? 0) - 1, 1),
                         });
                     }}
                 >
-                    -
+                    ±
                 </SmallButton>
             </Flex>
             <div
@@ -682,9 +680,11 @@ function SelectWithNew<T>({
 
 function SmallButton({
     onClick,
+    onContextMenu,
     children,
 }: {
     onClick?: () => void;
+    onContextMenu?: (evt: React.MouseEvent<HTMLDivElement>) => void;
     children: React.ReactNode;
 }): JSX.Element {
     const SIZE = 16;
@@ -710,6 +710,7 @@ function SmallButton({
                 cursor: 'pointer',
             }}
             onClick={onClick}
+            onContextMenu={onContextMenu}
         >
             {children}
         </div>
