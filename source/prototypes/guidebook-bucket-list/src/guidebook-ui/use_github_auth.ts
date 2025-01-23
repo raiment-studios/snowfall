@@ -106,8 +106,8 @@ export class GitHubAPI {
         return this.cachedFetch(`https://api.github.com/user`);
     }
 
-    async fetch(method: string, url: string, body: any = null): Promise<any> {
-        const resp = await fetch(url, {
+    async fetchRaw(method: string, url: string, body: any = null): Promise<Response> {
+        return await fetch(url, {
             method,
             headers: {
                 Authorization: `Bearer ${this._token}`,
@@ -117,6 +117,10 @@ export class GitHubAPI {
             },
             body: body ? JSON.stringify(body) : undefined,
         });
+    }
+
+    async fetch(method: string, url: string, body: any = null): Promise<any> {
+        const resp = await this.fetchRaw(method, url, body);
         const json = await resp.json();
         return json;
     }
@@ -129,6 +133,33 @@ export class GitHubAPI {
         const json = await this.fetch('GET', url);
         this._cache[url] = json;
         return json;
+    }
+
+    async repositoryExists(repositoryName: string): Promise<boolean> {
+        const user = await this.user();
+        const username = user.login;
+        const url = `https://api.github.com/repos/${username}/${repositoryName}`;
+        try {
+            const resp = await this.fetchRaw('GET', url);
+            return resp.status === 200 ? true : false;
+        } catch (_err) {
+            return false;
+        }
+    }
+
+    async createRepository(repositoryName: string): Promise<void> {
+        const url = `https://api.github.com/user/repos`;
+        const params = {
+            name: repositoryName,
+            description: 'Guidebook data repository',
+            private: false,
+            has_issues: false,
+            has_projects: false,
+            has_wiki: false,
+            has_downloads: false,
+            auto_init: true,
+        };
+        await this.fetch('POST', url, params);
     }
 
     async readFileContents(filename: string): Promise<string> {
@@ -169,13 +200,25 @@ export class GitHubAPI {
     }
 }
 
+let _createOnce = false;
 export function useGitHubAPI(): GitHubAPI | null {
     const accessToken = useGitHubAuthToken();
     const api = React.useMemo(() => {
         if (!accessToken) {
             return null;
         }
-        return new GitHubAPI(accessToken);
+        const api = new GitHubAPI(accessToken);
+        if (!_createOnce) {
+            _createOnce = true;
+            const name = 'guidebook-data';
+            api.repositoryExists(name).then((exists) => {
+                if (exists) {
+                    return;
+                }
+                api.createRepository(name);
+            });
+        }
+        return api;
     }, [accessToken]);
 
     return api;
