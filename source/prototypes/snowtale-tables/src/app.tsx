@@ -1,6 +1,5 @@
 import React, { JSX } from 'react';
-import { randomSeeded, Prng } from '@std/random';
-import ReactDOMServer from 'react-dom/server';
+import { RNG } from './snowfall-core/index.ts';
 
 function Console({
     seed,
@@ -113,84 +112,6 @@ function Flex({
     );
 }
 
-class RNG {
-    _rng: Prng;
-    constructor(seed: number) {
-        this._rng = randomSeeded(BigInt(seed));
-    }
-
-    static make_seed8k(): number {
-        const seed = Math.floor(Math.random() * Date.now()) % 8192;
-        return seed;
-    }
-
-    value() {
-        const value = this._rng();
-        return value;
-    }
-
-    bool(): boolean {
-        return this._rng() >= 0.5;
-    }
-
-    // Exclusive range!
-    rangei(min: number, max: number): number {
-        const v = (max - min) * this._rng();
-        return Math.floor(v) + min;
-    }
-
-    coin(): 'heads' | 'tails' {
-        return this.bool() ? 'heads' : 'tails';
-    }
-
-    d4(): number {
-        return 1 + this.rangei(0, 4);
-    }
-    d6(): number {
-        return 1 + this.rangei(0, 6);
-    }
-    d8(): number {
-        return 1 + this.rangei(0, 8);
-    }
-    d10(): number {
-        return 1 + this.rangei(0, 10);
-    }
-    d12(): number {
-        return 1 + this.rangei(0, 12);
-    }
-    d20(): number {
-        return 1 + this.rangei(0, 20);
-    }
-    d100(): number {
-        return 1 + this.rangei(0, 100);
-    }
-    d8k(): number {
-        return 1 + this.rangei(0, 8192);
-    }
-
-    selectWeighted<T>(arr: [number, T][]): T {
-        const total = arr.reduce((acc, [weight]) => acc + weight, 0);
-        const r = this.rangei(0, total);
-        let sum = 0;
-        for (const [weight, value] of arr) {
-            sum += weight;
-            if (r < sum) {
-                return value;
-            }
-        }
-        return arr[arr.length - 1][1];
-    }
-
-    shuffle<T>(arr: T[]): T[] {
-        const copy = arr.slice();
-        for (let i = copy.length - 1; i > 0; i--) {
-            const j = this.rangei(0, i + 1);
-            [copy[i], copy[j]] = [copy[j], copy[i]];
-        }
-        return copy;
-    }
-}
-
 const table_yes_no: [number, string][] = [
     [100, 'exceptional yes'], //
     [1000, 'yes'], //
@@ -230,7 +151,7 @@ const table_weather: [number, string][] = [
     [250, 'blizzard'],
 ];
 
-const table_location: [number, string][] = [
+const table_area: [number, string][] = [
     [1000, 'forest'], //
     [500, 'dense forest'],
     [500, 'forest path'],
@@ -690,7 +611,7 @@ function SceneTable({ seed }: { seed: number }): JSX.Element {
     const table: [string, number | string][] = [
         ['time of day', rng.selectWeighted(table_time_of_day)],
         ['weather', rng.selectWeighted(table_weather)],
-        ['location', rng.selectWeighted(table_location)],
+        ['area', rng.selectWeighted(table_area)],
         ['threat', rng.selectWeighted(table_threats)],
         ['target', rng.selectWeighted(table_target)],
         ['event', rng.selectWeighted(table_events)],
@@ -725,12 +646,11 @@ function SceneTable({ seed }: { seed: number }): JSX.Element {
                 <Flex col g={0} style={{ maxWidth: '50em' }}>
                     <div>
                         It is <V k="time_of_day" /> and the weather is <V k="weather" />. The party
-                        is at a <V k="location" />. There is <V k="threat" /> threating{' '}
-                        <V k="target" />. The party sees <V k="event" />. The party knows they must
-                        act <V k="motivation" /> so, driven by a sense of <V k="rationale" /> and
-                        shaped by a feeling of <V k="feeling" />, they decide to <V k="action" />.
-                        However, there's the problem that <V k="obstacle" />. Will it work:{' '}
-                        <V k="yes_no" />.
+                        is at a <V k="area" />. There is <V k="threat" /> threating <V k="target" />
+                        . The party sees <V k="event" />. The party knows they must act{' '}
+                        <V k="motivation" /> so, driven by a sense of <V k="rationale" /> and shaped
+                        by a feeling of <V k="feeling" />, they decide to <V k="action" />. However,
+                        there's the problem that <V k="obstacle" />. Will it work: <V k="yes_no" />.
                     </div>
                     <p>...</p>
                     <p>

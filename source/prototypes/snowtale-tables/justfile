@@ -8,7 +8,14 @@ import "../../common/webapp.justfile"
 
 _default: _common-default
 
+# idempotent installation of dependencies & configuration
 ensure: _common-ensure-webapp
+    #!/usr/bin/env bash
+    TARGET=./src/snowfall-core
+    SOURCE=$MONOREPO_ROOT/source/lib/snowfall-core/src
+    if [ ! -L $TARGET ] && [ -e $SOURCE ]; then
+        ln -s $SOURCE $TARGET
+    fi
 
 build: ensure
     just _common-build-bundle ./src/main.tsx ./dist/main.bundle.js

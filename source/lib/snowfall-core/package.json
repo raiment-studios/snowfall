@@ -1,0 +1,5 @@
+{
+    "dependencies": {
+        "@std/random": "npm:@jsr/std__random@^0.1.0"
+    }
+}

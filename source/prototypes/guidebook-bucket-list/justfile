@@ -1,31 +1,22 @@
-###############################################################################
-# Preamble
-###############################################################################
-
-[private]
-default:
-  @just --list --unsorted
+import "../../common/webapp.justfile"
 
 ###############################################################################
 # Core commands
 ###############################################################################
 
+_default: _common-default
+
 # idempotent installation of dependencies & configuration
-ensure:
-    cp -Rf $MONOREPO_ROOT/.vscode/ .vscode/
-    cp -f $MONOREPO_ROOT/config/mprocs.yaml mprocs.yaml
-    @which mprocs > /dev/null
-    @which deployctl > /dev/null
-    npm install
+ensure: _common-ensure-webapp
 
 # build the project
 build: ensure
-    just _build-bundle ./src/main.tsx ./dist/main.bundle.js
+    just _common-build-bundle ./src/main.tsx ./dist/main.bundle.js
     cp -f ./src/index.html ./dist/index.html
     echo $(date) > ./dist/build.timestamp
 
 # run the project with hot-reloading on changes
-dev: build
+dev:
     mprocs \
         --names "client,server" \
         "just dev-watch-client" \
@@ -33,7 +24,7 @@ dev: build
 
 [private]
 dev-watch-client:
-    just _dev-watch ./src "just build"
+    just _common-dev-watch ./src "just build"
 
 [private]
 dev-watch-server:
@@ -56,26 +47,4 @@ publish: build
         https://jsr.io/@std/http/1.0.7/file_server.ts
 
 
-###############################################################################
-# Private helpers
-###############################################################################
 
-# Watches source files in "directory" and runs "command" when they change.
-_dev-watch directory command:
-    npx nodemon \
-        --watch {{directory}} \
-        --ext ts,tsx,html,css,json,yaml,yml,txt \
-        --exec "{{command}}"
-
-_build-bundle source target:
-    echo "Running build-bundle for {{source}} -> {{target}}"
-    npx esbuild \
-        --preserve-symlinks \
-        --loader:.js=jsx \
-        --loader:.md=text \
-        --loader:.yaml=text \
-        --loader:.txt=text \
-        --sourcemap \
-        --bundle {{source}} \
-        --outfile={{target}}
-    echo "Done running build-bundle for {{source}} -> {{target}}"

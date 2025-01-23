@@ -60,7 +60,7 @@ rm -f "$MONOREPO_ROOT/bin/sea"
 # sea is treated as a script that is executed at the end of the command.
 unalias sea 2> /dev/null
 unset -f sea
-alias sea='source $MONOREPO_ROOT/source/tools/sea/sea.sh'
+cp -f $MONOREPO_ROOT/source/tools/sea/sea.sh $MONOREPO_ROOT/bin/sea
 
 function cprint() {
     sea cprintln "$@"
@@ -97,6 +97,7 @@ unalias scd 2> /dev/null
 unset -f scd
 function scd() {
     sea cd $*
+    source $MONOREPO_ROOT/temp/__sea_output.sh
 }
 
 if [ -f "$HOME/.config/snowfall-dev/profile.sh" ]; then
