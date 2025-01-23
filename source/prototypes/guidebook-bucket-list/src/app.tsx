@@ -212,6 +212,8 @@ function useRenderOnEvent(obj: any, event: string = 'modified') {
 }
 
 function BucketListView({ database }: { database: Database }): JSX.Element {
+    const [showDone, setShowDone] = React.useState(true);
+
     type SortItem = {
         field: keyof BucketItemData;
         reverse: boolean;
@@ -240,74 +242,75 @@ function BucketListView({ database }: { database: Database }): JSX.Element {
     // position on a change to one of the values.
     const [items, setItems] = React.useState<BucketItem[]>(database.items);
     React.useEffect(() => {
-        const items = [...database.items];
-        items.sort((a: BucketItem, b: BucketItem): number => {
-            // "Hack" to put new items on the bottom of the list
-            if (a.generation !== b.generation) {
-                if (a.generation === 1) {
-                    return 1;
-                } else if (b.generation === 1) {
-                    return -1;
+        const items = [...database.items]
+            .filter((item) => showDone || item.status !== 'done')
+            .sort((a: BucketItem, b: BucketItem): number => {
+                // "Hack" to put new items on the bottom of the list
+                if (a.generation !== b.generation) {
+                    if (a.generation === 1) {
+                        return 1;
+                    } else if (b.generation === 1) {
+                        return -1;
+                    }
                 }
-            }
 
-            for (const { field, reverse } of sortOrder) {
-                const r = reverse ? -1 : 1;
-                switch (field) {
-                    case 'status':
-                        if (a.status !== b.status) {
-                            const table: { [k in BucketItemData['status']]: number } = {
-                                wip: 0,
-                                todo: 1,
-                                done: 2,
-                            };
-                            return r * (table[a.status] - table[b.status]);
-                        }
-                        break;
-                    case 'category':
-                        if (a.category !== b.category) {
-                            return r * a.category.localeCompare(b.category);
-                        }
-                        break;
-                    case 'value':
-                        if (a.value !== b.value) {
-                            return r * (b.value - a.value);
-                        }
-                        break;
-                    case 'year':
-                        if (a.year !== b.year) {
-                            return r * (b.year - a.year);
-                        }
-                        break;
-                    case 'name':
-                        if (a.name !== b.name) {
-                            return r * a.name.localeCompare(b.name);
-                        }
-                        break;
-                    case 'rating':
-                        if (a.rating !== b.rating) {
-                            return r * (b.rating - a.rating);
-                        }
-                        break;
-                    case 'description':
-                        if (a.description !== b.description) {
-                            return r * a.description.localeCompare(b.description);
-                        }
-                        break;
-                    case 'review':
-                        if (a.review !== b.review) {
-                            return r * a.review.localeCompare(b.review);
-                        }
-                        break;
-                    default:
-                        console.warn('Unknown field:', field);
+                for (const { field, reverse } of sortOrder) {
+                    const r = reverse ? -1 : 1;
+                    switch (field) {
+                        case 'status':
+                            if (a.status !== b.status) {
+                                const table: { [k in BucketItemData['status']]: number } = {
+                                    wip: 0,
+                                    todo: 1,
+                                    done: 2,
+                                };
+                                return r * (table[a.status] - table[b.status]);
+                            }
+                            break;
+                        case 'category':
+                            if (a.category !== b.category) {
+                                return r * a.category.localeCompare(b.category);
+                            }
+                            break;
+                        case 'value':
+                            if (a.value !== b.value) {
+                                return r * (b.value - a.value);
+                            }
+                            break;
+                        case 'year':
+                            if (a.year !== b.year) {
+                                return r * (b.year - a.year);
+                            }
+                            break;
+                        case 'name':
+                            if (a.name !== b.name) {
+                                return r * a.name.localeCompare(b.name);
+                            }
+                            break;
+                        case 'rating':
+                            if (a.rating !== b.rating) {
+                                return r * (b.rating - a.rating);
+                            }
+                            break;
+                        case 'description':
+                            if (a.description !== b.description) {
+                                return r * a.description.localeCompare(b.description);
+                            }
+                            break;
+                        case 'review':
+                            if (a.review !== b.review) {
+                                return r * a.review.localeCompare(b.review);
+                            }
+                            break;
+                        default:
+                            console.warn('Unknown field:', field);
+                    }
                 }
-            }
-            return 0;
-        });
+                return 0;
+            });
 
         setItems(items);
-    }, [database.generation, sortOrder]);
+    }, [database.generation, sortOrder, showDone]);
 
     useRenderOnEvent(database);
 
@@ -329,98 +332,120 @@ function BucketListView({ database }: { database: Database }): JSX.Element {
     };
 
     return (
-        <Flex
-            col
-            css={css`
-                .row {
-                    > * {
-                        flex: 0 0 120px;
-                        padding: 4px 4px 4px 0px;
-                    }
+        <Flex col>
+            <label>
+                <input
+                    type="checkbox"
+                    checked={showDone}
+                    onChange={() => {
+                        setShowDone((v) => !v);
+                    }}
+                />
+                Show done
+            </label>
 
-                    > :nth-child(1) {
-                        flex: 0 0 520px;
-                    }
-                    > :nth-child(2) {
-                        flex: 0 0 110px;
-                    }
-                    > :nth-child(3) {
-                        flex: 0 0 64px;
-                    }
-                    > :nth-child(4) {
-                        flex: 0 0 90px;
-                    }
-                    > :nth-child(5) {
-                        flex: 0 0 200px;
-                    }
-                    > :nth-child(6) {
-                        flex: 0 0 60px;
-                    }
-                    > :nth-child(7) {
-                        flex: 0 0 60px;
-                    }
-                    > :nth-child(8) {
-                        flex: 0 0 60px;
-                    }
-                    > :nth-child(9) {
-                        flex: 0 0 480px;
-                    }
-
-                    select {
-                        color: inherit;
-                        border: solid 1px rgba(0, 0, 0, 0.02);
-                        border-radius: 2px;
-                        width: auto;
-                    }
-                }
-            `}
-        >
             <Flex
-                row
-                className="row"
-                style={{
-                    fontWeight: 'bold',
-                    backgroundColor: 'rgba(0,0,0,0.1)',
-                }}
-            >
-                <ColumnHeader field="name" />
-                <ColumnHeader field="category" />
-                <ColumnHeader field="status" />
-                <ColumnHeader field="value" />
-                <ColumnHeader field="description" />
-                <ColumnHeader field="year" />
-                <ColumnHeader field="month" />
-                <ColumnHeader field="rating" />
-                <ColumnHeader field="review" />
-            </Flex>
-            {items.map((item) => (
-                <BucketItemRow key={item.id} item={item} />
-            ))}
+                col
+                css={css`
+                    .row {
+                        > * {
+                            flex: 0 0 120px;
+                            padding: 4px 4px 4px 0px;
+                        }
 
-            <Flex row>
-                <button
-                    onClick={() => {
-                        database.add({
-                            name: 'Another new item',
-                            status: 'todo',
-                        });
+                        > :nth-child(1) {
+                            flex: 0 0 12px;
+                        }
+                        > :nth-child(2) {
+                            flex: 0 0 520px;
+                        }
+                        > :nth-child(3) {
+                            flex: 0 0 110px;
+                        }
+                        > :nth-child(4) {
+                            flex: 0 0 64px;
+                        }
+                        > :nth-child(5) {
+                            flex: 0 0 90px;
+                        }
+                        > :nth-child(6) {
+                            flex: 0 0 200px;
+                        }
+                        > :nth-child(7) {
+                            flex: 0 0 60px;
+                        }
+                        > :nth-child(8) {
+                            flex: 0 0 60px;
+                        }
+                        > :nth-child(9) {
+                            flex: 0 0 60px;
+                        }
+                        > :nth-child(10) {
+                            flex: 0 0 480px;
+                        }
+
+                        select {
+                            color: inherit;
+                            width: auto;
+                            text-align: right;
+                        }
+                    }
+                `}
+            >
+                <Flex
+                    row
+                    className="row"
+                    style={{
+                        fontWeight: 'bold',
+                        backgroundColor: 'rgba(0,0,0,0.1)',
+                        marginBottom: 2,
+                        borderBottom: '2px solid rgba(0,0,0,0.1)',
                     }}
                 >
-                    Add new
-                </button>
+                    <div />
+                    <ColumnHeader field="name" />
+                    <ColumnHeader field="category" />
+                    <ColumnHeader field="status" />
+                    <ColumnHeader field="value" />
+                    <ColumnHeader field="description" />
+                    <ColumnHeader field="year" />
+                    <ColumnHeader field="month" />
+                    <ColumnHeader field="rating" />
+                    <ColumnHeader field="review" />
+                </Flex>
+                {items.map((item) => (
+                    <BucketItemRow key={item.id} item={item} />
+                ))}
+
+                <Flex row>
+                    <button
+                        onClick={() => {
+                            database.add({
+                                name: 'Another new item',
+                                status: 'todo',
+                            });
+                        }}
+                    >
+                        Add new
+                    </button>
+                </Flex>
             </Flex>
         </Flex>
     );
 }
 
 function idToColor(id: string): string {
+    if (!id) {
+        return '#777';
+    }
+
     let value = 0;
     for (let i = 0; i < id.length; i++) {
         const charCode = id.charCodeAt(i);
         value = value * 256 + charCode;
     }
     const palette = [
-        '#979596',
+        '#781e2e',
         '#a5bcbd',
         '#e7e3c7',
         '#f5b97b',
@@ -430,7 +455,7 @@ function idToColor(id: string): string {
         '#816b24',
         '#96af2e',
         '#469852',
-        '#b967ad',
+        '#9c2f8b',
         '#6950d1',
         '#7e94db',
         '#9bcea6',
@@ -439,7 +464,7 @@ function idToColor(id: string): string {
         '#0a4684',
         '#181c38',
         '#5a4342',
-        '#686a69',
+        '#0e4a2c',
     ];
     return palette[value % palette.length];
 }
@@ -457,28 +482,55 @@ function BucketItemRow({ item }: { item: BucketItem }): JSX.Element {
             row
             align="top"
             style={{
-                color: item.status === 'done' ? '#484' : item.status === 'wip' ? '#448' : 'inherit',
-                opacity: item.status === 'done' ? 0.75 : 1,
+                backgroundColor:
+                    item.status === 'done' ? '#4841' : item.status === 'wip' ? '#44F1' : 'inherit',
+                opacity: item.status === 'done' ? 0.5 : 1,
             }}
             css={css`
+                border-radius: 6px;
+                color: ${idToColor(item.category)};
+
                 select,
+                option,
                 input {
                     width: 100%;
                     color: inherit;
+                    background-color: transparent;
                     font-size: inherit;
                     font-family: inherit;
                 }
+                select {
+                    border: none;
+                }
                 input {
                     box-sizing: border-box;
-                    border: solid 1px rgba(0, 0, 0, 0.1);
+                    border: solid 1px rgba(0, 0, 0, 0.01);
                     border-radius: 2px;
                 }
             `}
         >
+            <Flex row align="center">
+                <div
+                    style={{
+                        width: 8,
+                        minWidth: 8,
+                        maxWidth: 8,
+                        height: 8,
+                        minHeight: 8,
+                        maxHeight: 8,
+                        margin: '0 0 2px 2px',
+                        borderRadius: 4,
+                        backgroundColor: idToColor(item.category),
+                    }}
+                />
+            </Flex>
             <div>
                 <input
                     type="text"
                     value={item.name}
+                    style={{
+                        color: idToColor(item.category),
+                    }}
                     onChange={(evt) => {
                         item.modify({
                             name: evt.target.value,
@@ -493,18 +545,6 @@ function BucketItemRow({ item }: { item: BucketItem }): JSX.Element {
                     color: item.done() ? 'inherit' : idToColor(item.category),
                 }}
             >
-                <div
-                    style={{
-                        width: 8,
-                        minWidth: 8,
-                        maxWidth: 8,
-                        height: 8,
-                        minHeight: 8,
-                        maxHeight: 8,
-                        borderRadius: 4,
-                        backgroundColor: item.done() ? 'inherit' : idToColor(item.category),
-                    }}
-                />
                 <SelectWithNew item={item} field="category" values={categories} />
             </Flex>
             <Flex
