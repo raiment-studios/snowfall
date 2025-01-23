@@ -1,5 +1,43 @@
 import React, { JSX } from 'react';
 import { randomSeeded, Prng } from '@std/random';
+import ReactDOMServer from 'react-dom/server';
+
+function Console({
+    seed,
+    addEntry,
+}: {
+    seed: number;
+    addEntry: (props: { [k: string]: any }) => void;
+}): JSX.Element {
+    const [rng] = React.useState(new RNG(seed));
+
+    const handler =
+        (type: string, props: { [k: string]: any } = {}) =>
+        () =>
+            addEntry({ type, seed: rng.d8k(), ...props });
+    return (
+        <div>
+            <div>Enter a command:</div>
+            <input
+                type="text"
+                placeholder="Not yet implemented. Use buttons below instead."
+                style={{
+                    width: '100%',
+                }}
+            />
+            <Flex row>
+                <button onClick={handler('dice')}>roll dice</button>
+                <button onClick={handler('scene')}>scene</button>
+                <button onClick={handler('region')}>region</button>
+                <button onClick={handler('area')}>area</button>
+                <button onClick={handler('location')}>location</button>
+                <button onClick={handler('item')}>item</button>
+                <button onClick={handler('npc')}>NPC</button>
+                <button onClick={handler('character')}>character</button>
+            </Flex>
+        </div>
+    );
+}
 
 function Flex({
     row,
@@ -125,6 +163,9 @@ class RNG {
     }
     d100(): number {
         return 1 + this.rangei(0, 100);
+    }
+    d8k(): number {
+        return 1 + this.rangei(0, 8192);
     }
 
     selectWeighted<T>(arr: [number, T][]): T {
@@ -451,8 +492,20 @@ const table_threats: [number, string][] = [
     [500, 'reports of a mass killing in the area'],
 ];
 
+type Entry = { [k: string]: any };
+
 export function App(): JSX.Element {
     const [seed, setSeed] = React.useState(RNG.make_seed8k());
+    const [entries, setEntries] = React.useState<Entry[]>([]);
+
+    const addEntry = React.useCallback(
+        (e: Entry) => {
+            setEntries((log) => {
+                return [e, ...log];
+            });
+        },
+        [setEntries]
+    );
 
     return (
         <Flex col m="12px 64px">
@@ -472,11 +525,40 @@ export function App(): JSX.Element {
                 </Flex>
             </Flex>
 
-            <DiceTable seed={seed} />
-            <Table seed={seed} />
-            <CharacterTable seed={seed} />
+            <Console seed={seed} addEntry={addEntry} />
+            <div style={{ height: 32 }} />
+            {entries.map((entry, i) => (
+                <div
+                    key={i}
+                    style={{
+                        padding: 2,
+                        border: '1px solid #ccc',
+                        borderRadius: 4,
+                    }}
+                >
+                    <Flex row>
+                        <div style={{ opacity: 0.4, marginRight: 32 }}>{entries.length - i}</div>
+                        <div style={{ flexGrow: 1 }}>
+                            <EntryView entry={entry} />
+                        </div>
+                    </Flex>
+                </div>
+            ))}
         </Flex>
     );
+}
+
+function EntryView({ entry }: { entry: Entry }): JSX.Element {
+    switch (entry.type) {
+        case 'dice':
+            return <DiceTable seed={entry.seed} />;
+        case 'scene':
+            return <SceneTable seed={entry.seed} />;
+        case 'character':
+            return <CharacterTable seed={entry.seed} />;
+        default:
+            return <div>{JSON.stringify(entry)}</div>;
+    }
 }
 
 function DiceTable({ seed }: { seed: number }): JSX.Element {
@@ -503,8 +585,7 @@ function DiceTable({ seed }: { seed: number }): JSX.Element {
 
     return (
         <Flex col>
-            <h3>General</h3>
-            <Flex row m="0 0 32px 0" align="start">
+            <Flex row m="0 0 2px 0" align="start">
                 <Flex col flex="0 0 14em">
                     <Row k="d4" />
                     <Row k="d6" />
@@ -530,6 +611,7 @@ function CharacterTable({ seed }: { seed: number }): JSX.Element {
 
     const table: { [k: string]: [string, string] } = {
         name: ['Kestrel', 'Name'],
+        seed: [`${seed}`, 'Seed'],
         primary_value: [values[0], 'Primary value'],
         secondary_value: [values[1], 'Secondary value'],
         trigger_value: [rng.selectWeighted(table_values), 'Trigger value'],
@@ -548,7 +630,7 @@ function CharacterTable({ seed }: { seed: number }): JSX.Element {
 
     return (
         <Flex col>
-            <h3>Character</h3>
+            <div style={{ fontWeight: 'bold' }}>Character</div>
             <Flex row gap={32} align="start">
                 <Flex col flex="0 0 40em">
                     {Object.entries(table).map(([k]) => (
@@ -602,7 +684,7 @@ function CharacterTable({ seed }: { seed: number }): JSX.Element {
     );
 }
 
-function Table({ seed }: { seed: number }): JSX.Element {
+function SceneTable({ seed }: { seed: number }): JSX.Element {
     const rng = new RNG(seed);
 
     const table: [string, number | string][] = [

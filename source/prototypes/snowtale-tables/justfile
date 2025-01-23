@@ -14,7 +14,7 @@ build: ensure
     just _common-build-bundle ./src/main.tsx ./dist/main.bundle.js
     cp -f ./src/index.html ./dist/index.html
 
-dev: build
+dev:
     mprocs \
         --names "client,server" \
         "just _common-dev-watch ./src 'just build'" \

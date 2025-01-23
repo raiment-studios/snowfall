@@ -1,3 +1,12 @@
+############################################################
+# GENERATED FILE: DO NOT EDIT
+############################################################
+#
+# The source file is located at:
+# config/mprocs.yaml
+#
+############################################################
+
 # Alas for custom configurations and more config files!
 #
 # This is a workaround for Q not working as expected in `mprocs`
