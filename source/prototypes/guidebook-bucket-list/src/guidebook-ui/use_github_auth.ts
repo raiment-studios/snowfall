@@ -45,8 +45,7 @@ export function useGitHubAuthToken(): string | null {
 
             console.log('Resolving GitHub auth callback', auth, code, clientID);
             const go = async () => {
-                const url = 'https://guidebook-auth-server.deno.dev/';
-
+                const url = new URL('https://guidebook-auth-server.deno.dev/');
                 const body = {
                     url: `https://github.com/login/oauth/access_token`,
                     method: 'POST',
@@ -60,7 +59,7 @@ export function useGitHubAuthToken(): string | null {
                     },
                 };
 
-                const resp = await fetch(url, {
+                const resp = await fetch(url.toString(), {
                     method: 'POST',
                     headers: {
                         Accept: 'application/json',

@@ -2,7 +2,7 @@ export async function upgrade_tools() {
   console.error(
     `
 #!/bin/env bash
-echo "Refreshing asdf plugins..."
+echo "Refreshing tools..."
 pushd $MONOREPO_ROOT
 asdf plugin list all > /dev/null
 
@@ -10,10 +10,14 @@ asdf plugin-add deno https://github.com/asdf-community/asdf-deno.git
 asdf install deno latest
 asdf local deno latest
 
+deno install -Arf --global jsr:@deno/deployctl
+asdf reshim deno    
+
 asdf plugin-add rust https://github.com/asdf-community/asdf-rust.git
 asdf install rust latest
 asdf local rust latest
 
+cargo binstall --root $MONOREPO_ROOT/bin/cargo mprocs -y
 
 asdf plugin-add zig https://github.com/asdf-community/asdf-zig.git
 asdf install zig latest

@@ -27,7 +27,14 @@ export async function ensure_tools() {
 async function ensure_tool_versions(
   tool_versions: Record<string, string>
 ): Promise<boolean> {
-  const unchecked_tools = ["bash", "asdf", "git", "git-lfs"];
+  const unchecked_tools = [
+    "bash",
+    "asdf",
+    "git",
+    "git-lfs",
+    "deployctl",
+    "mprocs",
+  ];
 
   console.log(rgb("fff", "Binaries:"));
   for (const tool of unchecked_tools) {

@@ -1,6 +1,18 @@
 {
-    "compilerOptions": {
-        "lib": ["es2022", "dom", "deno.ns"],
-        "strict": true
-    }
+  "compilerOptions": {
+    "lib": [
+      "es2022",
+      "dom",
+      "deno.ns"
+    ],
+    "strict": true
+  },
+  "deploy": {
+    "project": "df22c76c-a9f5-4156-ab2a-3ab704345707",
+    "exclude": [
+      "**/node_modules"
+    ],
+    "include": [],
+    "entrypoint": "https://jsr.io/@std/http/1.0.7/file_server.ts"
+  }
 }
