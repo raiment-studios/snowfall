@@ -20,6 +20,10 @@ export class RNG {
         return this._rng() >= 0.5;
     }
 
+    range(min: number, max: number): number {
+        return (max - min) * this._rng() + min;
+    }
+
     // Exclusive range!
     rangei(min: number, max: number): number {
         const v = (max - min) * this._rng();

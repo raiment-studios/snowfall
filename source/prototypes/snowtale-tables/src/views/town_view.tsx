@@ -6,6 +6,51 @@ export function TownView({ seed }: { seed: number }): JSX.Element {
     const inst = React.useMemo(() => generate(seed), [seed]);
 
     return (
+        <Flex row gap={32}>
+            <Card inst={inst} />
+            <PolygonCanvas poly={inst.shape} points={inst.locationPoints} />
+        </Flex>
+    );
+}
+
+function PolygonCanvas({ poly, points }: { poly: Polygon; points: Point[] }): JSX.Element {
+    const ref = React.useRef<HTMLCanvasElement>(null);
+
+    React.useEffect(() => {
+        if (!poly) {
+            return;
+        }
+
+        const ctx = ref.current!.getContext('2d');
+        if (!ctx) {
+            return;
+        }
+        ctx.clearRect(0, 0, 320, 320);
+
+        ctx.strokeStyle = 'rgba(120, 80, 0, 0.5)';
+        ctx.beginPath();
+        ctx.moveTo(poly[0].x + 160, poly[0].y + 160);
+        for (let i = 1; i < poly.length; i++) {
+            ctx.lineTo(poly[i].x + 160, poly[i].y + 160);
+        }
+        ctx.closePath();
+        ctx.stroke();
+
+        ctx.fillStyle = 'rgba(55, 100, 200, 0.85)';
+        for (const point of points) {
+            ctx.beginPath();
+            ctx.arc(point.x + 160, point.y + 160, 2.5, 0, 2 * Math.PI);
+            ctx.fill();
+        }
+    }, [poly]);
+
+    return (
+        <canvas ref={ref} width={320} height={320} style={{ border: '1px solid black' }}></canvas>
+    );
+}
+
+function Card({ inst }: { inst: Town }): JSX.Element {
+    return (
         <Div
             css={css`
                 display: flex;
@@ -26,8 +71,17 @@ export function TownView({ seed }: { seed: number }): JSX.Element {
                     background-color: rgba(255, 255, 255, 0.65);
                     border: solid 1px #111;
                     border-radius: 8px;
-                    font-weight: bold;
-                    padding: 0 4px;
+                    padding: 0 6px;
+                    box-shadow: 0px 0px 4px rgba(10, 128, 255, 0.95);
+
+                    .name {
+                        font-weight: bold;
+                    }
+                    .type {
+                        font-weight: 100;
+                        font-style: italic;
+                        font-size: 80%;
+                    }
                 }
                 .body {
                     flex-grow: 1;
@@ -51,15 +105,17 @@ export function TownView({ seed }: { seed: number }): JSX.Element {
                 }
             `}
         >
-            <Div cn="topbar">
-                <Div cn="name">{inst.name}</Div>
-                <Div>{inst.type}</Div>
+            <Div cl="topbar">
+                <Div cl="name">{inst.props.title}</Div>
+                <Div cl="type">
+                    {inst.name}/{inst.type[0].toUpperCase() + inst.type.slice(1)}
+                </Div>
             </Div>
-            <Div cn="body">
-                <Table obj={inst} skip="id type name seed props" />
+            <Div cl="body">
+                <Table obj={inst} skip="id type title name seed props shape locationPoints" />
                 <Table obj={inst.props} />
             </Div>
-            <Div cn="bottombar">
+            <Div cl="bottombar">
                 <Div></Div>
                 <Div>
                     {inst.id} {inst.seed}
@@ -104,7 +160,55 @@ function Table({ obj, skip }: { obj: Record<string, any>; skip?: string }): JSX.
     );
 }
 
-type Town = {} | any;
+type Point = { x: number; y: number };
+type Polygon = Point[];
+
+type Town = Record<string, any>;
+
+function generateShape(rng: RNG): Polygon {
+    const sides = rng.rangei(6, 12);
+    const radius = 160;
+    const angleIncrement = (2 * Math.PI) / sides;
+    const points: Point[] = [];
+    for (let i = 0; i < sides; i++) {
+        const angle = i * angleIncrement + 0.25 * rng.range(0.0, Math.PI / sides);
+        points.push({
+            x: Math.cos(angle) * radius * rng.range(0.5, 1.0) + rng.range(-10, 10),
+            y: Math.sin(angle) * radius * rng.range(0.5, 1.0) + rng.range(-10, 10),
+        });
+    }
+
+    const scale = rng.range(0.35, 1.0);
+    const rotation = rng.range(0, 2 * Math.PI);
+    for (let i = 0; i < points.length; i++) {
+        const x = points[i].x * scale;
+        const y = points[i].y;
+        points[i].x = x * Math.cos(rotation) - y * Math.sin(rotation);
+        points[i].y = x * Math.sin(rotation) + y * Math.cos(rotation);
+    }
+
+    return points;
+}
+
+const isPointInPolygon = (point: Point, polygon: Point[]): boolean => {
+    let inside = false;
+    const n = polygon.length;
+
+    for (let i = 0, j = n - 1; i < n; j = i++) {
+        const xi = polygon[i].x;
+        const yi = polygon[i].y;
+        const xj = polygon[j].x;
+        const yj = polygon[j].y;
+
+        const intersect =
+            yi > point.y !== yj > point.y &&
+            point.x < ((xj - xi) * (point.y - yi)) / (yj - yi) + xi;
+
+        if (intersect) inside = !inside;
+    }
+
+    return inside;
+};
 
 function generate(seed: number): Town {
     const rng = new RNG(seed);
@@ -121,17 +225,20 @@ function generate(seed: number): Town {
         () => 'Nors',
         () => 'Mills',
         () => 'Bellfound',
-        () => 'Sisters',
         () => 'Shellborne',
         () => 'Hilltop',
         () => 'Dale',
-        () => 'Bend',
         () => 'Burr',
+        () => 'Stonehaul',
+        () => 'Billows',
+        () => 'Fenn',
+        () => 'Barrow',
+        () => sel('Barrow', 'fold glen stone'),
         () => 'Vale',
         () => 'Fell',
         () => sel('Plain', 'view town glen dale'),
         () => sel('Oak', 'sill tree field'),
-        () => 'Rock',
+        () => 'Rockshawl',
         () => sel('Bill', 'yard meadow'),
         () => sel('Middle', 'view vale town ton'),
         () => sel('Mid', 'ville creek glen ton'),
@@ -148,11 +255,47 @@ function generate(seed: number): Town {
         locations: 2 + rng.d6(),
     };
 
+    const shape = generateShape(rng);
+    const locationPoints = [];
+
+    const S = 0.9;
+    const scaledShape = shape.map((point) => ({ x: point.x * S, y: point.y * S }));
+
+    for (
+        let attempts = 0;
+        attempts < props.locations * 20 && locationPoints.length < props.locations;
+        attempts++
+    ) {
+        const x = rng.range(-160, 160);
+        const y = rng.range(-160, 160);
+        if (!isPointInPolygon({ x, y }, scaledShape)) {
+            continue;
+        }
+        let valid = true;
+        for (let j = 0; j < locationPoints.length; j++) {
+            const q = locationPoints[j];
+            const dx = x - q.x;
+            const dy = y - q.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 20) {
+                valid = false;
+                break;
+            }
+        }
+        if (!valid) {
+            continue;
+        }
+
+        locationPoints.push({ x, y });
+    }
+
     return {
         name: 'Town',
         seed,
         id: 'town',
         type: 'area',
         props,
+        shape,
+        locationPoints,
     };
 }
