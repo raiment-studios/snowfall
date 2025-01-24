@@ -51,8 +51,12 @@ export class RNG {
     d100(): number {
         return 1 + this.rangei(0, 100);
     }
-    d8k(): number {
+    d8192() {
         return 1 + this.rangei(0, 8192);
+    }
+
+    select<T>(arr: T[]): T {
+        return arr[this.rangei(0, arr.length)];
     }
 
     selectWeighted<T>(arr: [number, T][]): T {

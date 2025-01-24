@@ -10,12 +10,8 @@ _default: _common-default
 
 # idempotent installation of dependencies & configuration
 ensure: _common-ensure-webapp
-    #!/usr/bin/env bash
-    TARGET=./src/snowfall-core
-    SOURCE=$MONOREPO_ROOT/source/lib/snowfall-core/src
-    if [ ! -L $TARGET ] && [ -e $SOURCE ]; then
-        ln -s $SOURCE $TARGET
-    fi
+    @just _link-folder ./src/snowfall-core $MONOREPO_ROOT/source/lib/snowfall-core/src
+    @just _link-folder ./src/snowfall-ui $MONOREPO_ROOT/source/lib/snowfall-ui/src
 
 build: ensure
     just _common-build-bundle ./src/main.tsx ./dist/main.bundle.js
@@ -31,4 +27,11 @@ run: build
     npx serve ./dist
 
 
-
+_link-folder target source:
+    #!/usr/bin/env bash
+    TARGET={{target}}
+    SOURCE={{source}}
+    sea cprintln "Creating symbolic link {CC5:$TARGET}"
+    if [ ! -L $TARGET ] && [ -e $SOURCE ]; then
+        ln -s $SOURCE $TARGET
+    fi

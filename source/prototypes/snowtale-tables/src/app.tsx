@@ -1,5 +1,6 @@
 import React, { JSX } from 'react';
 import { RNG } from './snowfall-core/index.ts';
+import { TownView } from './views/town_view.tsx';
 
 function Console({
     seed,
@@ -13,7 +14,12 @@ function Console({
     const handler =
         (type: string, props: { [k: string]: any } = {}) =>
         () =>
-            addEntry({ type, seed: rng.d8k(), ...props });
+            addEntry({ type, seed: rng.d8192(), ...props });
+
+    React.useEffect(() => {
+        handler('town')();
+    }, []);
+
     return (
         <div>
             <div>Enter a command:</div>
@@ -33,6 +39,7 @@ function Console({
                 <button onClick={handler('item')}>item</button>
                 <button onClick={handler('npc')}>NPC</button>
                 <button onClick={handler('character')}>character</button>
+                <button onClick={handler('town')}>town</button>
             </Flex>
         </div>
     );
@@ -477,6 +484,8 @@ function EntryView({ entry }: { entry: Entry }): JSX.Element {
             return <SceneTable seed={entry.seed} />;
         case 'character':
             return <CharacterTable seed={entry.seed} />;
+        case 'town':
+            return <TownView seed={entry.seed} />;
         default:
             return <div>{JSON.stringify(entry)}</div>;
     }
