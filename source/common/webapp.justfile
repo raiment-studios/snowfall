@@ -62,7 +62,7 @@ __copy-with-preamble source target:
 
 _link-src-lib target:
     @sea cprintln "Ensuring symbolic link for {DA5:{{target}}}"
-    @just _ensure-line-in-file ".gitignore" "./src/{{target}}"
+    @just _ensure-line-in-file ".gitignore" "src/{{target}}"
     @just _make-link-src-lib {{target}}
 
 _make-link-src-lib target:
