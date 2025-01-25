@@ -203,4 +203,11 @@ export class Database {
     itemYears(): number[] {
         return Array.from(new Set(this.items.map((item) => item.year)));
     }
+
+    select({ id }: { id?: string | null }): BucketItem | null {
+        if (id !== undefined) {
+            return this.items.find((item) => item.id === id) ?? null;
+        }
+        return null;
+    }
 }

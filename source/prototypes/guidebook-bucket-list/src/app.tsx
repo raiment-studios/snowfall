@@ -1,5 +1,5 @@
 import React, { JSX } from 'react';
-import { css, Flex } from './guidebook-ui/index.ts';
+import { css, Flex, Div } from './guidebook-ui/index.ts';
 import { Documentation } from './documentation.tsx';
 import { Database, BucketItem, BucketItemData } from './model.ts';
 import { GitHubAPI, useGitHubAPI, useGitHubAuthToken } from './guidebook-ui/use_github_auth.ts';
@@ -17,8 +17,14 @@ function ContentGate(): JSX.Element {
     return accessToken ? <Content /> : <GitHubSignIn />;
 }
 
+type Commands = {
+    setActiveID: (id: string) => void;
+    activeID: () => string | null;
+};
+
 function Content(): JSX.Element {
     const [database, setDatabase] = React.useState<Database | null>(null);
+    const [activeID, setActiveID] = React.useState<string | null>('p0WWpOu2Dn2jw9f2');
     const ghAPI = useGitHubAPI();
 
     React.useEffect(() => {
@@ -30,6 +36,13 @@ function Content(): JSX.Element {
         };
         go();
     }, [ghAPI?.token]);
+
+    const commands: Commands = React.useMemo(() => {
+        return {
+            setActiveID,
+            activeID: () => activeID,
+        };
+    }, [activeID]);
 
     if (!database) {
         return <p>Loading...</p>;
@@ -54,8 +67,10 @@ function Content(): JSX.Element {
                         save
                     </button>
                 </Flex>
-                <BucketListView database={database} />
-
+                <Flex row gap={32} align="start">
+                    <BucketListView database={database} commands={commands} />
+                    <SidePanel database={database} commands={commands} />
+                </Flex>
                 <div>
                     <div
                         style={{
@@ -72,6 +87,91 @@ function Content(): JSX.Element {
                 <Documentation />
             </Flex>
         </>
+    );
+}
+
+function SidePanel({
+    database,
+    commands,
+}: {
+    database: Database;
+    commands: Commands;
+}): JSX.Element {
+    const item = database.select({ id: commands.activeID() });
+
+    useRenderOnEvent(item);
+
+    if (!item) {
+        return <></>;
+    }
+    return (
+        <Flex
+            col
+            css={css`
+                width: 480px;
+                min-height: 600px;
+                margin-top: 16px;
+                padding: 16px 8px 4px;
+                border: 1px solid rgba(0, 0, 0, 0.25);
+                border-radius: 8px;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+
+                .name {
+                    font-size: 120%;
+                    font-weight: bold;
+                }
+                .block {
+                    margin: 32px 0 16px;
+                }
+                textarea {
+                    box-sizing: border-box;
+                    width: 100%;
+                    margin: 4px 0;
+                    padding: 4px;
+                    outline: none;
+                    border: none;
+                    border-right: 3px solid transparent;
+                    resize: none;
+                    &:focus {
+                        border-color: #3615bac5;
+                        background: #3615ba11;
+                    }
+                }
+            `}
+        >
+            <Div cl="name">{item.name}</Div>
+
+            <Div cl="block">
+                <div>
+                    <strong>Description</strong>
+                </div>
+                <textarea
+                    value={item.description}
+                    rows={8}
+                    onChange={(evt) => {
+                        item.modify({
+                            description: evt.target.value,
+                        });
+                    }}
+                />
+            </Div>
+            <Div cl="block">
+                <div>
+                    <strong>Review</strong>
+                </div>
+                <textarea
+                    value={item.review}
+                    rows={8}
+                    onChange={(evt) => {
+                        item.modify({
+                            review: evt.target.value,
+                        });
+                    }}
+                />
+            </Div>
+            <div style={{ flexGrow: 1 }} />
+            <div style={{ textAlign: 'right' }}>{item.id}</div>
+        </Flex>
     );
 }
 
@@ -205,13 +305,22 @@ function TopNavProfile({ ghAPI }: { ghAPI: GitHubAPI }) {
 function useRenderOnEvent(obj: any, event: string = 'modified') {
     const [_generation, setGeneration] = React.useState(1);
     React.useEffect(() => {
+        if (!obj?.events) {
+            return;
+        }
         return obj.events.on(event, () => {
             setGeneration((gen) => gen + 1);
         });
     }, [obj]);
 }
 
-function BucketListView({ database }: { database: Database }): JSX.Element {
+function BucketListView({
+    database,
+    commands,
+}: {
+    database: Database;
+    commands: Commands;
+}): JSX.Element {
     const [showDone, setShowDone] = React.useState(true);
 
     type SortItem = {
@@ -220,8 +329,9 @@ function BucketListView({ database }: { database: Database }): JSX.Element {
     };
     const [sortOrder, setSortOrder] = React.useState<SortItem[]>([
         { field: 'status', reverse: false },
-        { field: 'year', reverse: false },
+        { field: 'category', reverse: false },
         { field: 'value', reverse: false },
+        { field: 'year', reverse: false },
         { field: 'name', reverse: false },
     ]);
 
@@ -348,6 +458,8 @@ function BucketListView({ database }: { database: Database }): JSX.Element {
                 col
                 css={css`
                     .row {
+                        flex-grow: 1;
+                        width: 1024px;
                         > * {
                             flex: 0 0 120px;
                             padding: 4px 4px 4px 0px;
@@ -369,19 +481,13 @@ function BucketListView({ database }: { database: Database }): JSX.Element {
                             flex: 0 0 90px;
                         }
                         > :nth-child(6) {
-                            flex: 0 0 200px;
+                            flex: 0 0 60px;
                         }
                         > :nth-child(7) {
                             flex: 0 0 60px;
                         }
                         > :nth-child(8) {
                             flex: 0 0 60px;
-                        }
-                        > :nth-child(9) {
-                            flex: 0 0 60px;
-                        }
-                        > :nth-child(10) {
-                            flex: 0 0 480px;
                         }
 
                         select {
@@ -407,14 +513,12 @@ function BucketListView({ database }: { database: Database }): JSX.Element {
                     <ColumnHeader field="category" />
                     <ColumnHeader field="status" />
                     <ColumnHeader field="value" />
-                    <ColumnHeader field="description" />
                     <ColumnHeader field="year" />
                     <ColumnHeader field="month" />
                     <ColumnHeader field="rating" />
-                    <ColumnHeader field="review" />
                 </Flex>
                 {items.map((item) => (
-                    <BucketItemRow key={item.id} item={item} />
+                    <BucketItemRow key={item.id} item={item} commands={commands} />
                 ))}
 
                 <Flex row>
@@ -469,7 +573,7 @@ function idToColor(id: string): string {
     return palette[value % palette.length];
 }
 
-function BucketItemRow({ item }: { item: BucketItem }): JSX.Element {
+function BucketItemRow({ item, commands }: { item: BucketItem; commands: Commands }): JSX.Element {
     useRenderOnEvent(item);
 
     const categories = item.database().itemCategories().sort();
@@ -536,6 +640,9 @@ function BucketItemRow({ item }: { item: BucketItem }): JSX.Element {
                             name: evt.target.value,
                         });
                     }}
+                    onFocus={() => {
+                        commands.setActiveID(item.id);
+                    }}
                 />
             </div>
 
@@ -593,13 +700,6 @@ function BucketItemRow({ item }: { item: BucketItem }): JSX.Element {
                     ±
                 </SmallButton>
             </Flex>
-            <div
-                style={{
-                    fontSize: '0.8em',
-                }}
-            >
-                {item.description}
-            </div>
             <SelectWithNew
                 item={item}
                 field="year"
@@ -620,15 +720,6 @@ function BucketItemRow({ item }: { item: BucketItem }): JSX.Element {
                 values={[1, 2, 3, 4, 5]}
                 transform={(s) => parseInt(s, 10) ?? 0}
             />
-            <div
-                style={{
-                    fontSize: '0.9em',
-                    opacity: 0.8,
-                    lineHeight: '1.1em',
-                }}
-            >
-                {item.review}
-            </div>
         </Flex>
     );
 }
