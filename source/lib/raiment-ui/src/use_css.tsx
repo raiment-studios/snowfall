@@ -39,7 +39,7 @@ export function useCSS(s?: CSSString): string {
     }, [s]);
 
     React.useEffect(() => {
-        if (!className) {
+        if (!className || !s) {
             return;
         }
         const id = `id-${className}`;
@@ -48,8 +48,47 @@ export function useCSS(s?: CSSString): string {
             el.dataset.count = `${parseInt(el.dataset.count ?? '0') + 1}`;
             return;
         }
+
+        let text = s.toString();
+        let isGlobal = false;
+        {
+            const re1 = /^\s*\.[a-zA-Z0-9_]+\s*\{/;
+            const re2 = /\s*\}\s*$/;
+            const m1 = re1.exec(text);
+            const m2 = re2.exec(text);
+            if (m1 && m2) {
+                isGlobal = m1[0].includes('.global');
+                text = text.substring(m1.index + m1[0].length);
+                text = text.substring(0, text.length - m2[0].length);
+            }
+        }
+        const lines = text.split('\n');
+        while (lines.length > 0 && lines[0].trim().length === 0) {
+            lines.shift();
+        }
+        while (lines.length > 0 && lines[lines.length - 1].trim().length === 0) {
+            lines.pop();
+        }
+
+        let minIndent = Number.MAX_SAFE_INTEGER;
+        for (const line of lines) {
+            const m = /^\s*/.exec(line);
+            if (line.trim().length > 0 && m) {
+                minIndent = Math.min(minIndent, m[0].length);
+            }
+        }
+        if (minIndent === Number.MAX_SAFE_INTEGER) {
+            minIndent = 0;
+        }
+        for (let i = 0; i < lines.length; i++) {
+            lines[i] = lines[i].substring(minIndent);
+        }
+
+        const generatedCSS = ['', ...lines].join('\n    ');
+        const generated = isGlobal ? generatedCSS : `.${className} {${generatedCSS}\n}`;
+
         el = document.createElement('style');
-        el.innerHTML = `.${className} { ${s} }`;
+        el.innerHTML = generated;
         el.dataset.count = '1';
         document.head.appendChild(el);
 

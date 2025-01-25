@@ -1,14 +1,44 @@
 import React, { JSX } from 'react';
-import { css, Flex, Div } from './guidebook-ui/index.ts';
+import { Flex } from './guidebook-ui/index.ts';
+import { css, D, Div } from './raiment-ui/index.ts';
 import { Documentation } from './documentation.tsx';
 import { Database, BucketItem, BucketItemData } from './model.ts';
 import { GitHubAPI, useGitHubAPI, useGitHubAuthToken } from './guidebook-ui/use_github_auth.ts';
 
 export function App(): JSX.Element {
     return (
-        <Flex col>
-            <ContentGate />
-        </Flex>
+        <D
+            css={css`
+                .global {
+                    :root {
+                        --content-bg-color: rgba(255, 255, 255, 0.985);
+                    }
+
+                    .panel-border {
+                        padding: 16px 8px 4px;
+                        border: 1px solid rgba(0, 0, 0, 0.35);
+                        border-radius: 8px;
+                        box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.05);
+                        background-color: var(--content-bg-color);
+                    }
+                }
+            `}
+        >
+            <Div
+                css={css`
+                    .self {
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: center;
+                        min-height: 100vh;
+
+                        background-color: #ccc;
+                    }
+                `}
+            >
+                <ContentGate />
+            </Div>
+        </D>
     );
 }
 
@@ -49,11 +79,32 @@ function Content(): JSX.Element {
     }
 
     return (
-        <>
+        <D
+            css={css`
+                .self {
+                }
+            `}
+        >
             <TopNavigation database={database} />
-            <Flex col m="12px 64px">
-                <Flex row>
-                    <h1>Bucket List</h1>
+            <Flex col m="12px 16px">
+                <D
+                    className="panel-border"
+                    css={css`
+                        display: flex;
+                        flex-direction: row;
+                        align-items: center;
+                        padding: 8px;
+                        margin-bottom: 8px;
+                    `}
+                >
+                    <D
+                        css={css`
+                            font-size: 140%;
+                            font-weight: bold;
+                        `}
+                    >
+                        Bucket List
+                    </D>
                     <div style={{ width: 32 }} />
                     <button
                         onClick={() => {
@@ -66,11 +117,18 @@ function Content(): JSX.Element {
                     >
                         save
                     </button>
-                </Flex>
-                <Flex row gap={32} align="start">
+                </D>
+                <D
+                    css={css`
+                        display: flex;
+                        flex-direction: row;
+                        align-items: start;
+                        gap: 8px;
+                    `}
+                >
                     <BucketListView database={database} commands={commands} />
                     <SidePanel database={database} commands={commands} />
-                </Flex>
+                </D>
                 <div>
                     <div
                         style={{
@@ -86,7 +144,7 @@ function Content(): JSX.Element {
                 </div>
                 <Documentation />
             </Flex>
-        </>
+        </D>
     );
 }
 
@@ -107,14 +165,11 @@ function SidePanel({
     return (
         <Flex
             col
+            className="panel-border"
             css={css`
-                width: 480px;
-                min-height: 600px;
-                margin-top: 16px;
-                padding: 16px 8px 4px;
-                border: 1px solid rgba(0, 0, 0, 0.25);
-                border-radius: 8px;
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+                flex: 0 0 480px;
+                min-height: 800px;
+                margin-top: 0px;
 
                 .name {
                     font-size: 120%;
@@ -238,16 +293,26 @@ function TopNavigation({ database }: { database: Database }): JSX.Element {
     useRenderOnEvent(database, 'dirty');
 
     return (
-        <Flex
-            row
-            gap={6}
+        <D
             css={css`
-                padding: 4px 32px;
-                border-bottom: 1px solid rgba(0, 0, 0, 0.8);
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                .self {
+                    display: flex;
+                    flex-direction: row;
+                    align-items: center;
+                    gap: 6px;
+                    padding: 4px 32px;
+                    border-bottom: 1px solid rgba(0, 0, 0, 0.8);
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+                    background-color: var(--content-bg-color);
+
+                    .title {
+                        opacity: 0.7;
+                    }
+                }
             `}
         >
-            <div>guidebook-bucket-list prototype</div>
+            <D cl="title">guidebook-bucket-list</D>
             <Flex
                 row
                 gap={8}
@@ -263,7 +328,7 @@ function TopNavigation({ database }: { database: Database }): JSX.Element {
             </Flex>
             <div style={{ flexGrow: 1 }} />
             {ghAPI ? <TopNavProfile ghAPI={ghAPI} /> : <div>login</div>}
-        </Flex>
+        </D>
     );
 }
 
@@ -442,17 +507,38 @@ function BucketListView({
     };
 
     return (
-        <Flex col>
-            <label>
-                <input
-                    type="checkbox"
-                    checked={showDone}
-                    onChange={() => {
-                        setShowDone((v) => !v);
-                    }}
-                />
-                Show done
-            </label>
+        <D
+            className="panel-border"
+            css={css`
+                .self {
+                    display: flex;
+                    flex-direction: column;
+                    flex: 1 0 200px;
+                }
+            `}
+        >
+            <D
+                css={css`
+                    .self {
+                        display: flex;
+                        flex-direction: row;
+                        gap: 32px;
+                        margin-bottom: 16px;
+                        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+                    }
+                `}
+            >
+                <label style={{ display: 'flex', alignItems: 'center' }}>
+                    <input
+                        type="checkbox"
+                        checked={showDone}
+                        onChange={() => {
+                            setShowDone((v) => !v);
+                        }}
+                    />
+                    Show done
+                </label>
+            </D>
 
             <Flex
                 col
@@ -534,7 +620,7 @@ function BucketListView({
                     </button>
                 </Flex>
             </Flex>
-        </Flex>
+        </D>
     );
 }
 

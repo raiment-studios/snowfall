@@ -1,5 +1,6 @@
 import React, { JSX } from 'react';
 import { RNG } from './raiment-core/index.ts';
+import { D, css } from './raiment-ui/index.ts';
 import { TownView } from './views/town_view.tsx';
 
 function Console({
@@ -21,7 +22,16 @@ function Console({
     }, []);
 
     return (
-        <div>
+        <D
+            css={css`
+                .this {
+                    input {
+                        font-family: inherit;
+                        font-size: inherit;
+                    }
+                }
+            `}
+        >
             <div>Enter a command:</div>
             <input
                 type="text"
@@ -41,7 +51,7 @@ function Console({
                 <button onClick={handler('character')}>character</button>
                 <button onClick={handler('town')}>town</button>
             </Flex>
-        </div>
+        </D>
     );
 }
 
