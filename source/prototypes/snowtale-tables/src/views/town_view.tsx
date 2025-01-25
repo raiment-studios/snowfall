@@ -1,6 +1,6 @@
 import React, { JSX } from 'react';
-import { RNG } from '../snowfall-core/index.ts';
-import { Div, Flex, css } from '../snowfall-ui/index.ts';
+import { RNG } from '../raiment-core/index.ts';
+import { Div, Flex, css } from '../raiment-ui/index.ts';
 
 export function TownView({ seed }: { seed: number }): JSX.Element {
     const inst = React.useMemo(() => generate(seed), [seed]);

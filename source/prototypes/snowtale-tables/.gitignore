@@ -2,4 +2,7 @@ node_modules/
 dist/
 .vscode/
 mprocs.yaml
-src/snowfall-core
+
+# Symbolically linked local libraries
+./src/raiment-core
+./src/raiment-ui

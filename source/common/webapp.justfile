@@ -59,3 +59,26 @@ __copy-with-preamble source target:
     @echo "############################################################" >> {{target}}
     @echo "" >> {{target}}
     @cat $MONOREPO_ROOT/{{source}} >> {{target}}
+
+_link-src-lib target:
+    @sea cprintln "Ensuring symbolic link for {DA5:{{target}}}"
+    @just _ensure-line-in-file ".gitignore" "./src/{{target}}"
+    @just _make-link-src-lib {{target}}
+
+_make-link-src-lib target:
+    #!/usr/bin/env bash
+    TARGET=./src/{{target}}
+    SOURCE=$MONOREPO_ROOT/source/lib/{{target}}/src    
+    if [ ! -L $TARGET ] && [ -e $SOURCE ]; then
+        ln -s $SOURCE $TARGET
+    fi
+
+_ensure-line-in-file file line:
+    #!/usr/bin/env bash
+    # Check if the file does not end with a newline
+    if [ -n "$(tail -c 1 "{{file}}")" ]; then
+        echo "" >> "{{file}}"
+    fi
+    if ! grep -Fxq "{{line}}" "{{file}}"; then
+        echo "{{line}}" >> "{{file}}"
+    fi

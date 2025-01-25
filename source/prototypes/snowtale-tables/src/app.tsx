@@ -1,5 +1,5 @@
 import React, { JSX } from 'react';
-import { RNG } from './snowfall-core/index.ts';
+import { RNG } from './raiment-core/index.ts';
 import { TownView } from './views/town_view.tsx';
 
 function Console({
