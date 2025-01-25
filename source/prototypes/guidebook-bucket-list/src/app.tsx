@@ -616,7 +616,7 @@ function BucketItemRow({ item }: { item: BucketItem }): JSX.Element {
             <SelectWithNew
                 item={item}
                 disableNew={true}
-                field="month"
+                field="rating"
                 values={[1, 2, 3, 4, 5]}
                 transform={(s) => parseInt(s, 10) ?? 0}
             />
