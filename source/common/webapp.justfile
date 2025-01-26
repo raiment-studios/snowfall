@@ -7,6 +7,10 @@ _common-default:
 cprintln := "$MONOREPO_ROOT/source/tools/sea/sea cprintln"
 
 _common-ensure-webapp:
+    @just _ensure-line-in-file ".gitignore" "mprocs.yaml"
+    @just _ensure-line-in-file ".gitignore" ".vscode/"
+    @just _ensure-line-in-file ".gitignore" "node_modules/"
+    @just _ensure-line-in-file ".gitignore" "dist/"
     @just _cprint "Copying VSCode settings..."
     @cp -Rf $MONOREPO_ROOT/.vscode/ .vscode/    
     @just __copy-with-preamble "source/common/Makefile.common" "Makefile"    
@@ -43,11 +47,7 @@ _common-prepend-to-file file content:
 _cprint message:
     @"$MONOREPO_ROOT/source/tools/sea/sea" "cprintln" "{35a:{{message}}}"
 
-generated_file_preamble := '''
-    ############################################################
-    # GENERATED FILE: DO NOT EDIT
-    ############################################################
-'''
+
 
 __copy-with-preamble source target:
     @just _cprint "Copying {{source}}.."
@@ -82,3 +82,10 @@ _ensure-line-in-file file line:
     if ! grep -Fxq "{{line}}" "{{file}}"; then
         echo "{{line}}" >> "{{file}}"
     fi
+
+
+generated_file_preamble := '''
+    ############################################################
+    # GENERATED FILE: DO NOT EDIT
+    ############################################################
+'''

@@ -4,3 +4,6 @@ build-watch:
 
 test: 
     cargo test
+
+clean:
+    git clean -fdx
