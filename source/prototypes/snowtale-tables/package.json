@@ -1,11 +1,15 @@
 {
-  "dependencies": {
-    "@std/random": "npm:@jsr/std__random@^0.1.0",
-    "@types/react": "^19.0.6",
-    "esbuild": "^0.24.2",
-    "nodemon": "^3.1.9",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "serve": "^14.2.4"
-  }
+    "dependencies": {
+        "@std/random": "npm:@jsr/std__random@^0.1.0",
+        "@types/lodash": "^4.17.14",
+        "@types/react": "^19.0.6",
+        "esbuild": "^0.24.2",
+        "js-yaml": "^4.1.0",
+        "lodash": "^4.17.21",
+        "nanoid": "^5.0.9",
+        "nodemon": "^3.1.9",
+        "react": "^19.0.0",
+        "react-dom": "^19.0.0",
+        "serve": "^14.2.4"
+    }
 }

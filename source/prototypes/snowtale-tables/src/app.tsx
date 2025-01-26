@@ -2,6 +2,10 @@ import React, { JSX } from 'react';
 import { RNG } from './raiment-core/index.ts';
 import { D, css } from './raiment-ui/index.ts';
 import { TownView } from './views/town_view.tsx';
+import { useGitHubAuthToken, useGitHubAPI } from './raiment-ui/use_github_auth.ts';
+import yaml from 'js-yaml';
+import lodash from 'lodash';
+import { nanoid } from 'nanoid';
 
 function Console({
     seed,
@@ -430,9 +434,494 @@ const table_threats: [number, string][] = [
     [500, 'reports of a mass killing in the area'],
 ];
 
+export function App(): JSX.Element {
+    const widthRules = [2, 4, 8, 16, 24, 32, 48, 64, 72, 96, 128, 192, 256, 384, 512]
+        .map((n) => `.w-${n} { width: ${n}px; }`)
+        .join('\n');
+    const gapRules = [2, 4, 8, 16, 32, 64].map((n) => `.gap-${n} { gap: ${n}px; }`).join('\n');
+
+    return (
+        <D
+            css={css`
+                .global {
+                    .flex-row {
+                        display: flex;
+                        flex-direction: row;
+                        align-items: center;
+                    }
+                    ${gapRules}
+                    ${widthRules}
+
+                    .bold {
+                        font-weight: bold;
+                    }
+
+                    .link {
+                        color: #33f;
+                        cursor: pointer;
+                        &:hover {
+                            color: #a3f;
+                        }
+                    }
+                }
+            `}
+        >
+            <ContentGate />
+        </D>
+    );
+}
+
+function ContentGate(): JSX.Element {
+    const accessToken = useGitHubAuthToken();
+    return accessToken ? <App2 /> : <GitHubSignIn />;
+}
+
+function GitHubSignIn() {
+    const isLocalAuth = window.location.hostname === 'localhost';
+    const clientID = isLocalAuth ? 'Ov23lilAyyeHVnqZ1pGc' : 'Ov23li89ZvKkoY3YqFDj';
+    const paramsHash = {
+        scope: 'read:user, repo, gist',
+        client_id: clientID,
+        state: encodeURIComponent(window.location.href),
+        allow_signup: 'false',
+        prompt: 'select_account',
+    };
+    const params = new URLSearchParams(paramsHash);
+    const url = `https://github.com/login/oauth/authorize?${params}`;
+
+    return (
+        <D
+            css={css`
+                .self {
+                    display: flex;
+                    flex-direction: row;
+                    justify-content: center;
+                    align-items: center;
+                    margin: 64px auto;
+
+                    .button {
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        gap: 32px;
+
+                        padding: 8px 64px;
+                        background: #000;
+                        color: white;
+                        border-radius: 12px;
+                        line-height: 1.5;
+
+                        cursor: pointer;
+
+                        img {
+                            width: 32px;
+                            height: 32px;
+                        }
+
+                        a {
+                        }
+                    }
+                }
+            `}
+        >
+            <div
+                className="button"
+                onClick={() => {
+                    window.location.assign(url);
+                }}
+            >
+                <div>Sign in with GitHub</div>
+            </div>
+        </D>
+    );
+}
+
+function updateRoute(route: string) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('route', route);
+    history.replaceState(null, '', url.toString());
+    const event = new CustomEvent('routechange', {});
+    window.dispatchEvent(event);
+}
+
+function TopNav(): JSX.Element {
+    const api = useGitHubAPI();
+    const [user, setUser] = React.useState<any | null>(null);
+
+    React.useEffect(() => {
+        if (!api) {
+            return;
+        }
+        const go = async () => {
+            setUser(await api.user());
+        };
+        go();
+    }, [api]);
+
+    return (
+        <D
+            css={css`
+                .self {
+                    display: flex;
+                    flex-direction: row;
+                    padding: 2px 16px;
+                    border-bottom: 1px solid #ccc;
+                    gap: 64px;
+                }
+            `}
+        >
+            <D cl="flex-row bold">snowfall-tables</D>
+
+            <D cl="flex-row gap-16">
+                <D
+                    cl="link"
+                    onClick={() => {
+                        updateRoute('journal');
+                    }}
+                >
+                    journal
+                </D>
+                <D
+                    cl="link"
+                    onClick={() => {
+                        updateRoute('tables');
+                    }}
+                >
+                    tables
+                </D>
+            </D>
+
+            <D style={{ flexGrow: 1 }} />
+            <D
+                css={css`
+                    .self {
+                        display: flex;
+                        flex-direction: row;
+                        align-items: center;
+                        gap: 16px;
+                    }
+                `}
+            >
+                {user && (
+                    <Flex row gap={8}>
+                        <img
+                            src={user.avatar_url}
+                            style={{
+                                height: 16,
+                                width: 16,
+                            }}
+                        />
+                        {user.login}
+                    </Flex>
+                )}
+                <button
+                    onClick={() => {
+                        localStorage.removeItem('github_auth/access_token');
+                        window.location.reload();
+                    }}
+                >
+                    sign out
+                </button>
+            </D>
+        </D>
+    );
+}
+
 type Entry = { [k: string]: any };
 
-export function App(): JSX.Element {
+function useRenderOnWindowEvent(event: string) {
+    const [_incarnation, setIncarnation] = React.useState(0);
+    React.useEffect(() => {
+        const handler = (evt: any) => {
+            setIncarnation((i) => i + 1);
+        };
+        window.addEventListener(event, handler);
+        return () => {
+            window.removeEventListener(event, handler);
+        };
+    }, []);
+}
+
+export function App2(): JSX.Element {
+    useRenderOnWindowEvent('routechange');
+
+    const url = new URL(window.location.href);
+    const route = url.searchParams.get('route') || 'journal';
+
+    return (
+        <D>
+            <TopNav />
+            {route === 'tables' ? <Tables /> : <Journal />}
+        </D>
+    );
+}
+
+type NameEntry = {
+    id: string;
+    created: number;
+    name: string;
+    rarity: number; // 1 (rare) to 1000 (common)
+    unique: boolean; // can only be played once per world
+};
+
+type NamesTable = {
+    entries: NameEntry[];
+};
+
+function Tables(): JSX.Element {
+    type SortOrder = {
+        field: keyof NameEntry;
+        reverse: boolean;
+    };
+
+    const [sort, setSort] = React.useState<SortOrder>({ field: 'created', reverse: false });
+    const [table, setTable] = React.useState<NamesTable | null>(null);
+    const api = useGitHubAPI();
+
+    React.useEffect(() => {
+        if (!api) {
+            return;
+        }
+        const go = async () => {
+            const raw = await api.readFileContents('snowfall/table-names.yaml');
+            const obj: NamesTable = raw ? yaml.load(raw) : { entries: [] };
+
+            for (const entry of obj.entries) {
+                entry.id ??= nanoid();
+                entry.created ??= Date.now();
+            }
+            setTable(obj);
+        };
+        go();
+    }, [api]);
+
+    React.useEffect(() => {
+        if (!table) {
+            return;
+        }
+        const entries = [...table.entries];
+        entries.sort((a: NameEntry, b: NameEntry) => {
+            switch (sort.field) {
+                case 'created':
+                    return a.created - b.created;
+                case 'name': {
+                    return a.name.localeCompare(b.name);
+                }
+                case 'rarity': {
+                    return a.rarity - b.rarity;
+                }
+            }
+            return 0;
+        });
+        if (sort.reverse) {
+            entries.reverse();
+        }
+        setTable({
+            ...table,
+            entries,
+        });
+    }, [sort]);
+
+    if (!api || !table) {
+        return <div>loading...</div>;
+    }
+
+    const updateHandler = (cb: Function) => {
+        return (evt: any) => {
+            const value = evt.target.value;
+            const updated = lodash.cloneDeep(table);
+            cb(updated, value);
+            api.updateFileContents('snowfall/table-names.yaml', yaml.dump(updated));
+            setTable(updated);
+        };
+    };
+
+    const updateSort = (field: keyof NameEntry) => {
+        return () => {
+            setSort((s) => {
+                return {
+                    field,
+                    reverse: s.field === field ? !s.reverse : false,
+                };
+            });
+        };
+    };
+
+    return (
+        <D
+            css={css`
+                .self {
+                    margin: 12px 32px;
+
+                    border: 1px solid #ccc;
+                    border-radius: 8px;
+                    padding: 16px;
+
+                    width: 800px;
+
+                    * {
+                        box-sizing: border-box;
+                        background-color: transparent;
+                    }
+
+                    input {
+                        box-sizing: border-box;
+                        font-family: inherit;
+                        font-size: inherit;
+                        width: 100%;
+                        padding: 2px 4px;
+                    }
+
+                    input,
+                    select {
+                        border: 1px dotted transparent;
+                        border-radius: 4px;
+
+                        &:hover {
+                            border-color: rgba(83, 24, 192, 0.434);
+                        }
+                        &:focus {
+                            border-color: rgba(23, 24, 252, 0.834);
+                        }
+
+                        transition-property: border-color;
+                        transition-delay: 40ms;
+                        transition-duration: 300ms;
+                    }
+                    select,
+                    option {
+                        text-align: right;
+                    }
+
+                    .header-row {
+                        font-weight: bold;
+                        margin-bottom: 4px;
+                        border-bottom: solid 1px rgba(0, 0, 0, 0.1);
+
+                        * {
+                            cursor: pointer;
+
+                            &:hover {
+                                color: blue;
+                            }
+                        }
+                    }
+                    .table-row {
+                        &:focus-within {
+                            background-color: rgba(110, 175, 241, 0.1);
+                        }
+                    }
+                }
+            `}
+        >
+            <D cl="flex-row gap-4 header-row">
+                <D cl="w-24"></D>
+                <D cl="w-384" onClick={updateSort('name')}>
+                    Name
+                </D>
+                <D
+                    cl="w-64"
+                    css={css`
+                        .self {
+                            cursor: pointer;
+
+                            &:hover {
+                                color: blue;
+                            }
+                        }
+                    `}
+                    onClick={updateSort('rarity')}
+                >
+                    Rarity
+                </D>
+                <D cl="w-128">Flags</D>
+            </D>
+
+            {table.entries.map((entry, i) => (
+                <D key={entry.id} cl="flex-row gap-4 table-row">
+                    <D cl="w-24" style={{ textAlign: 'right' }}>
+                        {i + 1}
+                    </D>
+                    <D cl="w-384">
+                        <input
+                            id={`table-name-${i}`}
+                            type="text"
+                            value={entry.name}
+                            onChange={(evt) => {
+                                const updated = lodash.cloneDeep(table);
+                                const entry = updated.entries.find(
+                                    (e) => e.id === table.entries[i].id
+                                )!;
+                                entry.name = evt.target.value;
+                                api.updateFileContents(
+                                    'snowfall/table-names.yaml',
+                                    yaml.dump(updated)
+                                );
+                                setTable(updated);
+                            }}
+                            onKeyDown={(evt) => {
+                                if (evt.key === 'ArrowUp') {
+                                    evt.preventDefault();
+                                    evt.stopPropagation();
+                                    document.getElementById(`table-name-${i - 1}`)?.focus();
+                                }
+                                if (evt.key === 'ArrowDown') {
+                                    evt.preventDefault();
+                                    evt.stopPropagation();
+                                    document.getElementById(`table-name-${i + 1}`)?.focus();
+                                }
+                            }}
+                        />
+                    </D>
+                    <D cl="w-64">
+                        <select
+                            value={entry.rarity}
+                            onChange={updateHandler((updated: NamesTable, value: string) => {
+                                const entry = updated.entries.find(
+                                    (e) => e.id === table.entries[i].id
+                                )!;
+                                entry.rarity = parseInt(value, 10);
+                            })}
+                        >
+                            <option value={1000}>1000</option>
+                            <option value={500}>500</option>
+                            <option value={250}>250</option>
+                            <option value={100}>100</option>
+                            <option value={50}>50</option>
+                            <option value={10}>10</option>
+                            <option value={1}>1</option>
+                        </select>
+                    </D>
+                    <D cl="w-128">{entry.unique ? 'unique' : ''}</D>
+                </D>
+            ))}
+            <D
+                css={css`
+                    .self {
+                        margin: 16px 0;
+                    }
+                `}
+            >
+                <button
+                    onClick={updateHandler((updated: NamesTable, value: string) => {
+                        const entry = {
+                            id: nanoid(),
+                            created: Date.now(),
+                            name: 'New name',
+                            rarity: 1000,
+                            unique: false,
+                        };
+                        updated.entries.push(entry);
+                    })}
+                >
+                    add
+                </button>
+            </D>
+        </D>
+    );
+}
+
+function Journal(): JSX.Element {
     const [seed, setSeed] = React.useState(RNG.make_seed8k());
     const [entries, setEntries] = React.useState<Entry[]>([]);
 
