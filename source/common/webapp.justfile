@@ -7,6 +7,7 @@ _common-default:
 cprintln := "$MONOREPO_ROOT/source/tools/sea/sea cprintln"
 
 _common-ensure-webapp:
+    mkdir -p dist
     @just _ensure-line-in-file ".gitignore" "mprocs.yaml"
     @just _ensure-line-in-file ".gitignore" ".vscode/"
     @just _ensure-line-in-file ".gitignore" "node_modules/"

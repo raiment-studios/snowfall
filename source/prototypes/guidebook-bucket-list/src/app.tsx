@@ -803,8 +803,9 @@ function BucketItemRow({ item, commands }: { item: BucketItem; commands: Command
                 item={item}
                 disableNew={true}
                 field="rating"
-                values={[1, 2, 3, 4, 5]}
-                transform={(s) => parseInt(s, 10) ?? 0}
+                values={[1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]}
+                format={(v) => v.toFixed(1)}
+                transform={(s) => parseFloat(s) ?? 0}
             />
         </Flex>
     );
@@ -815,20 +816,33 @@ function SelectWithNew<T>({
     field,
     values,
     transform,
+    format,
     disableNew,
 }: {
     item: BucketItem;
     field: keyof BucketItemData;
     values: T[];
+    format?: (t: T) => string;
     transform?: (s: string) => T;
     disableNew?: boolean;
 }): JSX.Element {
-    const options = values.map((v) => `${v}`).filter((s) => !!s);
     const current = `${item.data[field]}` || '--';
+    const options = values
+        .map((v) => {
+            const display = format ? format(v) : `${v}`;
+            const value = `${v}`;
+            return {
+                display,
+                value,
+            };
+        })
+        .filter((s) => !!s.display);
 
-    if (!options.includes(current)) {
-        options.unshift(current);
+    if (!options.find((s) => s.value === current)) {
+        options.push({ display: current, value: current });
     }
+
+    console.log({ values: options.map((s) => s.value), current });
 
     return (
         <select
@@ -847,8 +861,8 @@ function SelectWithNew<T>({
         >
             {!disableNew && <option value="__new">+ new</option>}
             {options.map((opt) => (
-                <option key={opt} value={opt}>
-                    {opt}
+                <option key={`${opt.display}|${opt.value}`} value={opt.value}>
+                    {opt.display}
                 </option>
             ))}
         </select>
