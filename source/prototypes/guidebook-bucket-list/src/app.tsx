@@ -842,8 +842,6 @@ function SelectWithNew<T>({
         options.push({ display: current, value: current });
     }
 
-    console.log({ values: options.map((s) => s.value), current });
-
     return (
         <select
             value={current}
