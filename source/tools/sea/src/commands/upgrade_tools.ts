@@ -39,6 +39,11 @@ asdf plugin-add just
 asdf install just latest
 asdf local just latest
 
+asdf plugin add podman
+asdf plugin add podman https://github.com/tvon/asdf-podman.git
+asdf install podman latest
+asdf local podman latest
+
 popd
 `.trim() + '\n'
     );

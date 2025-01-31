@@ -1,7 +1,8 @@
-deno 2.1.7
+deno 2.1.9
 zig 0.13.0
 golang 1.23.5
 starship 1.22.1
-rust 1.84.0
+rust 1.84.1
 just 1.39.0
 bat 0.25.0
+podman 5.3.2
