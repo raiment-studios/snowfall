@@ -1,0 +1,39 @@
+CONTAINER_NAME:="ubuntu-inst"
+IMAGE_NAME:="ubuntu-inst"
+TAG:="latest"
+
+build:
+	@if ! podman images --format '\{\{.Repository\}\}:\{\{.Tag\}\}' | grep -wq "{{IMAGE_NAME}}:{{TAG}}"; then \
+		echo "Image {{IMAGE_NAME}}:{{TAG}} does not exist. Building it..."; \
+		podman build -t {{IMAGE_NAME}}:{{TAG}} .; \
+	else \
+		echo "Image {{IMAGE_NAME}}:{{TAG}} already exists."; \
+	fi
+
+run: build
+	podman run --rm -it $(IMAGE_NAME) /bin/bash
+
+
+bash: build ## Start a new container and connect interactively, or connect to an existing one
+	@if ! podman ps -a --format '\{\{.Names\}\}' | grep -wq "{{CONTAINER_NAME}}"; then \
+		echo "Container {{CONTAINER_NAME}} does not exist. Creating it..."; \
+		podman run -it --name "{{CONTAINER_NAME}}" \
+			-v $(PWD)/scripts:/home/user/scripts \
+			"{{IMAGE_NAME}}"; \
+	else \
+		echo "Container {{CONTAINER_NAME}} exists."; \
+		if ! podman ps --format '\{\{.Names\}\}' | grep -wq $(CONTAINER_NAME); then \
+			echo "Container {{CONTAINER_NAME}} is stopped. Starting it..."; \
+			podman start "{{CONTAINER_NAME}}" > /dev/null; \
+		fi; \
+		echo "Connecting to container {{CONTAINER_NAME}}..."; \
+		podman exec -it "{{CONTAINER_NAME}}" bash; \
+	fi
+	@podman stop ""{{CONTAINER_NAME}}" & > /dev/null
+
+clean:
+	-@podman stop "{{IMAGE_NAME}}"
+	-@podman rm -f "{{IMAGE_NAME}}"
+	-@podman rmi -f "{{CONTAINER_NAME}}"
+
+restart: clean bash
