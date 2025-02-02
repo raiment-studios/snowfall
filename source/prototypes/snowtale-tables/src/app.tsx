@@ -6,6 +6,7 @@ import { useGitHubAuthToken, useGitHubAPI } from './raiment-ui/use_github_auth.t
 import yaml from 'js-yaml';
 import lodash from 'lodash';
 import { nanoid } from 'nanoid';
+import { EventEmitter } from './raiment-core/index.ts';
 
 function Console({
     seed,
@@ -21,14 +22,13 @@ function Console({
         () =>
             addEntry({ type, seed: rng.d8192(), ...props });
 
-    React.useEffect(() => {
-        handler('town')();
-    }, []);
+    React.useEffect(() => {}, []);
 
     return (
         <D
             css={css`
                 .this {
+                    margin-top: 32px;
                     input {
                         font-family: inherit;
                         font-size: inherit;
@@ -36,10 +36,10 @@ function Console({
                 }
             `}
         >
-            <div>Enter a command:</div>
             <input
+                id="console-input"
                 type="text"
-                placeholder="Not yet implemented. Use buttons below instead."
+                placeholder="Enter a command (WARNING: Not yet implemented. Use buttons below instead.)"
                 style={{
                     width: '100%',
                 }}
@@ -55,6 +55,7 @@ function Console({
                 <button onClick={handler('character')}>character</button>
                 <button onClick={handler('town')}>town</button>
             </Flex>
+            <div id="console-focus-anchor" style={{ height: 8 }} />
         </D>
     );
 }
@@ -444,6 +445,13 @@ export function App(): JSX.Element {
         <D
             css={css`
                 .global {
+                    input,
+                    select,
+                    option,
+                    div {
+                        box-sizing: border-box;
+                    }
+
                     .flex-row {
                         display: flex;
                         flex-direction: row;
@@ -562,66 +570,78 @@ function TopNav(): JSX.Element {
         <D
             css={css`
                 .self {
-                    display: flex;
-                    flex-direction: row;
-                    padding: 2px 16px;
-                    border-bottom: 1px solid #ccc;
-                    gap: 64px;
+                    margin-bottom: 32px;
                 }
             `}
         >
-            <D cl="flex-row bold">snowfall-tables</D>
-
-            <D cl="flex-row gap-16">
-                <D
-                    cl="link"
-                    onClick={() => {
-                        updateRoute('journal');
-                    }}
-                >
-                    journal
-                </D>
-                <D
-                    cl="link"
-                    onClick={() => {
-                        updateRoute('tables');
-                    }}
-                >
-                    tables
-                </D>
-            </D>
-
-            <D style={{ flexGrow: 1 }} />
             <D
                 css={css`
                     .self {
+                        box-sizing: border-box;
+                        position: fixed;
                         display: flex;
+                        width: 100vw;
                         flex-direction: row;
-                        align-items: center;
-                        gap: 16px;
+                        padding: 2px 16px;
+                        border-bottom: 1px solid #ccc;
+                        gap: 64px;
+                        background-color: white;
                     }
                 `}
             >
-                {user && (
-                    <Flex row gap={8}>
-                        <img
-                            src={user.avatar_url}
-                            style={{
-                                height: 16,
-                                width: 16,
-                            }}
-                        />
-                        {user.login}
-                    </Flex>
-                )}
-                <button
-                    onClick={() => {
-                        localStorage.removeItem('github_auth/access_token');
-                        window.location.reload();
-                    }}
+                <D cl="flex-row bold">snowfall-tables</D>
+
+                <D cl="flex-row gap-16">
+                    <D
+                        cl="link"
+                        onClick={() => {
+                            updateRoute('journal');
+                        }}
+                    >
+                        journal
+                    </D>
+                    <D
+                        cl="link"
+                        onClick={() => {
+                            updateRoute('tables');
+                        }}
+                    >
+                        tables
+                    </D>
+                </D>
+
+                <D style={{ flexGrow: 1 }} />
+                <D
+                    css={css`
+                        .self {
+                            display: flex;
+                            flex-direction: row;
+                            align-items: center;
+                            gap: 16px;
+                        }
+                    `}
                 >
-                    sign out
-                </button>
+                    {user && (
+                        <Flex row gap={8}>
+                            <img
+                                src={user.avatar_url}
+                                style={{
+                                    height: 16,
+                                    width: 16,
+                                }}
+                            />
+                            {user.login}
+                        </Flex>
+                    )}
+                    <button
+                        onClick={() => {
+                            localStorage.removeItem('github_auth/access_token');
+                            window.location.reload();
+                        }}
+                    >
+                        sign out
+                    </button>
+                </D>
             </D>
         </D>
     );
@@ -642,16 +662,71 @@ function useRenderOnWindowEvent(event: string) {
     }, []);
 }
 
+function useRenderOnEvent(obj: any, event: string) {
+    const [_incarnation, setIncarnation] = React.useState(0);
+    React.useEffect(() => {
+        const handler = () => {
+            setIncarnation((i) => i + 1);
+        };
+        return obj.events.on(event, handler);
+    }, []);
+}
+
+type EncyclopediaData = {
+    entries: Entry[];
+};
+
+class Encyclopedia {
+    events: EventEmitter = new EventEmitter();
+    data: EncyclopediaData = {
+        entries: [],
+    };
+
+    modify(params: Partial<EncyclopediaData>) {
+        Object.assign(this.data, params);
+        this.events.fire('modified');
+    }
+    update(cb: (data: EncyclopediaData) => void) {
+        cb(this.data);
+        this.events.fire('modified');
+    }
+}
+
 export function App2(): JSX.Element {
+    const [encyclopedia] = React.useState<Encyclopedia>(new Encyclopedia());
+    return <App3 encyclopedia={encyclopedia} />;
+}
+
+export function App3({ encyclopedia }: { encyclopedia: Encyclopedia }): JSX.Element {
     useRenderOnWindowEvent('routechange');
 
     const url = new URL(window.location.href);
     const route = url.searchParams.get('route') || 'journal';
 
     return (
-        <D>
+        <D
+            css={css`
+                .self {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: stretch;
+
+                    flex-grow: 1;
+                    width: 100%;
+                    height: 100vh;
+                }
+            `}
+        >
             <TopNav />
-            {route === 'tables' ? <Tables /> : <Journal />}
+            <D
+                css={css`
+                    .self {
+                        overflow-y: scroll;
+                    }
+                `}
+            >
+                {route === 'tables' ? <Tables /> : <Journal encyclopedia={encyclopedia} />}
+            </D>
         </D>
     );
 }
@@ -921,21 +996,61 @@ function Tables(): JSX.Element {
     );
 }
 
-function Journal(): JSX.Element {
+function useGameLogic(encyclopedia: Encyclopedia) {
+    React.useEffect(() => {
+        if (encyclopedia.data.entries.length === 0) {
+            encyclopedia.update(({ entries }) => {
+                entries.push({
+                    type: 'markdown',
+                    content: `
+**Welcome to the Galthea!**
+
+This is an enormous world plagued by the mysterious force known as 
+the Maelstrom that has been ripping apart the fabric of reality.
+
+The first step to beginnging the game is to [create a character](action:create-character).
+                    `,
+                });
+            });
+        }
+    }, [encyclopedia]);
+}
+
+function Journal({ encyclopedia }: { encyclopedia: Encyclopedia }): JSX.Element {
     const [seed, setSeed] = React.useState(RNG.make_seed8k());
-    const [entries, setEntries] = React.useState<Entry[]>([]);
+
+    useRenderOnEvent(encyclopedia, 'modified');
 
     const addEntry = React.useCallback(
         (e: Entry) => {
-            setEntries((log) => {
-                return [e, ...log];
+            encyclopedia.update(({ entries }) => {
+                entries.push(e);
             });
         },
-        [setEntries]
+        [encyclopedia]
     );
 
+    React.useEffect(() => {
+        const el = document.querySelector('#console-input') as HTMLInputElement;
+        const el2 = document.querySelector('#console-focus-anchor') as HTMLDivElement;
+        if (el) {
+            el.focus();
+            el2?.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'end' });
+        }
+    }, [encyclopedia.data.entries.length]);
+
+    useGameLogic(encyclopedia);
+
     return (
-        <Flex col m="12px 64px">
+        <D
+            css={css`
+                .self {
+                    display: flex;
+                    flex-direction: column;
+                    margin: 12px 64px;
+                }
+            `}
+        >
             <Flex row align="end" m="0 0 12px">
                 <h1 style={{ margin: '0 12px 0 0' }}>Tables {seed}</h1>
                 <Flex row m="0 0 4px">
@@ -951,32 +1066,43 @@ function Journal(): JSX.Element {
                     </a>
                 </Flex>
             </Flex>
-
-            <Console seed={seed} addEntry={addEntry} />
-            <div style={{ height: 32 }} />
-            {entries.map((entry, i) => (
-                <div
-                    key={i}
-                    style={{
-                        padding: 2,
-                        border: '1px solid #ccc',
-                        borderRadius: 4,
-                    }}
-                >
-                    <Flex row>
-                        <div style={{ opacity: 0.4, marginRight: 32 }}>{entries.length - i}</div>
-                        <div style={{ flexGrow: 1 }}>
-                            <EntryView entry={entry} />
-                        </div>
-                    </Flex>
-                </div>
-            ))}
-        </Flex>
+            <D
+                css={css`
+                    .self {
+                        display: flex;
+                        flex-direction: column;
+                        flex-grow: 1;
+                    }
+                `}
+            >
+                <div style={{ height: 32 }} />
+                {[...encyclopedia.data.entries].map((entry, i) => (
+                    <div
+                        key={i}
+                        style={{
+                            padding: 2,
+                            border: '1px solid #ccc',
+                            borderRadius: 4,
+                        }}
+                    >
+                        <Flex row>
+                            <div style={{ opacity: 0.4, marginRight: 32 }}>{i + 1}</div>
+                            <div style={{ flexGrow: 1 }}>
+                                <EntryView entry={entry} />
+                            </div>
+                        </Flex>
+                    </div>
+                ))}
+                <Console seed={seed} addEntry={addEntry} />
+            </D>
+        </D>
     );
 }
 
 function EntryView({ entry }: { entry: Entry }): JSX.Element {
     switch (entry.type) {
+        case 'markdown':
+            return <Markdown content={entry.content} />;
         case 'dice':
             return <DiceTable seed={entry.seed} />;
         case 'scene':
@@ -988,6 +1114,60 @@ function EntryView({ entry }: { entry: Entry }): JSX.Element {
         default:
             return <div>{JSON.stringify(entry)}</div>;
     }
+}
+
+function Markdown({ content }: { content: string }): JSX.Element {
+    const lines = content.split('\n');
+    while (lines.length > 0 && lines[0].trim() === '') {
+        lines.shift();
+    }
+    while (lines.length > 0 && lines[lines.length - 1].trim() === '') {
+        lines.pop();
+    }
+
+    const Line = ({ text }: { text: string }): JSX.Element => {
+        const re = /\*\*(.*?)\*\*/;
+        const arr = text.split(re);
+        const parts = [];
+        parts.push({ type: 'span', text: arr[0] });
+        for (let i = 1; i < arr.length; i += 2) {
+            parts.push({ type: 'bold', text: arr[i] });
+            if (arr[i + 1]) {
+                parts.push({ type: 'span', text: arr[i + 1] });
+            }
+        }
+
+        return (
+            <div>
+                {parts.map((part, i) => {
+                    switch (part.type) {
+                        case 'span':
+                            return <span key={i}>{part.text}</span>;
+                        case 'bold':
+                            return <strong key={i}>{part.text}</strong>;
+                    }
+                })}
+            </div>
+        );
+
+        return <div>{text}</div>;
+    };
+
+    return (
+        <D
+            css={css`
+                .self {
+                    div {
+                        min-height: 1em;
+                    }
+                }
+            `}
+        >
+            {lines.map((line, i) => (
+                <Line key={i} text={line} />
+            ))}
+        </D>
+    );
 }
 
 function DiceTable({ seed }: { seed: number }): JSX.Element {
