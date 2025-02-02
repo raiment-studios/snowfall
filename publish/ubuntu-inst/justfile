@@ -3,7 +3,7 @@ IMAGE_NAME:="ubuntu-inst"
 TAG:="latest"
 
 build:
-	@if ! podman images --format '\{\{.Repository\}\}:\{\{.Tag\}\}' | grep -wq "{{IMAGE_NAME}}:{{TAG}}"; then \
+	@if ! podman images --format "{{{{.Repository}}:{{{{.Tag}}" | grep -wq "{{IMAGE_NAME}}:{{TAG}}"; then \
 		echo "Image {{IMAGE_NAME}}:{{TAG}} does not exist. Building it..."; \
 		podman build -t {{IMAGE_NAME}}:{{TAG}} .; \
 	else \
@@ -15,14 +15,14 @@ run: build
 
 
 bash: build ## Start a new container and connect interactively, or connect to an existing one
-	@if ! podman ps -a --format '\{\{.Names\}\}' | grep -wq "{{CONTAINER_NAME}}"; then \
+	if ! podman ps -a --format "{{{{.Names}}" | grep -wq "{{CONTAINER_NAME}}"; then \
 		echo "Container {{CONTAINER_NAME}} does not exist. Creating it..."; \
 		podman run -it --name "{{CONTAINER_NAME}}" \
 			-v $(PWD)/scripts:/home/user/scripts \
 			"{{IMAGE_NAME}}"; \
 	else \
 		echo "Container {{CONTAINER_NAME}} exists."; \
-		if ! podman ps --format '\{\{.Names\}\}' | grep -wq $(CONTAINER_NAME); then \
+		if ! podman ps --format "{{{{.Names}}" | grep -wq "{{CONTAINER_NAME}}"; then \
 			echo "Container {{CONTAINER_NAME}} is stopped. Starting it..."; \
 			podman start "{{CONTAINER_NAME}}" > /dev/null; \
 		fi; \
