@@ -44,6 +44,10 @@ asdf plugin add podman https://github.com/tvon/asdf-podman.git
 asdf install podman latest
 asdf local podman latest
 
+asdf plugin add nodejs https://github.com/asdf-vm/asdf-nodejs.git
+asdf install nodejs latest
+asdf local nodejs latest
+
 popd
 `.trim() + '\n'
     );

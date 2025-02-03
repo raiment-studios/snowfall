@@ -6,3 +6,4 @@ rust 1.84.1
 just 1.39.0
 bat 0.25.0
 podman 5.3.2
+nodejs 23.7.0
