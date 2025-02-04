@@ -673,8 +673,21 @@ function useRenderOnEvent(obj: any, event: string) {
 }
 
 type EncyclopediaData = {
+    protagonist: ProtagonistData;
     entries: Entry[];
 };
+
+type ProtagonistData = {
+    name: string;
+};
+
+class Protagonist {
+    data: ProtagonistData;
+
+    constructor(data: ProtagonistData) {
+        this.data = data;
+    }
+}
 
 class Encyclopedia {
     events: EventEmitter = new EventEmitter();
@@ -1088,7 +1101,7 @@ function Journal({ encyclopedia }: { encyclopedia: Encyclopedia }): JSX.Element 
                         <Flex row>
                             <div style={{ opacity: 0.4, marginRight: 32 }}>{i + 1}</div>
                             <div style={{ flexGrow: 1 }}>
-                                <EntryView entry={entry} />
+                                <EntryView encyclopedia={encyclopedia} entry={entry} />
                             </div>
                         </Flex>
                     </div>
@@ -1099,10 +1112,20 @@ function Journal({ encyclopedia }: { encyclopedia: Encyclopedia }): JSX.Element 
     );
 }
 
-function EntryView({ entry }: { entry: Entry }): JSX.Element {
+function EntryView({
+    encyclopedia,
+    entry,
+}: {
+    encyclopedia: Encyclopedia;
+    entry: Entry;
+}): JSX.Element {
     switch (entry.type) {
         case 'markdown':
-            return <Markdown content={entry.content} />;
+            return (
+                <div style={{ margin: '8px 0' }}>
+                    <Markdown encyclopedia={encyclopedia} content={entry.content} />
+                </div>
+            );
         case 'dice':
             return <DiceTable seed={entry.seed} />;
         case 'scene':
@@ -1116,16 +1139,82 @@ function EntryView({ entry }: { entry: Entry }): JSX.Element {
     }
 }
 
-function Markdown({ content }: { content: string }): JSX.Element {
-    const lines = content.split('\n');
-    while (lines.length > 0 && lines[0].trim() === '') {
-        lines.shift();
+function Markdown({
+    encyclopedia,
+    content,
+}: {
+    encyclopedia: Encyclopedia;
+    content: string;
+}): JSX.Element {
+    const rng = new RNG(RNG.make_seed8k());
+
+    const blocks = content.split('\n\n');
+    while (blocks.length > 0 && blocks[0].trim() === '') {
+        blocks.shift();
     }
-    while (lines.length > 0 && lines[lines.length - 1].trim() === '') {
-        lines.pop();
+    while (blocks.length > 0 && blocks[blocks.length - 1].trim() === '') {
+        blocks.pop();
     }
 
-    const Line = ({ text }: { text: string }): JSX.Element => {
+    const Block = ({ text }: { text: string }): JSX.Element => {
+        const matchers: [RegExp, Function][] = [
+            [/\*\*(.*?)\*\*/, (m: any) => <strong>{m[1]}</strong>],
+            [
+                /\[(.*?)\]\((.*?)\)/,
+                (m: any) => (
+                    <a
+                        href="#"
+                        onClick={(evt: React.MouseEvent<HTMLAnchorElement>) => {
+                            evt.preventDefault();
+                            evt.stopPropagation();
+                            encyclopedia.update(({ entries }) => {
+                                entries.push({
+                                    type: 'dice',
+                                    seed: rng.d8192(),
+                                });
+                            });
+                        }}
+                    >
+                        {m[1]}
+                    </a>
+                ),
+            ],
+        ];
+
+        const frags: any[] = [];
+        while (text.length > 0) {
+            const first: [number, Function | null, any] = [-1, null, []];
+            for (const [re, handler] of matchers) {
+                const m = text.match(re);
+                if (!m || m.index === undefined) {
+                    continue;
+                }
+                if (m.index < first[0] || first[0] === -1) {
+                    first[0] = m.index;
+                    first[1] = handler;
+                    first[2] = m;
+                }
+            }
+
+            if (first[0] !== -1) {
+                const [index, handler, m] = first;
+                console.log('match', {
+                    m,
+                    m0: m[0],
+                });
+                const prefix = text.slice(0, index);
+                if (prefix.length > 0) {
+                    frags.push(<span>{prefix}</span>);
+                    text = text.slice(prefix.length);
+                }
+                frags.push(handler!(m));
+                text = text.slice(m[0].length);
+            } else {
+                frags.push(<span>{text}</span>);
+                text = '';
+            }
+        }
+
         const re = /\*\*(.*?)\*\*/;
         const arr = text.split(re);
         const parts = [];
@@ -1137,20 +1226,7 @@ function Markdown({ content }: { content: string }): JSX.Element {
             }
         }
 
-        return (
-            <div>
-                {parts.map((part, i) => {
-                    switch (part.type) {
-                        case 'span':
-                            return <span key={i}>{part.text}</span>;
-                        case 'bold':
-                            return <strong key={i}>{part.text}</strong>;
-                    }
-                })}
-            </div>
-        );
-
-        return <div>{text}</div>;
+        return <div style={{ margin: '4px 0 12px', maxWidth: '80ch' }}>{frags}</div>;
     };
 
     return (
@@ -1163,8 +1239,8 @@ function Markdown({ content }: { content: string }): JSX.Element {
                 }
             `}
         >
-            {lines.map((line, i) => (
-                <Line key={i} text={line} />
+            {blocks.map((line, i) => (
+                <Block key={i} text={line} />
             ))}
         </D>
     );
