@@ -96,6 +96,13 @@ async function get_version(cmd: string) {
         const m = s.match(/(\d+\.\d+\.\d+)/);
         return m![1];
       }
+      case "nodejs": {
+        const s = (await shell.spawn("node", ["--version"])).stdout.split(
+          "\n"
+        )[0];
+        const m = s.match(/(\d+\.\d+\.\d+)/);
+        return m![1];
+      }
 
       default: {
         const s = (await shell.spawn(cmd, ["--version"])).stdout.split("\n")[0];
