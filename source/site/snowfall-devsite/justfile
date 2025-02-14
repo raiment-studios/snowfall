@@ -1,0 +1,17 @@
+import "../../common/webapp.justfile"
+
+_default: _common-default
+
+build:
+    @# While using deno is preferred over node, "build" only works with node.
+    @# deno task build
+    npm run build
+
+run:
+    deno task start
+
+publish: build
+    @echo "Publishing..."
+    cd build && deployctl \
+        deploy --project=snowfall-devsite --prod \
+        https://jsr.io/@std/http/1.0.7/file_server.ts
