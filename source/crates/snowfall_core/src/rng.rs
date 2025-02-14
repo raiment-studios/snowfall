@@ -1,3 +1,8 @@
+//----------------------------------------------------------------------------//
+//! Random value generator with methods tailored specifically to the Snowfall.
+//!
+//----------------------------------------------------------------------------//
+
 use noise::{NoiseFn, OpenSimplex};
 use rand::{
     distributions::{
@@ -8,11 +13,13 @@ use rand::{
 };
 use rand_chacha::ChaCha8Rng;
 
+/// Structure
 pub struct RNG {
     seed: u64,
     rng: ChaCha8Rng,
 }
 
+/// Static helpers for generating seeds
 impl RNG {
     pub fn seed(&self) -> u64 {
         self.seed
@@ -21,10 +28,16 @@ impl RNG {
         rand::random()
     }
 
+    // In Snowfall, user-facing generated seeds are often constrained to [1-8192).
+    // The rationale is that the smaller range keeps the seeds relatively memorable
+    // and it reserves 0 for special cases.
     pub fn seed8(&mut self) -> u64 {
         self.range(1..8192)
     }
+}
 
+/// Constructors
+impl RNG {
     pub fn new_random() -> Self {
         let seed = rand::random();
         Self::new(seed)
@@ -33,7 +46,9 @@ impl RNG {
         let rng = ChaCha8Rng::seed_from_u64(seed);
         Self { seed, rng }
     }
+}
 
+impl RNG {
     pub fn fork(&mut self) -> Self {
         Self::new(self.gen())
     }
