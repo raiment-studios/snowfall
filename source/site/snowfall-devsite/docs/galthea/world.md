@@ -2,9 +2,11 @@
 
 ## World layout
 
-From the perspecitve of the game, the world of Galthea is procedurally generated and near "infinite" in size. From the perspective of the lore and world-building, Galthea has a basic structure with some key regions, city-states, and locations that are always present - though the details of these locations may vary. Therefore, the procedural generation needs to work in a way that ensures all elements of Galthea _required_ to be consistent with the lore are in place before filling in the rest of the world.
+From the perspecitve of the game, the world of Galthea is procedurally generated and near "infinite" in size. From the perspective of the lore and world-building, Galthea has a basic structure with some key [[regions]], [[city-states]], and locations that are always present - though the details of these locations may vary. Therefore, the procedural generation needs to work in a way that ensures all elements of Galthea _required_ to be consistent with the lore are in place before filling in the rest of the world.
 
-For release v1.0, Galthea is limited to a single continent.
+:::info Development notes
+For release v1.0, Galthea is limited to a single continent for simplicity.  
+:::
 
 **The general shape of the Galthea is as below.** It is composed a number of "required" regions with roughly the layout below. This is a draft for the first release. All names and details are open to being changed and improved.
 

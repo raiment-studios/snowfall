@@ -7,6 +7,8 @@ build:
     @# deno task build
     npm run build
 
+dev: run
+
 run:
     deno task start
 
