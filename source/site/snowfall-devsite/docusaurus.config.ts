@@ -47,6 +47,13 @@ class ElementBuilder {
     }
 }
 
+function filePathToAlias(filePath: string) {
+    return (filePath.split('/').pop() ?? '')
+        .toLowerCase()
+        .replace(/\.[^.]+$/, '')
+        .replace(/\s/g, '-');
+}
+
 // Note: this is a bit hacky as I'm not a novice regarding Docusaurus and this has been
 // written for expediency, not elegance.
 const markdownCustomization: MarkdownConfig = {
@@ -63,8 +70,7 @@ const markdownCustomization: MarkdownConfig = {
         const frontMatter: { [key: string]: any } = result.frontMatter ?? {};
 
         frontMatter.filePath = filePath;
-        frontMatter.alias = (filePath.split('/').pop() ?? '').toLowerCase();
-        frontMatter.alias = frontMatter.alias.replace(/\.[^.]+$/, '');
+        frontMatter.alias = filePathToAlias(filePath);
         globalAliasMap[frontMatter.alias] = frontMatter.filePath;
 
         result.frontMatter = frontMatter;
@@ -84,12 +90,12 @@ const markdownCustomization: MarkdownConfig = {
                 const builder = new ElementBuilder();
                 let buffer = text.value;
                 while (buffer.length > 0) {
-                    const m = buffer.match(/\[\[([a-zA-Z0-9_-]+?)\]\]/);
+                    const m = buffer.match(/\[\[([a-zA-Z0-9_\-\s]+?)\]\]/);
                     if (m) {
                         builder.text(buffer.slice(0, m.index));
 
                         const value = m[1];
-                        const filePath = globalAliasMap[value] ?? '';
+                        const filePath = globalAliasMap[filePathToAlias(value)] ?? '';
                         if (filePath) {
                             let href = filePath.slice(state.options.file?.cwd.length);
                             href = href.replace(/\.[^.]+$/, '');
@@ -173,8 +179,13 @@ const config: Config = {
     themeConfig: {
         // Replace with your project's social card
         image: 'img/docusaurus-social-card.jpg',
+        colorMode: {
+            defaultMode: 'dark',
+            disableSwitch: true,
+            respectPrefersColorScheme: false,
+        },
         navbar: {
-            title: 'My Site',
+            title: 'snowfall-devsite',
             logo: {
                 alt: 'My Site Logo',
                 src: 'img/logo.svg',
@@ -184,11 +195,10 @@ const config: Config = {
                     type: 'docSidebar',
                     sidebarId: 'tutorialSidebar',
                     position: 'left',
-                    label: 'Tutorial',
+                    label: 'Encyclopedia',
                 },
-                { to: '/blog', label: 'Blog', position: 'left' },
                 {
-                    href: 'https://github.com/facebook/docusaurus',
+                    href: 'https://github.com/raiment-studios/snowfall/tree/main/source/site/snowfall-devsite',
                     label: 'GitHub',
                     position: 'right',
                 },

@@ -1,0 +1,50 @@
+import { Demo } from './continent-generation.tsx';
+
+# Continent Generation
+
+:::warning
+This is a work-in-progress prototype.
+:::
+
+### Overview
+
+This is a TypeScript prototype of the continent generation algorithm. The goal is produce a "mostly consistent" layout of the [[regions]] on the map with some randomness in their exact shape and placement.
+
+### Algorithm
+
+```
+-   Start at center coordinate 0,0 on the global map
+-   Put the starting region in the queue
+    - Set the placement position to 0,0
+    - Set the placement angle to 0
+    - Set the placement direction to 0
+
+-   While the queue is not empty
+    -   Set the test position to the position + direction * angle
+    -   Apply a small random distortion & rotation to the bitmap
+    -   Draw the region bitmap to the global map at that position
+    -   If less than 80% of the bitmap can be drawn to empty spaces
+        - Increase the distance be a small amount N
+        - Put the entry back at the top of the queue
+        - Continue
+    - Else enqueue each neighbor
+        - Set the position to the placement position of the region just placed
+        - Set the angle to the angle in the region defintion
+        - Set the distance to a some small minimum
+
+
+When all regions have been placed
+-   Scan the global map for fully enclosed gaps between regions
+-   For each gap
+    -   Fill the gap with one of the regions neighboring the gap
+```
+
+### TODO
+
+-   [ ] Fill gaps between Regions
+-   [ ] Apply rotation to the bitmaps
+-   [ ] Apply distortion to the bitmaps
+
+### Demo
+
+<Demo />

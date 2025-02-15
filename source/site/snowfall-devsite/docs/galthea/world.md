@@ -1,8 +1,8 @@
 # World
 
-## World layout
+## The Continent
 
-From the perspecitve of the game, the world of Galthea is procedurally generated and near "infinite" in size. From the perspective of the lore and world-building, Galthea has a basic structure with some key [[regions]], [[city-states]], and locations that are always present - though the details of these locations may vary. Therefore, the procedural generation needs to work in a way that ensures all elements of Galthea _required_ to be consistent with the lore are in place before filling in the rest of the world.
+From the perspective of the lore and world-building, Galthea has a basic structure with some key [[regions]], [[city-states]], and locations that are always present - though the details of these may vary. Therefore, the procedural generation needs to work in a way that ensures all elements of Galthea _required_ to be consistent with the lore are in place before filling in the rest of the world.
 
 :::info Development notes
 For release v1.0, Galthea is limited to a single continent for simplicity.  
@@ -59,3 +59,7 @@ Boundary is a line of land that stretches from shore to shore across the contine
 ### Far North
 
 The Far North is an artic region where the Maelstrom dominates the vast spans of ice and frozen ranges of grand mountains. Only rumors and legends tell of anyone entering the Far North and returning.
+
+## Also see
+
+-   [[Voxel Sizes]]
