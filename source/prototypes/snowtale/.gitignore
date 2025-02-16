@@ -1,1 +1,8 @@
+node_modules/
+dist/
+.vscode/
+mprocs.yaml
 
+# Symbolically linked local libraries
+src/raiment-core
+src/raiment-ui

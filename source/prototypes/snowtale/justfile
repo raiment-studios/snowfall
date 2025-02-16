@@ -1,67 +1,28 @@
-# -----------------------------------------------------------------------------
-# help
-# -----------------------------------------------------------------------------
+# Unfortunately environment variables don't seem to support in the import path
+import "../../common/webapp.justfile"
 
-help:
-    @just --list --unsorted
 
-# -----------------------------------------------------------------------------
-# ensure
-# -----------------------------------------------------------------------------
+###############################################################################
+# Core commands
+###############################################################################
 
-# idempotent task to ensure all dependencies are installed
-ensure:
+_default: _common-default
 
-# -----------------------------------------------------------------------------
-# build
-# -----------------------------------------------------------------------------
+# idempotent installation of dependencies & configuration
+ensure: _common-ensure-webapp
+    @just _link-src-lib raiment-core
+    @just _link-src-lib raiment-ui
 
-# build the project
-build:
-    cargo build
+build: ensure
+    just _common-build-bundle ./src/main.tsx ./dist/main.bundle.js
+    cp -f ./src/index.html ./dist/index.html
 
-# rebuild the project on every source change
-build-watch:
-    cargo watch -x build
-
-# -----------------------------------------------------------------------------
-# dev
-# -----------------------------------------------------------------------------
-
-# run in development mode
 dev:
-    RUST_BACKTRACE=full cargo run
+    mprocs \
+        --names "client,server" \
+        "just _common-dev-watch ./src 'just build'" \
+        "just run"
 
-dev-watch:
-    cargo watch -x run
+run: build
+    npx serve ./dist -p 8080
 
-# -----------------------------------------------------------------------------
-# run
-# -----------------------------------------------------------------------------
-
-# run in release mode
-run:
-    cargo run --release
-
-# -----------------------------------------------------------------------------
-# fmt
-# -----------------------------------------------------------------------------
-
-# format the code
-fmt:
-    cargo fmt
-
-# -----------------------------------------------------------------------------
-# test
-# -----------------------------------------------------------------------------
-
-# run the tests
-test:
-    cargo test
-
-# -----------------------------------------------------------------------------
-# run
-# -----------------------------------------------------------------------------
-
-# run the benchmarks
-benchmark:
