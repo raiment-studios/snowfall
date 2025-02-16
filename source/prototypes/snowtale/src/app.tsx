@@ -1,12 +1,13 @@
 import React, { JSX } from 'react';
 import { RNG } from './raiment-core/index.ts';
-import { D, css } from './raiment-ui/index.ts';
+import { D, Div, css } from './raiment-ui/index.ts';
 import { TownView } from './views/town_view.tsx';
 import { useGitHubAuthToken, useGitHubAPI } from './raiment-ui/use_github_auth.ts';
 import yaml from 'js-yaml';
 import lodash from 'lodash';
 import { nanoid } from 'nanoid';
 import { EventEmitter } from './raiment-core/index.ts';
+import { RegionView } from './views/region_view.tsx';
 
 function Console({
     seed,
@@ -21,8 +22,6 @@ function Console({
         (type: string, props: { [k: string]: any } = {}) =>
         () =>
             addEntry({ type, seed: rng.d8192(), ...props });
-
-    React.useEffect(() => {}, []);
 
     return (
         <D
@@ -717,7 +716,7 @@ export function App3({ encyclopedia }: { encyclopedia: Encyclopedia }): JSX.Elem
     const route = url.searchParams.get('route') || 'journal';
 
     return (
-        <D
+        <Div
             css={css`
                 .self {
                     display: flex;
@@ -731,16 +730,15 @@ export function App3({ encyclopedia }: { encyclopedia: Encyclopedia }): JSX.Elem
             `}
         >
             <TopNav />
-            <D
+            <Div
                 css={css`
                     .self {
-                        overflow-y: scroll;
                     }
                 `}
             >
                 {route === 'tables' ? <Tables /> : <Journal encyclopedia={encyclopedia} />}
-            </D>
-        </D>
+            </Div>
+        </Div>
     );
 }
 
@@ -1009,7 +1007,7 @@ function Tables(): JSX.Element {
     );
 }
 
-function useGameLogic(encyclopedia: Encyclopedia) {
+function useGameLogic(encyclopedia: Encyclopedia, rng: RNG) {
     React.useEffect(() => {
         if (encyclopedia.data.entries.length === 0) {
             encyclopedia.update(({ entries }) => {
@@ -1024,6 +1022,11 @@ the Maelstrom that has been ripping apart the fabric of reality.
 The first step to beginnging the game is to [create a character](action:create-character).
                     `,
                 });
+
+                entries.push({
+                    type: 'region',
+                    seed: rng.d8192(),
+                });
             });
         }
     }, [encyclopedia]);
@@ -1031,6 +1034,7 @@ The first step to beginnging the game is to [create a character](action:create-c
 
 function Journal({ encyclopedia }: { encyclopedia: Encyclopedia }): JSX.Element {
     const [seed, setSeed] = React.useState(RNG.make_seed8k());
+    const rng = React.useMemo(() => new RNG(seed), [seed]);
 
     useRenderOnEvent(encyclopedia, 'modified');
 
@@ -1052,19 +1056,24 @@ function Journal({ encyclopedia }: { encyclopedia: Encyclopedia }): JSX.Element 
         }
     }, [encyclopedia.data.entries.length]);
 
-    useGameLogic(encyclopedia);
+    useGameLogic(encyclopedia, rng);
 
     return (
-        <D
+        <Div
             css={css`
                 .self {
                     display: flex;
                     flex-direction: column;
-                    margin: 12px 64px;
+                    padding: 12px 64px;
+                    flex-grow: 1;
+                    justify-content: start;
+                    height: calc(100vh - 32px);
+                    max-height: calc(100vh - 32px);
+                    min-height: calc(100vh - 32px);
                 }
             `}
         >
-            <Flex row align="end" m="0 0 12px">
+            <Flex row align="end" m="0 0 12px" style={{ flexGrow: 0 }}>
                 <h1 style={{ margin: '0 12px 0 0' }}>Tables {seed}</h1>
                 <Flex row m="0 0 4px">
                     <a
@@ -1079,36 +1088,44 @@ function Journal({ encyclopedia }: { encyclopedia: Encyclopedia }): JSX.Element 
                     </a>
                 </Flex>
             </Flex>
-            <D
+            <Div
                 css={css`
                     .self {
                         display: flex;
                         flex-direction: column;
                         flex-grow: 1;
+                        flex-shrink: 0;
                     }
                 `}
             >
-                <div style={{ height: 32 }} />
-                {[...encyclopedia.data.entries].map((entry, i) => (
-                    <div
-                        key={i}
-                        style={{
-                            padding: 2,
-                            border: '1px solid #ccc',
-                            borderRadius: 4,
-                        }}
-                    >
-                        <Flex row>
-                            <div style={{ opacity: 0.4, marginRight: 32 }}>{i + 1}</div>
-                            <div style={{ flexGrow: 1 }}>
-                                <EntryView encyclopedia={encyclopedia} entry={entry} />
-                            </div>
-                        </Flex>
-                    </div>
-                ))}
-                <Console seed={seed} addEntry={addEntry} />
-            </D>
-        </D>
+                <Div
+                    css={css`
+                        .self {
+                        }
+                    `}
+                >
+                    <div style={{ height: 32 }} />
+                    {[...encyclopedia.data.entries].map((entry, i) => (
+                        <div
+                            key={i}
+                            style={{
+                                padding: 2,
+                                border: '1px solid #ccc',
+                                borderRadius: 4,
+                            }}
+                        >
+                            <Flex row>
+                                <div style={{ opacity: 0.4, marginRight: 32 }}>{i + 1}</div>
+                                <div style={{ flexGrow: 1 }}>
+                                    <EntryView encyclopedia={encyclopedia} entry={entry} />
+                                </div>
+                            </Flex>
+                        </div>
+                    ))}
+                </Div>
+            </Div>
+            <Console seed={rng.d8192()} addEntry={addEntry} />
+        </Div>
     );
 }
 
@@ -1134,6 +1151,8 @@ function EntryView({
             return <CharacterTable seed={entry.seed} />;
         case 'town':
             return <TownView seed={entry.seed} />;
+        case 'region':
+            return <RegionView seed={entry.seed} />;
         default:
             return <div>{JSON.stringify(entry)}</div>;
     }
@@ -1198,10 +1217,6 @@ function Markdown({
 
             if (first[0] !== -1) {
                 const [index, handler, m] = first;
-                console.log('match', {
-                    m,
-                    m0: m[0],
-                });
                 const prefix = text.slice(0, index);
                 if (prefix.length > 0) {
                     frags.push(<span>{prefix}</span>);
@@ -1226,7 +1241,13 @@ function Markdown({
             }
         }
 
-        return <div style={{ margin: '4px 0 12px', maxWidth: '80ch' }}>{frags}</div>;
+        return (
+            <div style={{ margin: '4px 0 12px', maxWidth: '80ch' }}>
+                {frags.map((f, i) => (
+                    <React.Fragment key={i}>{f}</React.Fragment>
+                ))}
+            </div>
+        );
     };
 
     return (

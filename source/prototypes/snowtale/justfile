@@ -16,6 +16,8 @@ ensure: _common-ensure-webapp
 build: ensure
     just _common-build-bundle ./src/main.tsx ./dist/main.bundle.js
     cp -f ./src/index.html ./dist/index.html
+    rm -rf ./dist/static
+    cp -Rf ./src/static ./dist/static
 
 dev:
     mprocs \
