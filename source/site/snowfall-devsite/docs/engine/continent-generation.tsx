@@ -58,18 +58,16 @@ const regionCardData: RegionCardData[] = [
 
 const regionCards = regionCardData.map((data) => new RegionCard(data));
 
-class DrawBuffer {
-    buffer = new Array(4 * 1024 * 1024);
-}
-
 async function processRegions(deck: RegionCard[], startName: string): Promise<ImageData> {
     const start = deck.find((card) => card.data.name === startName)!;
     deck = deck.filter((card) => card !== start);
 
     const target = document.createElement('canvas');
-    target.width = 1024;
-    target.height = 1024;
+    target.style.imageRendering = 'pixelated';
+    target.width = 1000;
+    target.height = 1000;
     const targetCtx = target.getContext('2d')!;
+    targetCtx.imageSmoothingEnabled = false;
     let targetData = targetCtx.getImageData(0, 0, target.width, target.height);
 
     const queue = [
@@ -95,23 +93,44 @@ async function processRegions(deck: RegionCard[], startName: string): Promise<Im
 
         // Get the RGBA data of the image
         const source = document.createElement('canvas');
-        source.width = image.width;
-        source.height = image.height;
+        source.width = image.width * 2;
+        source.height = image.height * 2;
+        source.style.imageRendering = 'pixelated';
         const context = source.getContext('2d')!;
-        context.drawImage(image, 0, 0);
-        const sourceData = context.getImageData(0, 0, image.width, image.height);
+        context.imageSmoothingEnabled = false;
+        context.save();
+        context.translate(source.width / 2, source.height / 2);
+        context.rotate(((2 * Math.random() - 1) * Math.PI) / 16);
+        context.scale(0.1 * (Math.random() * 2 - 1) + 1.0, 0.1 * (Math.random() * 2 - 1) + 1.0);
+        context.drawImage(
+            image,
+            -source.width / 2,
+            -source.height / 2,
+            source.width,
+            source.height
+        );
+        context.restore();
+        const sourceData = context.getImageData(0, 0, source.width, source.height);
+        for (let y = 0; y < source.height; y++) {
+            for (let x = 0; x < source.width; x++) {
+                const i = 4 * (y * source.width + x);
+                if (sourceData.data[i + 3] !== 0) {
+                    sourceData.data[i + 3] = 255;
+                }
+            }
+        }
 
         let drawCount = 0;
         let pixelCount = 0;
 
         const backup = targetData.data.slice();
         const a = Math.PI / 2 + (angle * Math.PI) / 180;
-        const ox = Math.round(cx + Math.cos(a) * distance) - Math.floor(image.width / 2);
-        const oy = Math.round(cy + Math.sin(a) * distance) - Math.floor(image.height / 2);
+        const ox = Math.round(cx + Math.cos(a) * distance) - Math.floor(source.width / 2);
+        const oy = Math.round(cy + Math.sin(a) * distance) - Math.floor(source.height / 2);
 
-        for (let y = 0; y < image.height; y++) {
-            for (let x = 0; x < image.width; x++) {
-                const i = 4 * (y * image.width + x);
+        for (let y = 0; y < source.height; y++) {
+            for (let x = 0; x < source.width; x++) {
+                const i = 4 * (y * source.width + x);
                 const j = 4 * ((ox + y) * target.width + (oy + x));
 
                 const sourceAlpha = sourceData.data[i + 3];
@@ -125,23 +144,17 @@ async function processRegions(deck: RegionCard[], startName: string): Promise<Im
                     continue;
                 }
 
-                for (let k = 0; k < 4; k++) {
-                    targetData.data[j + k] = sourceData.data[i + k];
-                }
+                targetData.data[j + 0] = sourceData.data[i + 0];
+                targetData.data[j + 1] = sourceData.data[i + 1];
+                targetData.data[j + 2] = sourceData.data[i + 2];
+                targetData.data[j + 3] = 255;
+
                 drawCount += 1;
             }
         }
 
         if (drawCount < pixelCount * 0.8) {
             targetData.data.set(backup);
-            console.log(
-                card.data.name,
-                drawCount,
-                pixelCount,
-                drawCount / pixelCount,
-                angle,
-                distance
-            );
             queue.unshift({
                 ...entry,
                 distance: distance + Math.floor(Math.random() * 5 + 2),
@@ -156,7 +169,6 @@ async function processRegions(deck: RegionCard[], startName: string): Promise<Im
                 continue;
             }
             deck = deck.filter((card) => card !== neighbor);
-            console.log('adding', neighborName);
             queue.push({
                 cx: ox + Math.floor(image.height / 2),
                 cy: oy + Math.floor(image.width / 2),
@@ -166,6 +178,112 @@ async function processRegions(deck: RegionCard[], startName: string): Promise<Im
             });
         }
     }
+
+    // Fill gaps in the regions
+    if (true) {
+        const check = (x: number, y: number) => {
+            const i = 4 * (y * target.width + x);
+            if (targetData.data[i + 3] === 0) {
+                targetData.data[i + 0] = 255;
+                targetData.data[i + 1] = 0;
+                targetData.data[i + 2] = 0;
+                targetData.data[i + 3] = 128;
+                return true;
+            } else {
+                return false;
+            }
+        };
+
+        const get = (x: number, y: number) => {
+            const i = 4 * (y * target.width + x);
+            return targetData.data.slice(i, i + 4);
+        };
+        const set = (x: number, y: number, rgba: number[]) => {
+            const i = 4 * (y * target.width + x);
+            targetData.data.set(rgba, i);
+        };
+
+        for (let y = 0; y < target.height; y++) {
+            for (let x = 0; x < target.width; x++) {
+                if (!check(x, y)) {
+                    break;
+                }
+            }
+            for (let x = target.width - 1; x >= 0; x--) {
+                if (!check(x, y)) {
+                    break;
+                }
+            }
+        }
+
+        for (let x = 0; x < target.width; x++) {
+            for (let y = 0; y < target.height; y++) {
+                if (!check(x, y)) {
+                    break;
+                }
+            }
+            for (let y = target.height - 1; y >= 0; y--) {
+                if (!check(x, y)) {
+                    break;
+                }
+            }
+        }
+
+        // This multi-pass gap filling is a lot slower, but avoids the
+        // hard, straight line fills of simply filling the gaps via x/y
+        // scans.
+        const gaps: [number, number, any][] = [];
+        while (true) {
+            for (let y = 0; y < target.height; y++) {
+                for (let x = 0; x < target.width; x++) {
+                    const rgba = get(x, y);
+                    if (rgba[3] !== 0) {
+                        continue;
+                    }
+
+                    const options = [];
+                    const left = get(x - 1, y);
+                    const right = get(x + 1, y);
+                    const up = get(x, y - 1);
+                    const down = get(x, y + 1);
+                    if (left[3] !== 0) {
+                        options.push(left);
+                    } else if (right[3] !== 0) {
+                        options.push(right);
+                    } else if (up[3] !== 0) {
+                        options.push(up);
+                    } else if (down[3] !== 0) {
+                        options.push(down);
+                    }
+                    if (options.length > 0) {
+                        gaps.push([x, y, options]);
+                    }
+                }
+            }
+            if (gaps.length === 0) {
+                break;
+            }
+            while (gaps.length > 0) {
+                const j = Math.floor(Math.random() * gaps.length);
+                const [x, y, options] = gaps[j];
+                gaps.splice(j, 1);
+
+                const k = Math.floor(Math.random() * options.length);
+                const rgba = options[k];
+                set(x, y, rgba);
+            }
+        }
+
+        for (let y = 0; y < target.height; y++) {
+            for (let x = 0; x < target.width; x++) {
+                const rgba = get(x, y);
+                if (rgba[3] === 128) {
+                    set(x, y, [0, 0, 0, 0]);
+                }
+            }
+        }
+    }
+
     return targetData;
 }
 
@@ -191,7 +309,7 @@ export function Demo() {
 
     return (
         <div style={{ border: 'solid 1px #555' }}>
-            <canvas ref={ref} width={1024} height={1024} />
+            <canvas ref={ref} width={100} height={1000} />
         </div>
     );
 }
