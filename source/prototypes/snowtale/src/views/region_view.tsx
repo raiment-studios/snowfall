@@ -17,6 +17,7 @@
 import React, { JSX } from 'react';
 import { RNG } from '../raiment-core/index.ts';
 import { Div, css } from '../raiment-ui/index.ts';
+import { ImageMutator } from './image_mutator.tsx';
 
 // A particular Region Card has a region generator
 type RegionGenerator = (seed: number, props: { [key: string]: any }) => Promise<RegionInstData>;
@@ -66,7 +67,7 @@ class Deck {
     }
 }
 
-function hexToRgb(hex: string): [number, number, number] {
+export function hexToRgb(hex: string): [number, number, number] {
     const match = hex.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
     return match
         ? [
@@ -77,57 +78,23 @@ function hexToRgb(hex: string): [number, number, number] {
         : [0, 0, 0];
 }
 
-function rotateImage(src: string, deg: number, color: string): Promise<string> {
-    const rgb = hexToRgb(color);
-
-    return new Promise((resolve, reject) => {
-        const image = new Image();
-        image.crossOrigin = 'anonymous';
-        image.src = src;
-
-        image.onload = () => {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-
-            if (!ctx) {
-                reject(new Error('Canvas context is not supported'));
-                return;
-            }
-
-            const angle = deg * (Math.PI / 180);
-            const sin = Math.abs(Math.sin(angle));
-            const cos = Math.abs(Math.cos(angle));
-
-            canvas.width = image.width * cos + image.height * sin;
-            canvas.height = image.width * sin + image.height * cos;
-
-            ctx.translate(canvas.width / 2, canvas.height / 2);
-            ctx.rotate(angle);
-            ctx.drawImage(image, -image.width / 2, -image.height / 2);
-
-            // Get the pixels, change all the white ones to the color,
-            // and write it back to the canvas
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const data = imageData.data;
-            for (let i = 0; i < data.length; i += 4) {
-                if (data[i + 3] !== 0) {
-                    data[i] = rgb[0];
-                    data[i + 1] = rgb[1];
-                    data[i + 2] = rgb[2];
-                    data[i + 3] = 255;
-                }
-            }
-            ctx.putImageData(imageData, 0, 0);
-
-            resolve(canvas.toDataURL());
-        };
-
-        image.onerror = (err) => reject(err);
-    });
-}
-
 function buildDeck(): Deck {
     const deck = new Deck();
+
+    const mutateImage = (url: string, deg: number, color: string): Promise<string> => {
+        return new ImageMutator(url)
+            .rotate(deg)
+            .colorize(color)
+            .autocrop()
+            .resize(256, 256)
+            .blur()
+            .blur()
+            .blur()
+            .colorize(color)
+            .clampAlpha()
+            .speckleColor()
+            .run();
+    };
 
     deck.add(
         {
@@ -138,11 +105,13 @@ The starting point of the game. Lined with small harbor towns to the southwest. 
             generator: async (seed: number, props: { [key: string]: any }) => {
                 const rng = new RNG(seed);
                 const color = '#25b585';
-                const bitmap = await rotateImage(
+
+                const bitmap = await mutateImage(
                     '/static/region-bitmap-00.png',
                     rng.range(-45, 45),
                     color
                 );
+
                 return {
                     name: 'Haven',
                     seed,
@@ -160,7 +129,7 @@ A sparsely populated region of sand and coarse dirt. Vegetation is limited here 
             generator: async (seed: number, props: { [key: string]: any }) => {
                 const rng = new RNG(seed);
                 const color = '#ae8030';
-                const bitmap = await rotateImage(
+                const bitmap = await mutateImage(
                     '/static/region-bitmap-01.png',
                     rng.range(-30, 30),
                     color
@@ -264,7 +233,16 @@ export function RegionView({ seed }: { seed: number }): JSX.Element {
                             }
                         `}
                     />
-                    <img src={inst.bitmap} />
+                    <Div
+                        css={css`
+                            display: flex;
+                            flex-direction: row;
+                            align-items: center;
+                            justify-content: center;
+                        `}
+                    >
+                        <img style={{ margin: 8 }} src={inst.bitmap} />
+                    </Div>
                     <Div>
                         TODO: add political factions (60/35/5), colors for each, maelstrom factor,
                         and other properties. Make the region images larger.

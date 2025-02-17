@@ -6,6 +6,13 @@ export class RNG {
         this._rng = randomSeeded(BigInt(seed));
     }
 
+    static make_random(): RNG {
+        const seed = Math.floor(
+            Math.random() * 1e6 + (Date.now() % 100000) //
+        );
+        return new RNG(seed);
+    }
+
     static make_seed8k(): number {
         const seed = Math.floor(Math.random() * Date.now()) % 8192;
         return seed;
