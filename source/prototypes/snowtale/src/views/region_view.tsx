@@ -3,28 +3,7 @@ import { RNG } from '../raiment-core/index.ts';
 import { Div, css } from '../raiment-ui/index.ts';
 import { ImageMutator } from './image_mutator.tsx';
 import chroma from 'chroma-js';
-
-// A particular Region Card has a region generator
-type RegionGenerator = (seed: number, card: RegionCard) => Promise<RegionInstance>;
-
-type RegionInstance = {
-    title: string;
-    seed: number;
-    color: string;
-    bitmap: string;
-};
-
-type RegionCard = {
-    type: 'region';
-    id: string;
-    title: string;
-    description: string;
-    rarity: number; // 1-1000
-    color: string;
-    image: string;
-    props: { [key: string]: any };
-    generator: RegionGenerator;
-};
+import { RegionCard, RegionInstance, World, JournalDrawRegion } from '../world.ts';
 
 class Deck {
     _cards: RegionCard[] = [];
@@ -96,7 +75,7 @@ function buildDeck(): Deck {
             .colorize(color)
             .clampAlpha()
             .speckleColor()
-            .run();
+            .toDataURL();
 
         return {
             title,
@@ -118,7 +97,7 @@ The starting point of the game. Lined with small harbor towns to the southwest.
 Wayland artifacts are prevalent here, reducing the impact of the Maelstrom.
             `,
                 color: '#25b585',
-                image: '/static/region-bitmap-00.png',
+                image: '/static/region-bitmap-haven.png',
                 generator: async (seed: number, card: RegionCard) => {
                     return generateInstance(seed, card, 'Haven');
                 },
@@ -132,7 +111,7 @@ A sparsely populated region of sand and coarse dirt. Vegetation is limited here
 due to the raw terrain.
                         `,
                 color: '#ae8030',
-                image: '/static/region-bitmap-01.png',
+                image: '/static/region-bitmap-redrock.png',
                 generator: async (seed: number, card: RegionCard) => {
                     return generateInstance(seed, card, 'Redrock');
                 },
@@ -159,94 +138,89 @@ function useGoogleFont(url: string) {
     }, [url]);
 }
 
-export function RegionView({ seed }: { seed: number }): JSX.Element {
-    const [{ card, inst }, setInst] = React.useState<{
-        card?: RegionCard;
-        inst?: RegionInstance;
-    }>({});
-
-    React.useEffect(() => {
-        const go = async () => {
-            const deck = buildDeck();
-            const rng = new RNG(seed);
-
-            const card = deck.select(rng);
-            const iseed = rng.d8192();
-            const inst = await card.generator(iseed, card);
-            inst.seed = iseed;
-            setInst({
-                card,
-                inst,
-            });
-        };
-        go();
-    }, [seed]);
-
-    if (!inst || !card) {
-        return <></>;
-    }
+export function DrawRegionView({
+    world,
+    entry,
+}: {
+    world: World;
+    entry: JournalDrawRegion;
+}): JSX.Element {
+    const { card, instance } = entry;
 
     return (
-        <div>
+        <Div
+            css={css`
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                gap: 16px;
+            `}
+        >
+            <SmallCard card={card} />
             <Div
                 css={css`
-                    display: flex;
-                    flex-direction: row;
-                    align-items: center;
-                    gap: 16px;
+                    .self {
+                        font-size: 140%;
+                        text-align: center;
+                    }
                 `}
             >
-                <SmallCard card={card} />
-                <Div
-                    css={css`
-                        .self {
-                            font-size: 140%;
-                            text-align: center;
-                        }
-                    `}
-                >
-                    <Div>generate →</Div>
-                    <Div>{inst.seed}</Div>
-                </Div>
-                <Div
-                    css={css`
-                        .self {
-                            width: 480px;
+                <Div>generate →</Div>
+                <Div>{instance.seed}</Div>
+            </Div>
+            <Div
+                css={css`
+                    .self {
+                        width: 480px;
 
-                            .title {
-                                font-size: 120%;
-                                font-weight: bold;
-                            }
+                        .title {
+                            font-size: 120%;
+                            font-weight: bold;
+                        }
+                    }
+                `}
+            >
+                <Div cl="title">{instance.title}</Div>
+                <Div
+                    css={css`
+                        .self {
+                            width: 100%;
+                            height: 8px;
+                            background-color: ${instance.color};
                         }
                     `}
+                />
+                <Div
+                    css={css`
+                        display: flex;
+                        flex-direction: row;
+                        align-items: center;
+                        justify-content: center;
+                    `}
                 >
-                    <Div cl="title">{inst.title}</Div>
-                    <Div
-                        css={css`
-                            .self {
-                                width: 100%;
-                                height: 8px;
-                                background-color: ${inst.color};
-                            }
-                        `}
-                    />
-                    <Div
-                        css={css`
-                            display: flex;
-                            flex-direction: row;
-                            align-items: center;
-                            justify-content: center;
-                        `}
-                    >
-                        <img style={{ margin: 8 }} src={inst.bitmap} />
-                    </Div>
-                    <Div>
-                        TODO: add to global map, add political factions (60/35/5), colors for each,
-                        maelstrom factor, and other properties.
-                    </Div>
+                    <img style={{ margin: 8 }} src={instance.bitmap} />
+                </Div>
+                <Div>
+                    TODO: add to global map, add political factions (60/35/5), colors for each,
+                    maelstrom factor, and other properties.
                 </Div>
             </Div>
-        </div>
+            <Div>
+                <h3>World Map</h3>
+                <Div
+                    css={css`
+                        .self {
+                            box-sizing: content-box;
+                            width: 1024px;
+                            height: 1024px;
+                            border: solid 1px #000;
+                        }
+                    `}
+                >
+                    <img src={world.worldMap.toDataURL()} />
+                </Div>
+            </Div>
+        </Div>
     );
 }
 
@@ -264,7 +238,7 @@ function SmallCard({ card }: { card: RegionCard }): JSX.Element {
                 .resize(320, 320)
                 .colorize(card.color)
                 .speckleColor()
-                .run();
+                .toDataURL();
             setImage(canvas);
         };
         go();
@@ -435,7 +409,7 @@ function SmallCard({ card }: { card: RegionCard }): JSX.Element {
                                 display: 'block',
                                 objectFit: 'contain',
                             }}
-                            src={image ?? null}
+                            src={image ?? undefined}
                         />
                     </Div>
                     <Div cl="image-right"></Div>

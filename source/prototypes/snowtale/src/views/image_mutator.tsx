@@ -73,7 +73,7 @@ export class ImageMutator {
         return this;
     }
 
-    async run(): Promise<string> {
+    async toDataURL(): Promise<string> {
         let canvas = await this._load(this._url);
         while (this._commands.length > 0) {
             const cmd = this._commands.shift();

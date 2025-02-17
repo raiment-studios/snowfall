@@ -7,13 +7,16 @@ import yaml from 'js-yaml';
 import lodash from 'lodash';
 import { nanoid } from 'nanoid';
 import { EventEmitter } from './raiment-core/index.ts';
-import { RegionView } from './views/region_view.tsx';
+import { DrawRegionView } from './views/region_view.tsx';
+import { World, JournalEntry } from './world.ts';
 
 function Console({
     seed,
+    world,
     addEntry,
 }: {
     seed: number;
+    world: World;
     addEntry: (props: { [k: string]: any }) => void;
 }): JSX.Element {
     const [rng] = React.useState(new RNG(seed));
@@ -22,6 +25,10 @@ function Console({
         (type: string, props: { [k: string]: any } = {}) =>
         () =>
             addEntry({ type, seed: rng.d8192(), ...props });
+
+    const handleRegion2 = () => {
+        world.drawRegion();
+    };
 
     return (
         <D
@@ -47,6 +54,7 @@ function Console({
                 <button onClick={handler('dice')}>roll dice</button>
                 <button onClick={handler('scene')}>scene</button>
                 <button onClick={handler('region')}>region</button>
+                <button onClick={handleRegion2}>region2</button>
                 <button onClick={handler('area')}>area</button>
                 <button onClick={handler('location')}>location</button>
                 <button onClick={handler('item')}>item</button>
@@ -588,7 +596,7 @@ function TopNav(): JSX.Element {
                     }
                 `}
             >
-                <D cl="flex-row bold">snowfall-tables</D>
+                <D cl="flex-row bold">snowtale (prototype v0.1)</D>
 
                 <D cl="flex-row gap-16">
                     <D
@@ -691,6 +699,9 @@ class Protagonist {
 class Encyclopedia {
     events: EventEmitter = new EventEmitter();
     data: EncyclopediaData = {
+        protagonist: {
+            name: '',
+        },
         entries: [],
     };
 
@@ -1007,36 +1018,13 @@ function Tables(): JSX.Element {
     );
 }
 
-function useGameLogic(encyclopedia: Encyclopedia, rng: RNG) {
-    React.useEffect(() => {
-        if (encyclopedia.data.entries.length === 0) {
-            encyclopedia.update(({ entries }) => {
-                entries.push({
-                    type: 'markdown',
-                    content: `
-**Welcome to the Galthea!**
-
-This is an enormous world plagued by the mysterious force known as 
-the Maelstrom that has been ripping apart the fabric of reality.
-
-The first step to beginnging the game is to [create a character](action:create-character).
-                    `,
-                });
-
-                entries.push({
-                    type: 'region',
-                    seed: rng.d8192(),
-                });
-            });
-        }
-    }, [encyclopedia]);
-}
-
 function Journal({ encyclopedia }: { encyclopedia: Encyclopedia }): JSX.Element {
     const [seed, setSeed] = React.useState(RNG.make_seed8k());
     const rng = React.useMemo(() => new RNG(seed), [seed]);
+    const world = React.useMemo(() => new World(seed), [seed]);
 
     useRenderOnEvent(encyclopedia, 'modified');
+    useRenderOnEvent(world, 'modified');
 
     const addEntry = React.useCallback(
         (e: Entry) => {
@@ -1056,8 +1044,6 @@ function Journal({ encyclopedia }: { encyclopedia: Encyclopedia }): JSX.Element 
         }
     }, [encyclopedia.data.entries.length]);
 
-    useGameLogic(encyclopedia, rng);
-
     return (
         <Div
             css={css`
@@ -1074,7 +1060,7 @@ function Journal({ encyclopedia }: { encyclopedia: Encyclopedia }): JSX.Element 
             `}
         >
             <Flex row align="end" m="0 0 12px" style={{ flexGrow: 0 }}>
-                <h1 style={{ margin: '0 12px 0 0' }}>Tables {seed}</h1>
+                <h1 style={{ margin: '0 12px 0 0' }}>Galthea seed {seed}</h1>
                 <Flex row m="0 0 4px">
                     <a
                         href="#"
@@ -1084,7 +1070,7 @@ function Journal({ encyclopedia }: { encyclopedia: Encyclopedia }): JSX.Element 
                             setSeed(RNG.make_seed8k());
                         }}
                     >
-                        re-roll
+                        reroll
                     </a>
                 </Flex>
             </Flex>
@@ -1105,6 +1091,24 @@ function Journal({ encyclopedia }: { encyclopedia: Encyclopedia }): JSX.Element 
                     `}
                 >
                     <div style={{ height: 32 }} />
+                    {world.journal.map((entry, i) => (
+                        <div
+                            key={i}
+                            style={{
+                                padding: 2,
+                                border: '1px solid #aac',
+                                borderRadius: 4,
+                            }}
+                        >
+                            <Flex row>
+                                <div style={{ opacity: 0.4, marginRight: 32 }}>{i + 1}</div>
+                                <div style={{ flexGrow: 1 }}>
+                                    <JournalEntryView world={world} entry={entry} />
+                                </div>
+                            </Flex>
+                        </div>
+                    ))}
+                    <div style={{ height: 32 }} />
                     {[...encyclopedia.data.entries].map((entry, i) => (
                         <div
                             key={i}
@@ -1117,30 +1121,39 @@ function Journal({ encyclopedia }: { encyclopedia: Encyclopedia }): JSX.Element 
                             <Flex row>
                                 <div style={{ opacity: 0.4, marginRight: 32 }}>{i + 1}</div>
                                 <div style={{ flexGrow: 1 }}>
-                                    <EntryView encyclopedia={encyclopedia} entry={entry} />
+                                    <EntryView entry={entry} />
                                 </div>
                             </Flex>
                         </div>
                     ))}
                 </Div>
             </Div>
-            <Console seed={rng.d8192()} addEntry={addEntry} />
+            <Console seed={rng.d8192()} world={world} addEntry={addEntry} />
         </Div>
     );
 }
 
-function EntryView({
-    encyclopedia,
-    entry,
-}: {
-    encyclopedia: Encyclopedia;
-    entry: Entry;
-}): JSX.Element {
+function JournalEntryView({ world, entry }: { world: World; entry: JournalEntry }): JSX.Element {
     switch (entry.type) {
         case 'markdown':
             return (
                 <div style={{ margin: '8px 0' }}>
-                    <Markdown encyclopedia={encyclopedia} content={entry.content} />
+                    <Markdown content={entry.content} />
+                </div>
+            );
+        case 'draw_region':
+            return <DrawRegionView world={world} entry={entry} />;
+        default:
+            return <div>{JSON.stringify(entry)}</div>;
+    }
+}
+
+function EntryView({ entry }: { entry: Entry }): JSX.Element {
+    switch (entry.type) {
+        case 'markdown':
+            return (
+                <div style={{ margin: '8px 0' }}>
+                    <Markdown content={entry.content} />
                 </div>
             );
         case 'dice':
@@ -1151,22 +1164,12 @@ function EntryView({
             return <CharacterTable seed={entry.seed} />;
         case 'town':
             return <TownView seed={entry.seed} />;
-        case 'region':
-            return <RegionView seed={entry.seed} />;
         default:
             return <div>{JSON.stringify(entry)}</div>;
     }
 }
 
-function Markdown({
-    encyclopedia,
-    content,
-}: {
-    encyclopedia: Encyclopedia;
-    content: string;
-}): JSX.Element {
-    const rng = new RNG(RNG.make_seed8k());
-
+function Markdown({ content }: { content: string }): JSX.Element {
     const blocks = content.split('\n\n');
     while (blocks.length > 0 && blocks[0].trim() === '') {
         blocks.shift();
@@ -1186,12 +1189,7 @@ function Markdown({
                         onClick={(evt: React.MouseEvent<HTMLAnchorElement>) => {
                             evt.preventDefault();
                             evt.stopPropagation();
-                            encyclopedia.update(({ entries }) => {
-                                entries.push({
-                                    type: 'dice',
-                                    seed: rng.d8192(),
-                                });
-                            });
+                            console.warn('TODO');
                         }}
                     >
                         {m[1]}
