@@ -83,6 +83,34 @@ export class RNG {
         return arr[arr.length - 1][1];
     }
 
+    selectIndexWeighted<T>(arr: T[], weightFn: (item: T) => number): number {
+        const total = arr.reduce((acc, item) => acc + weightFn(item), 0);
+        const r = this.rangei(0, total);
+        let sum = 0;
+        for (let i = 0; i < arr.length; i++) {
+            sum += weightFn(arr[i]);
+            if (r < sum) {
+                return i;
+            }
+        }
+        return arr.length - 1;
+    }
+
+    pluckWeighted<T>(arr: T[], field: keyof T): T {
+        const total = arr.reduce((acc, item) => acc + (item[field] as number), 0);
+        const r = this.rangei(0, total);
+        let sum = 0;
+        let index = arr.length - 1;
+        for (let i = 0; i < arr.length; i++) {
+            sum += arr[i][field] as number;
+            if (r < sum) {
+                index = i;
+                break;
+            }
+        }
+        return arr.splice(index, 1)[0];
+    }
+
     shuffle<T>(arr: T[]): T[] {
         const copy = arr.slice();
         for (let i = copy.length - 1; i > 0; i--) {

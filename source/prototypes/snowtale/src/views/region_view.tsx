@@ -1,19 +1,3 @@
-/**
- 
-    RegionCard
-        A deterministic RegionInst generator
-
-    RegionInst
-        Wrapper class on RegionInstData to make it easier to work with
-
-    RegionInstData
-        The plain old data of the region instance
-
-    RegionView
-        A React view a RegionInst
-
- */
-
 import React, { JSX } from 'react';
 import { RNG } from '../raiment-core/index.ts';
 import { Div, css } from '../raiment-ui/index.ts';
@@ -21,10 +5,10 @@ import { ImageMutator } from './image_mutator.tsx';
 import chroma from 'chroma-js';
 
 // A particular Region Card has a region generator
-type RegionGenerator = (seed: number, card: RegionCard) => Promise<RegionInstData>;
+type RegionGenerator = (seed: number, card: RegionCard) => Promise<RegionInstance>;
 
-type RegionInstData = {
-    name: string;
+type RegionInstance = {
+    title: string;
     seed: number;
     color: string;
     bitmap: string;
@@ -32,8 +16,10 @@ type RegionInstData = {
 
 type RegionCard = {
     type: 'region';
-    name: string;
+    id: string;
+    title: string;
     description: string;
+    rarity: number; // 1-1000
     color: string;
     image: string;
     props: { [key: string]: any };
@@ -43,109 +29,115 @@ type RegionCard = {
 class Deck {
     _cards: RegionCard[] = [];
 
-    add(...partials: Array<Partial<RegionCard>>) {
-        for (const input of partials) {
-            const partial = { ...input };
-
-            if (partial.description !== undefined) {
-                partial.description = partial.description.trim();
-            }
-
-            const template: RegionCard = {
-                type: 'region',
-                name: 'Untitled',
-                description: '',
-                color: '#FF00FF',
-                image: '',
-                props: {},
-                generator: async (seed: number, card: RegionCard) => {
-                    throw new Error('Generator not implemented');
-                },
-            };
-            const card: RegionCard = { ...template, ...partial };
-            this._cards.push(card);
-        }
+    add(...partials: Array<RegionCard>) {
+        this._cards.push(...partials);
     }
 
     select(rng: RNG): RegionCard {
-        return rng.select(this._cards);
+        const i = rng.selectIndexWeighted(this._cards, (c) => c.rarity);
+        return this._cards[i];
+    }
+
+    draw(rng: RNG): RegionCard {
+        return rng.pluckWeighted(this._cards, 'rarity');
     }
 }
 
-export function hexToRgb(hex: string): [number, number, number] {
-    const match = hex.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
-    return match
-        ? [
-              parseInt(match[1], 16), //
-              parseInt(match[2], 16),
-              parseInt(match[3], 16),
-          ]
-        : [0, 0, 0];
+let _globalCounter = 0;
+
+function normalize(partial: Partial<RegionCard>): RegionCard {
+    _globalCounter += 1;
+    const template: RegionCard = {
+        type: 'region',
+        id: `unknown-${_globalCounter}`,
+        title: 'Untitled',
+        description: '',
+        rarity: 1000,
+        color: '#FF00FF',
+        image: '',
+        props: {},
+        generator: async (seed: number, card: RegionCard) => {
+            throw new Error('Generator not implemented');
+        },
+    };
+
+    if (partial.id === undefined && partial.title) {
+        partial.id = partial.title.toLowerCase().replace(/\s+/g, '-');
+    }
+    if (partial.description !== undefined) {
+        partial.description = partial.description.trim();
+    }
+
+    const merged = { ...template, ...partial };
+    return merged;
 }
 
 function buildDeck(): Deck {
-    const deck = new Deck();
+    const generateInstance = async (
+        seed: number,
+        card: RegionCard,
+        title: string
+    ): Promise<RegionInstance> => {
+        const rng = new RNG(seed);
+        let { color } = card;
 
-    const mutateImage = (url: string, deg: number, color: string): Promise<string> => {
-        return new ImageMutator(url)
+        // Jitter the hue of the color a little
+        const hsl = chroma(color).hsl();
+        hsl[0] += rng.range(-10, 10);
+        color = chroma.hsl(...hsl).hex();
+
+        const deg = rng.range(-30, 30);
+        const bitmap = await new ImageMutator(card.image)
             .rotate(deg)
             .colorize(color)
             .autocrop()
             .resize(256, 256)
-            .blur()
-            .blur()
-            .blur()
+            .blur(3)
             .colorize(color)
             .clampAlpha()
             .speckleColor()
             .run();
+
+        return {
+            title,
+            seed,
+            color,
+            bitmap,
+        };
     };
 
+    const deck = new Deck();
     deck.add(
-        {
-            name: 'Haven',
-            description: `
+        ...[
+            {
+                id: 'haven',
+                title: 'Haven',
+                rarity: 1000,
+                description: `
 The starting point of the game. Lined with small harbor towns to the southwest.
 Wayland artifacts are prevalent here, reducing the impact of the Maelstrom.
             `,
-            color: '#25b585',
-            image: '/static/region-bitmap-00.png',
-            generator: async (seed: number, card: RegionCard) => {
-                const rng = new RNG(seed);
-                const { color } = card;
-
-                const bitmap = await mutateImage(card.image, rng.range(-45, 45), color);
-
-                return {
-                    name: 'Haven',
-                    seed,
-                    color,
-                    bitmap,
-                    props: {},
-                };
+                color: '#25b585',
+                image: '/static/region-bitmap-00.png',
+                generator: async (seed: number, card: RegionCard) => {
+                    return generateInstance(seed, card, 'Haven');
+                },
             },
-        },
-        {
-            name: 'Redrock',
-            description: `
+            {
+                id: 'redrock',
+                title: 'Redrock',
+                rarity: 500,
+                description: `
 A sparsely populated region of sand and coarse dirt. Vegetation is limited here 
 due to the raw terrain.
                         `,
-            color: '#ae8030',
-            image: '/static/region-bitmap-01.png',
-            generator: async (seed: number, card: RegionCard) => {
-                const rng = new RNG(seed);
-                const { color } = card;
-                const bitmap = await mutateImage(card.image, rng.range(-30, 30), color);
-                return {
-                    name: 'Redrock',
-                    seed,
-                    color,
-                    bitmap,
-                    props: {},
-                };
+                color: '#ae8030',
+                image: '/static/region-bitmap-01.png',
+                generator: async (seed: number, card: RegionCard) => {
+                    return generateInstance(seed, card, 'Redrock');
+                },
             },
-        }
+        ].map(normalize)
     );
 
     return deck;
@@ -170,7 +162,7 @@ function useGoogleFont(url: string) {
 export function RegionView({ seed }: { seed: number }): JSX.Element {
     const [{ card, inst }, setInst] = React.useState<{
         card?: RegionCard;
-        inst?: RegionInstData;
+        inst?: RegionInstance;
     }>({});
 
     React.useEffect(() => {
@@ -179,7 +171,9 @@ export function RegionView({ seed }: { seed: number }): JSX.Element {
             const rng = new RNG(seed);
 
             const card = deck.select(rng);
-            const inst = await card.generator(rng.d8192(), card);
+            const iseed = rng.d8192();
+            const inst = await card.generator(iseed, card);
+            inst.seed = iseed;
             setInst({
                 card,
                 inst,
@@ -219,14 +213,14 @@ export function RegionView({ seed }: { seed: number }): JSX.Element {
                         .self {
                             width: 480px;
 
-                            .name {
+                            .title {
                                 font-size: 120%;
                                 font-weight: bold;
                             }
                         }
                     `}
                 >
-                    <Div cl="name">{inst.name}</Div>
+                    <Div cl="title">{inst.title}</Div>
                     <Div
                         css={css`
                             .self {
@@ -321,7 +315,7 @@ function SmallCard({ card }: { card: RegionCard }): JSX.Element {
                             flex-direction: column;
                             padding: 0 0 4px;
 
-                            .name {
+                            .title {
                                 font-weight: bold;
                                 letter-spacing: 0.3px;
                                 line-height: 90%;
@@ -387,7 +381,7 @@ function SmallCard({ card }: { card: RegionCard }): JSX.Element {
                         }
 
                         .description {
-                            margin: 8px 12px;
+                            margin: 8px 4px;
                             padding: 8px;
                             border: solid 1px #0003;
                             border-radius: 4px;
@@ -404,15 +398,23 @@ function SmallCard({ card }: { card: RegionCard }): JSX.Element {
                         font-size: 90%;
                         flex-grow: 0;
                         flex-shrink: 0;
-                        flex-basis: 48px;
+                        flex-basis: 24px;
                         border-radius: 6px;
+
+                        .id {
+                            font-size: 50%;
+                            color: #0008;
+                            font-style: italic;
+                            line-height: 90%;
+                            padding-left: 4px;
+                        }
                     }
                 }
             `}
         >
             <Div cl="header">
                 <Div cl="left">
-                    <Div cl="name">{card.name}</Div>
+                    <Div cl="title">{card.title}</Div>
                     <Div cl="type">{card.type}</Div>
                 </Div>
                 <Div>
@@ -433,14 +435,16 @@ function SmallCard({ card }: { card: RegionCard }): JSX.Element {
                                 display: 'block',
                                 objectFit: 'contain',
                             }}
-                            src={image ?? ''}
+                            src={image ?? null}
                         />
                     </Div>
                     <Div cl="image-right"></Div>
                 </Div>
                 <Div cl="description serif">{card.description}</Div>
             </Div>
-            <Div cl="footer"></Div>
+            <Div cl="footer">
+                <Div cl="id">{card.id}</Div>
+            </Div>
         </Div>
     );
 }

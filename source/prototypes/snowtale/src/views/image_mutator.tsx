@@ -1,6 +1,35 @@
-import { hexToRgb } from './region_view.tsx';
 import { RNG } from '../raiment-core/index.ts';
 
+function hexToRgb(hex: string): [number, number, number] {
+    const match = hex.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
+    return match
+        ? [
+              parseInt(match[1], 16), //
+              parseInt(match[2], 16),
+              parseInt(match[3], 16),
+          ]
+        : [0, 0, 0];
+}
+
+function context2d(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
+    // Note that we *always* should call this helper with the wilLReadFrequently option
+    // because for that option to ever take effect, it must be set on the first call
+    // to getContext('2d') for that canvas.  Since this code is optimized to "just work",
+    // always call it with this setting.
+    const ctx = canvas.getContext('2d', {
+        willReadFrequently: true,
+    });
+    if (!ctx) {
+        throw new Error('Canvas context is not supported');
+    }
+    return ctx as CanvasRenderingContext2D;
+}
+
+/**
+ * ImageMutator is a quick-and-dirty DOM-based class to modify an image.
+ * It is designed for use in prototyping, therefore is biased toward
+ * simple implementations with "good enough" performance.
+ */
 export class ImageMutator {
     _url: string;
     _commands: any[] = [];
@@ -39,8 +68,8 @@ export class ImageMutator {
         return this;
     }
 
-    blur(): ImageMutator {
-        this._commands.push({ type: 'blur' });
+    blur(iterations: number): ImageMutator {
+        this._commands.push({ type: 'blur', iterations });
         return this;
     }
 
@@ -68,19 +97,21 @@ export class ImageMutator {
             case 'speckle_color':
                 return this._speckleColor(canvas);
             case 'blur':
-                return this._blur(canvas);
+                return this._blur(canvas, cmd.iterations);
             default:
                 throw new Error(`Unknown command type: ${cmd.type}`);
         }
     }
 
-    _blur(canvas: HTMLCanvasElement): HTMLCanvasElement {
-        // BLur the image using a Gaussian blur
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-            throw new Error('Canvas context is not supported');
+    _blur(canvas: HTMLCanvasElement, iterations: number): HTMLCanvasElement {
+        for (let i = 0; i < iterations; i++) {
+            canvas = this._blurOnce(canvas);
         }
+        return canvas;
+    }
 
+    _blurOnce(canvas: HTMLCanvasElement): HTMLCanvasElement {
+        const ctx = context2d(canvas);
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imageData.data;
 
@@ -137,10 +168,7 @@ export class ImageMutator {
     }
 
     _speckleColor(canvas: HTMLCanvasElement): HTMLCanvasElement {
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-            throw new Error('Canvas context is not supported');
-        }
+        const ctx = context2d(canvas);
 
         const rng = RNG.make_random();
         const shades = [1.0, 1.0, 1.0, 0.95, 0.925, 0.9, 0.85];
@@ -160,10 +188,7 @@ export class ImageMutator {
     }
 
     _clampAlpha(canvas: HTMLCanvasElement): HTMLCanvasElement {
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-            throw new Error('Canvas context is not supported');
-        }
+        const ctx = context2d(canvas);
 
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imageData.data;
@@ -183,10 +208,7 @@ export class ImageMutator {
         }
 
         const target = document.createElement('canvas');
-        const ctx = target.getContext('2d');
-        if (!ctx) {
-            throw new Error('Canvas context is not supported');
-        }
+        const ctx = context2d(target);
 
         target.width = width;
         target.height = height;
@@ -202,11 +224,7 @@ export class ImageMutator {
             image.onload = () => {
                 // Convert image to a canvas
                 const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                if (!ctx) {
-                    reject(new Error('Canvas context is not supported'));
-                    return;
-                }
+                const ctx = context2d(canvas);
                 canvas.width = image.width;
                 canvas.height = image.height;
                 ctx.drawImage(image, 0, 0);
@@ -218,10 +236,7 @@ export class ImageMutator {
     }
 
     _autocrop(canvas: HTMLCanvasElement): HTMLCanvasElement {
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-            throw new Error('Canvas context is not supported');
-        }
+        const ctx = context2d(canvas);
 
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imageData.data;
@@ -281,15 +296,12 @@ export class ImageMutator {
         const cropped = document.createElement('canvas');
         cropped.width = width;
         cropped.height = height;
-        cropped.getContext('2d')!.drawImage(canvas, left, top, width, height, 0, 0, width, height);
+        context2d(cropped).drawImage(canvas, left, top, width, height, 0, 0, width, height);
         return cropped;
     }
 
     _colorize(canvas: HTMLCanvasElement, color: string): HTMLCanvasElement {
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-            throw new Error('Canvas context is not supported');
-        }
+        const ctx = context2d(canvas);
 
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imageData.data;
@@ -310,10 +322,7 @@ export class ImageMutator {
 
     _rotate(source: HTMLCanvasElement, deg: number): HTMLCanvasElement {
         const target = document.createElement('canvas');
-        const ctx = target.getContext('2d');
-        if (!ctx) {
-            throw new Error('Canvas context is not supported');
-        }
+        const ctx = context2d(target);
 
         const angle = deg * (Math.PI / 180);
         const sin = Math.abs(Math.sin(angle));
