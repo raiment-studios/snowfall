@@ -3,6 +3,7 @@
         "@std/random": "npm:@jsr/std__random@^0.1.0",
         "@types/lodash": "^4.17.14",
         "@types/react": "^19.0.6",
+        "chroma-js": "^3.1.2",
         "esbuild": "^0.24.2",
         "js-yaml": "^4.1.0",
         "lodash": "^4.17.21",
@@ -11,5 +12,8 @@
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
         "serve": "^14.2.4"
+    },
+    "devDependencies": {
+        "@types/chroma-js": "^3.1.1"
     }
 }

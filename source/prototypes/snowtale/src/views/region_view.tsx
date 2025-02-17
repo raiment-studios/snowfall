@@ -18,9 +18,10 @@ import React, { JSX } from 'react';
 import { RNG } from '../raiment-core/index.ts';
 import { Div, css } from '../raiment-ui/index.ts';
 import { ImageMutator } from './image_mutator.tsx';
+import chroma from 'chroma-js';
 
 // A particular Region Card has a region generator
-type RegionGenerator = (seed: number, props: { [key: string]: any }) => Promise<RegionInstData>;
+type RegionGenerator = (seed: number, card: RegionCard) => Promise<RegionInstData>;
 
 type RegionInstData = {
     name: string;
@@ -33,6 +34,8 @@ type RegionCard = {
     type: 'region';
     name: string;
     description: string;
+    color: string;
+    image: string;
     props: { [key: string]: any };
     generator: RegionGenerator;
 };
@@ -52,8 +55,10 @@ class Deck {
                 type: 'region',
                 name: 'Untitled',
                 description: '',
+                color: '#FF00FF',
+                image: '',
                 props: {},
-                generator: async (seed: number, props: { [key: string]: any }) => {
+                generator: async (seed: number, card: RegionCard) => {
                     throw new Error('Generator not implemented');
                 },
             };
@@ -100,17 +105,16 @@ function buildDeck(): Deck {
         {
             name: 'Haven',
             description: `
-The starting point of the game. Lined with small harbor towns to the southwest. Wayland artifacts are prevalent here, reducing the impact of the Maelstrom.
+The starting point of the game. Lined with small harbor towns to the southwest.
+Wayland artifacts are prevalent here, reducing the impact of the Maelstrom.
             `,
-            generator: async (seed: number, props: { [key: string]: any }) => {
+            color: '#25b585',
+            image: '/static/region-bitmap-00.png',
+            generator: async (seed: number, card: RegionCard) => {
                 const rng = new RNG(seed);
-                const color = '#25b585';
+                const { color } = card;
 
-                const bitmap = await mutateImage(
-                    '/static/region-bitmap-00.png',
-                    rng.range(-45, 45),
-                    color
-                );
+                const bitmap = await mutateImage(card.image, rng.range(-45, 45), color);
 
                 return {
                     name: 'Haven',
@@ -124,16 +128,15 @@ The starting point of the game. Lined with small harbor towns to the southwest. 
         {
             name: 'Redrock',
             description: `
-A sparsely populated region of sand and coarse dirt. Vegetation is limited here due to the raw terrain.
+A sparsely populated region of sand and coarse dirt. Vegetation is limited here 
+due to the raw terrain.
                         `,
-            generator: async (seed: number, props: { [key: string]: any }) => {
+            color: '#ae8030',
+            image: '/static/region-bitmap-01.png',
+            generator: async (seed: number, card: RegionCard) => {
                 const rng = new RNG(seed);
-                const color = '#ae8030';
-                const bitmap = await mutateImage(
-                    '/static/region-bitmap-01.png',
-                    rng.range(-30, 30),
-                    color
-                );
+                const { color } = card;
+                const bitmap = await mutateImage(card.image, rng.range(-30, 30), color);
                 return {
                     name: 'Redrock',
                     seed,
@@ -148,7 +151,7 @@ A sparsely populated region of sand and coarse dirt. Vegetation is limited here 
     return deck;
 }
 
-function useGoogleFont(url) {
+function useGoogleFont(url: string) {
     const id = `font-${encodeURIComponent(url)}`;
 
     React.useEffect(() => {
@@ -176,7 +179,7 @@ export function RegionView({ seed }: { seed: number }): JSX.Element {
             const rng = new RNG(seed);
 
             const card = deck.select(rng);
-            const inst = await card.generator(rng.d8192(), card.props);
+            const inst = await card.generator(rng.d8192(), card);
             setInst({
                 card,
                 inst,
@@ -244,8 +247,8 @@ export function RegionView({ seed }: { seed: number }): JSX.Element {
                         <img style={{ margin: 8 }} src={inst.bitmap} />
                     </Div>
                     <Div>
-                        TODO: add political factions (60/35/5), colors for each, maelstrom factor,
-                        and other properties. Make the region images larger.
+                        TODO: add to global map, add political factions (60/35/5), colors for each,
+                        maelstrom factor, and other properties.
                     </Div>
                 </Div>
             </Div>
@@ -254,9 +257,27 @@ export function RegionView({ seed }: { seed: number }): JSX.Element {
 }
 
 function SmallCard({ card }: { card: RegionCard }): JSX.Element {
+    const [image, setImage] = React.useState<string | null>(null);
+
     useGoogleFont(
         'https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,100..900;1,100..900&family=Noto+Serif:ital,wght@0,100..900;1,100..900&display=swap'
     );
+
+    React.useEffect(() => {
+        const go = async () => {
+            const canvas = await new ImageMutator(card.image) //
+                .autocrop()
+                .resize(320, 320)
+                .colorize(card.color)
+                .speckleColor()
+                .run();
+            setImage(canvas);
+        };
+        go();
+    }, [card.image]);
+
+    const backgroundColor1 = chroma(card.color).darken(2.0).hex();
+    const backgroundColor2 = chroma(card.color).mix('white', 0.75).hex();
 
     return (
         <Div
@@ -271,10 +292,11 @@ function SmallCard({ card }: { card: RegionCard }): JSX.Element {
                     border: solid 1px #555;
                     border-radius: 6px;
                     padding: 4px;
-                    background-color: #223e78;
+                    background-color: ${backgroundColor1};
                     font-family: 'Noto Serif';
                     font-size: 40px;
                     zoom: 0.45;
+                    box-shadow: 4px 4px 16px #0003;
 
                     .sans {
                         font-family: 'Noto Sans', sans-serif;
@@ -289,7 +311,7 @@ function SmallCard({ card }: { card: RegionCard }): JSX.Element {
                         justify-content: space-between;
                         padding: 1px 4px;
                         margin-bottom: 6px;
-                        background-color: #fffc;
+                        background-color: ${backgroundColor2};
                         flex-grow: 0;
                         flex-shrink: 0;
                         border-radius: 6px;
@@ -302,11 +324,11 @@ function SmallCard({ card }: { card: RegionCard }): JSX.Element {
                             .name {
                                 font-weight: bold;
                                 letter-spacing: 0.3px;
-                                line-height: 80%;
+                                line-height: 90%;
                                 margin-top: 2px;
                             }
                             .type {
-                                font-size: 70%;
+                                font-size: 50%;
                                 color: #0008;
                                 font-style: italic;
                                 line-height: 90%;
@@ -333,24 +355,46 @@ function SmallCard({ card }: { card: RegionCard }): JSX.Element {
                         }
                     }
                     .body {
+                        display: flex;
+                        flex-direction: column;
                         flex-grow: 1;
-                        padding: 4px;
+                        padding: 1px;
                         margin-bottom: 8px;
                         border-radius: 6px;
-                        background-color: #fff9;
+                        background-color: #fffc;
 
-                        .image {
-                            background-color: #0003;
-                            border-radius: 2px;
-                            width: 320px;
-                            height: 320px;
-                            margin: 0 auto;
+                        .image-row {
+                            display: flex;
+                            flex-direction: row;
+
+                            .image-left {
+                                flex: 1 0 0;
+                                background-color: #0003;
+                            }
+                            .image {
+                                flex-grow: 0;
+                                flex-shrink: 0;
+                                background-color: #0001;
+                                width: 320px;
+                                height: 320px;
+                                margin: 0 auto;
+                                border: solid 1px #0004;
+                            }
+                            .image-right {
+                                flex: 1 0 0;
+                                background-color: #0003;
+                            }
                         }
 
                         .description {
                             margin: 8px 12px;
-                            font-size: 70%;
+                            padding: 8px;
+                            border: solid 1px #0003;
+                            border-radius: 4px;
+                            font-size: 60%;
                             line-height: 110%;
+                            flex-grow: 1;
+                            background: #0001;
                         }
                     }
 
@@ -379,7 +423,21 @@ function SmallCard({ card }: { card: RegionCard }): JSX.Element {
                 </Div>
             </Div>
             <Div cl="body">
-                <Div cl="image"></Div>
+                <Div cl="image-row">
+                    <Div cl="image-left"></Div>
+                    <Div cl="image">
+                        <img
+                            style={{
+                                width: '100%',
+                                height: '100%',
+                                display: 'block',
+                                objectFit: 'contain',
+                            }}
+                            src={image ?? ''}
+                        />
+                    </Div>
+                    <Div cl="image-right"></Div>
+                </Div>
                 <Div cl="description serif">{card.description}</Div>
             </Div>
             <Div cl="footer"></Div>
