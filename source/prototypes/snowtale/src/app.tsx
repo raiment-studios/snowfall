@@ -8,7 +8,7 @@ import lodash from 'lodash';
 import { nanoid } from 'nanoid';
 import { EventEmitter } from './raiment-core/index.ts';
 import { DrawRegionView } from './views/region_view.tsx';
-import { World, JournalEntry } from './world.ts';
+import { World, JournalEntry, Action } from './world.ts';
 
 function Console({
     seed,
@@ -1036,6 +1036,12 @@ function Journal({ encyclopedia }: { encyclopedia: Encyclopedia }): JSX.Element 
     );
 
     React.useEffect(() => {
+        return world.events.on('modified', () => {
+            world.runActions();
+        });
+    }, [world]);
+
+    React.useEffect(() => {
         const el = document.querySelector('#console-input') as HTMLInputElement;
         const el2 = document.querySelector('#console-focus-anchor') as HTMLDivElement;
         if (el) {
@@ -1134,11 +1140,38 @@ function Journal({ encyclopedia }: { encyclopedia: Encyclopedia }): JSX.Element 
 }
 
 function JournalEntryView({ world, entry }: { world: World; entry: JournalEntry }): JSX.Element {
+    const handleClick = (url: string) => {
+        url = url.trim();
+        const parts = url.split(/\s+/);
+        const pairs = parts.map((part) => part.split(':').map((s) => s.trim()));
+
+        if (pairs[0][0] !== 'action') {
+            return;
+        }
+
+        const args: { [k: string]: any } = {};
+        for (let i = 1; i < pairs.length; i++) {
+            let value: any = pairs[i][1];
+            if (value.match(/^[0-9]+$/)) {
+                value = parseInt(value, 10);
+            } else if (value.match(/^[0-9]+\.[0-9]+$/)) {
+                value = parseFloat(value);
+            }
+            args[pairs[i][0]] = value;
+        }
+
+        const action: Action = {
+            type: pairs[0][1] as Action['type'],
+            selector: args,
+        };
+        world.enqueue(action);
+    };
+
     switch (entry.type) {
         case 'markdown':
             return (
                 <div style={{ margin: '8px 0' }}>
-                    <Markdown content={entry.content} />
+                    <Markdown content={entry.content} onClickLink={handleClick} />
                 </div>
             );
         case 'draw_region':
@@ -1169,7 +1202,13 @@ function EntryView({ entry }: { entry: Entry }): JSX.Element {
     }
 }
 
-function Markdown({ content }: { content: string }): JSX.Element {
+function Markdown({
+    content,
+    onClickLink,
+}: {
+    content: string;
+    onClickLink?: (url: string) => void;
+}): JSX.Element {
     const blocks = content.split('\n\n');
     while (blocks.length > 0 && blocks[0].trim() === '') {
         blocks.shift();
@@ -1189,7 +1228,7 @@ function Markdown({ content }: { content: string }): JSX.Element {
                         onClick={(evt: React.MouseEvent<HTMLAnchorElement>) => {
                             evt.preventDefault();
                             evt.stopPropagation();
-                            console.warn('TODO');
+                            onClickLink?.(m[2]);
                         }}
                     >
                         {m[1]}

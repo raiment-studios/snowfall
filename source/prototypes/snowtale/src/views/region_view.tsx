@@ -22,106 +22,6 @@ class Deck {
     }
 }
 
-let _globalCounter = 0;
-
-function normalize(partial: Partial<RegionCard>): RegionCard {
-    _globalCounter += 1;
-    const template: RegionCard = {
-        type: 'region',
-        id: `unknown-${_globalCounter}`,
-        title: 'Untitled',
-        description: '',
-        rarity: 1000,
-        color: '#FF00FF',
-        image: '',
-        props: {},
-        generator: async (seed: number, card: RegionCard) => {
-            throw new Error('Generator not implemented');
-        },
-    };
-
-    if (partial.id === undefined && partial.title) {
-        partial.id = partial.title.toLowerCase().replace(/\s+/g, '-');
-    }
-    if (partial.description !== undefined) {
-        partial.description = partial.description.trim();
-    }
-
-    const merged = { ...template, ...partial };
-    return merged;
-}
-
-function buildDeck(): Deck {
-    const generateInstance = async (
-        seed: number,
-        card: RegionCard,
-        title: string
-    ): Promise<RegionInstance> => {
-        const rng = new RNG(seed);
-        let { color } = card;
-
-        // Jitter the hue of the color a little
-        const hsl = chroma(color).hsl();
-        hsl[0] += rng.range(-10, 10);
-        color = chroma.hsl(...hsl).hex();
-
-        const deg = rng.range(-30, 30);
-        const bitmap = await new ImageMutator(card.image)
-            .rotate(deg)
-            .colorize(color)
-            .autocrop()
-            .resize(256, 256)
-            .blur(3)
-            .colorize(color)
-            .clampAlpha()
-            .speckleColor()
-            .toDataURL();
-
-        return {
-            title,
-            seed,
-            color,
-            bitmap,
-        };
-    };
-
-    const deck = new Deck();
-    deck.add(
-        ...[
-            {
-                id: 'haven',
-                title: 'Haven',
-                rarity: 1000,
-                description: `
-The starting point of the game. Lined with small harbor towns to the southwest.
-Wayland artifacts are prevalent here, reducing the impact of the Maelstrom.
-            `,
-                color: '#25b585',
-                image: '/static/region-bitmap-haven.png',
-                generator: async (seed: number, card: RegionCard) => {
-                    return generateInstance(seed, card, 'Haven');
-                },
-            },
-            {
-                id: 'redrock',
-                title: 'Redrock',
-                rarity: 500,
-                description: `
-A sparsely populated region of sand and coarse dirt. Vegetation is limited here 
-due to the raw terrain.
-                        `,
-                color: '#ae8030',
-                image: '/static/region-bitmap-redrock.png',
-                generator: async (seed: number, card: RegionCard) => {
-                    return generateInstance(seed, card, 'Redrock');
-                },
-            },
-        ].map(normalize)
-    );
-
-    return deck;
-}
-
 function useGoogleFont(url: string) {
     const id = `font-${encodeURIComponent(url)}`;
 
@@ -145,7 +45,7 @@ export function DrawRegionView({
     world: World;
     entry: JournalDrawRegion;
 }): JSX.Element {
-    const { card, instance } = entry;
+    const { card, instance, bitmap } = entry;
 
     return (
         <Div
@@ -211,13 +111,13 @@ export function DrawRegionView({
                     css={css`
                         .self {
                             box-sizing: content-box;
-                            width: 1024px;
-                            height: 1024px;
+                            width: 512px;
+                            height: 512px;
                             border: solid 1px #000;
                         }
                     `}
                 >
-                    <img src={world.worldMap.toDataURL()} />
+                    <img src={bitmap} width={512} height={512} />
                 </Div>
             </Div>
         </Div>

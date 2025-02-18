@@ -57,11 +57,11 @@ export class WorldMap {
         const imageData = ctx.getImageData(0, 0, image.width, image.height);
         const data = imageData.data;
 
+        let placement = [0, 0];
+
         const original = this.map.slice();
-
         let dist = 0;
-
-        let attempts = 30;
+        let attempts = 100;
         do {
             const ox = Math.floor(dist * Math.cos((-deg * Math.PI) / 180));
             const oy = Math.floor(dist * Math.sin((-deg * Math.PI) / 180));
@@ -91,10 +91,13 @@ export class WorldMap {
                 dist += 6;
                 this.map = original.slice();
             } else {
+                placement = [ox, oy];
                 break;
             }
             attempts -= 1;
         } while (attempts > 0);
+
+        return placement;
     }
 
     toDataURL(): string {
@@ -139,6 +142,7 @@ export type JournalDrawRegion = {
     type: 'draw_region';
     card: RegionCard;
     instance: RegionInstance;
+    bitmap: string;
 };
 
 export type JournalEntry =
@@ -148,6 +152,18 @@ export type JournalEntry =
       }
     | JournalDrawRegion;
 
+export type PlayParams = {
+    offsetX?: number;
+    offsetY?: number;
+    angle?: number;
+};
+
+export type Action = {
+    type: 'play_card';
+    selector: CardSelector;
+    params?: PlayParams;
+};
+
 export class World {
     events: EventEmitter = new EventEmitter();
 
@@ -156,6 +172,7 @@ export class World {
 
     _rng: RNG;
     _deckRegions = buildDeck();
+    _actions = new Array<Action>();
 
     constructor(seed: number) {
         this._rng = new RNG(seed);
@@ -168,9 +185,83 @@ export class World {
 This is an enormous world plagued by the mysterious force known as 
 the Maelstrom that has been ripping apart the fabric of reality.
 
-The first step to beginning the game is to [create a character](action:create-character).
+The first step is to play a "start card". Click [here](action:play_card type:region tag:start_card) to do that!
 `,
         });
+    }
+
+    enqueue(action: Action) {
+        this._actions.push(action);
+        this.events.fire('modified');
+    }
+
+    async runActions() {
+        if (this._actions.length === 0) {
+            return;
+        }
+        const actions = this._actions.slice();
+        this._actions = [];
+
+        while (actions.length > 0) {
+            const action = actions.shift()!;
+            switch (action.type) {
+                case 'play_card': {
+                    const { selector, params } = action;
+                    await this.playCard(selector, params);
+                    break;
+                }
+            }
+        }
+    }
+
+    async playCard(selector: CardSelector, params: PlayParams = {}) {
+        const rng = this._rng;
+        const card = this._deckRegions.draw(this._rng, selector);
+        const seed = rng.d8192();
+
+        switch (card.type) {
+            case 'region':
+                {
+                    const instance = await card.generator(seed, card);
+                    instance.seed = seed;
+
+                    // Eventually the angle should be determined by the neighbors defined by the
+                    // instance or card
+                    const angle = (params.angle ?? this._rng.range(0, 360)) + rng.range(-20, 20);
+                    const cx = params.offsetX ?? 0;
+                    const cy = params.offsetY ?? 0;
+                    const pos = await this.worldMap.place(instance, cx, cy, angle);
+
+                    this.journal.push({
+                        type: 'draw_region',
+                        card,
+                        instance,
+                        bitmap: this.worldMap.toDataURL(),
+                    });
+
+                    for (const n of card.neighbors) {
+                        const neighbor = this._deckRegions._cards.find((c) => c.id === n.id);
+                        if (!neighbor) {
+                            continue;
+                        }
+
+                        this.enqueue({
+                            type: 'play_card',
+                            selector: {
+                                id: neighbor.id,
+                            },
+                            params: {
+                                angle: n.angle,
+                                offsetX: pos[0] + n.offset_x,
+                                offsetY: pos[1] - n.offset_y,
+                            },
+                        });
+                    }
+
+                    this.events.fire('modified');
+                }
+                break;
+        }
     }
 
     async drawRegion() {
@@ -182,12 +273,13 @@ The first step to beginning the game is to [create a character](action:create-ch
         // Eventually the angle should be determined by the neighbors defined by the
         // instance or card
         const angle = this._rng.range(0, 360);
-        this.worldMap.place(instance, 0, 0, angle);
+        await this.worldMap.place(instance, 0, 0, angle);
 
         this.journal.push({
             type: 'draw_region',
             card,
             instance,
+            bitmap: this.worldMap.toDataURL(),
         });
         this.events.fire('modified');
     }
@@ -206,14 +298,26 @@ export type RegionInstance = {
 export type RegionCard = {
     type: 'region';
     id: string;
+    tags: string[];
     title: string;
     description: string;
     rarity: number; // 1-1000
     color: string;
     size: number;
     image: string;
-    props: { [key: string]: any };
+    neighbors: Array<{
+        id: string;
+        angle: number;
+        offset_x: number;
+        offset_y: number;
+    }>;
     generator: RegionGenerator;
+};
+
+export type CardSelector = {
+    id?: string;
+    type?: string;
+    tag?: string;
 };
 
 class Deck {
@@ -228,8 +332,22 @@ class Deck {
         return this._cards[i];
     }
 
-    draw(rng: RNG): RegionCard {
-        return rng.pluckWeighted(this._cards, 'rarity');
+    draw(rng: RNG, selector: CardSelector = {}): RegionCard {
+        let cards = this._cards;
+        if (selector.id) {
+            cards = cards.filter((c) => c.id === selector.id);
+        }
+        if (selector.type) {
+            cards = cards.filter((c) => c.type === selector.type);
+        }
+        if (selector.tag !== undefined) {
+            const tag: string = selector.tag; // <-- keeps TypeScript type checking happy
+            cards = cards.filter((c) => c.tags.includes(tag));
+        }
+
+        const card = rng.pluckWeighted(cards, 'rarity');
+        this._cards = this._cards.filter((c) => c !== card);
+        return card;
     }
 }
 
@@ -240,12 +358,14 @@ function normalize(partial: Partial<RegionCard>): RegionCard {
     const template: RegionCard = {
         type: 'region',
         id: `unknown-${_globalCounter}`,
+        tags: [],
         title: 'Untitled',
         description: '',
         rarity: 1000,
         color: '#FF00FF',
+        size: 100,
         image: '',
-        props: {},
+        neighbors: [],
         generator: async (seed: number, card: RegionCard) => {
             throw new Error('Generator not implemented');
         },
@@ -305,6 +425,7 @@ function buildDeck(): Deck {
                 id: 'haven',
                 title: 'Haven',
                 rarity: 1000,
+                tags: ['start_card'],
                 description: `
 The starting point of the game. Lined with small harbor towns to the southwest.
 Wayland artifacts are prevalent here, reducing the impact of the Maelstrom.
@@ -312,6 +433,26 @@ Wayland artifacts are prevalent here, reducing the impact of the Maelstrom.
                 color: '#25b585',
                 size: 70,
                 image: '/static/region-bitmap-haven.png',
+                neighbors: [
+                    {
+                        id: 'redrock',
+                        angle: 0,
+                        offset_x: 60,
+                        offset_y: 30,
+                    },
+                    {
+                        id: 'crags',
+                        angle: 165,
+                        offset_x: -30,
+                        offset_y: 30,
+                    },
+                    {
+                        id: 'midland',
+                        angle: 90,
+                        offset_x: 60,
+                        offset_y: 30,
+                    },
+                ],
                 generator: async (seed: number, card: RegionCard) => {
                     return generateInstance(seed, card, 'Haven');
                 },
@@ -351,8 +492,28 @@ due to the raw terrain.
                 color: '#666',
                 size: 70,
                 image: '/static/region-bitmap-crags.png',
+                neighbors: [
+                    {
+                        id: 'cores',
+                        angle: 110,
+                        offset_x: -60,
+                        offset_y: 60,
+                    },
+                ],
                 generator: async (seed: number, card: RegionCard) => {
                     return generateInstance(seed, card, "Wizard's Crags");
+                },
+            },
+            {
+                id: 'cores',
+                title: "Core's Coast",
+                rarity: 1000,
+                description: '',
+                color: '#275',
+                size: 90,
+                image: '/static/region-bitmap-cores.png',
+                generator: async (seed: number, card: RegionCard) => {
+                    return generateInstance(seed, card, "Core's Coast");
                 },
             },
         ].map(normalize)
