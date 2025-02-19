@@ -26,7 +26,7 @@ _common-ensure-webapp:
 _common-dev-watch directory command:
     npx nodemon \
         --watch {{directory}} \
-        --ext ts,tsx,html,css,json,yaml,yml,txt \
+        --ext ts,tsx,html,css,json,yaml,yml,txt,jpg,png \
         --exec "{{command}}"
 
 _common-build-bundle source target:

@@ -2,141 +2,7 @@ import { RNG } from './raiment-core/index.ts';
 import { EventEmitter } from './raiment-core/index.ts';
 import chroma from 'chroma-js';
 import { ImageMutator } from './views/image_mutator.tsx';
-
-function hexToRgb(hex: string): [number, number, number] {
-    const match = hex.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
-    return match
-        ? [
-              parseInt(match[1], 16), //
-              parseInt(match[2], 16),
-              parseInt(match[3], 16),
-          ]
-        : [0, 0, 0];
-}
-
-/**
- * For prototyping purposes, let's fix the map to 1024x1024 sectors.  We can
- * create dynamically sized map later.
- */
-export class WorldMap {
-    palette: (RegionInstance | null)[] = [];
-    map: Uint16Array = new Uint16Array(1024 * 1024);
-
-    constructor() {
-        this.palette.push(null);
-        for (let i = 0; i < 1024 * 1024; i++) {
-            this.map[i] = 0;
-        }
-    }
-
-    async place(region: RegionInstance, x: number, y: number, deg: number) {
-        let cx = x + 512;
-        let cy = y + 512;
-
-        const image = new Image();
-        image.src = region.bitmap;
-        await new Promise((resolve) => {
-            image.onload = resolve;
-        });
-
-        cx -= Math.floor(image.width / 2);
-        cy -= Math.floor(image.height / 2);
-
-        const index = this.palette.length;
-        this.palette.push(region);
-
-        // Get Image Data for image
-        const canvas = document.createElement('canvas');
-        canvas.width = image.width;
-        canvas.height = image.height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-            throw new Error('Could not get 2d context');
-        }
-        ctx.drawImage(image, 0, 0);
-        const imageData = ctx.getImageData(0, 0, image.width, image.height);
-        const data = imageData.data;
-
-        let placement = [0, 0];
-
-        const original = this.map.slice();
-        let dist = 0;
-        let attempts = 100;
-        do {
-            const ox = Math.floor(dist * Math.cos((-deg * Math.PI) / 180));
-            const oy = Math.floor(dist * Math.sin((-deg * Math.PI) / 180));
-
-            let total = 0;
-            let skipped = 0;
-            for (let ix = 0; ix < image.width; ix++) {
-                for (let iy = 0; iy < image.height; iy++) {
-                    const alpha = data[(ix + iy * image.width) * 4 + 3];
-                    if (alpha === 0) {
-                        continue;
-                    }
-                    total += 1;
-
-                    const px = ox + cx + ix;
-                    const py = oy + cy + iy;
-                    const p = px + py * 1024;
-                    if (this.map[p] !== 0) {
-                        skipped += 1;
-                        continue;
-                    }
-                    this.map[p] = index;
-                }
-            }
-
-            if (skipped > total * 0.1) {
-                dist += 6;
-                this.map = original.slice();
-            } else {
-                placement = [ox, oy];
-                break;
-            }
-            attempts -= 1;
-        } while (attempts > 0);
-
-        return placement;
-    }
-
-    toDataURL(): string {
-        const rng = RNG.make_random();
-        const shades = [1.0, 1.0, 0.98, 0.95, 0.92, 0.9];
-
-        const canvas = document.createElement('canvas');
-        canvas.width = 1024;
-        canvas.height = 1024;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-            throw new Error('Could not get 2d context');
-        }
-
-        const imageData = ctx.getImageData(0, 0, 1024, 1024);
-        const data = imageData.data;
-
-        for (let i = 0; i < 1024 * 1024; i++) {
-            const region = this.palette[this.map[i]];
-            if (region) {
-                const rgb = hexToRgb(region.color);
-                const s = rng.select(shades);
-                const index = i * 4;
-                data[index + 0] = Math.floor(s * rgb[0]);
-                data[index + 1] = Math.floor(s * rgb[1]);
-                data[index + 2] = Math.floor(s * rgb[2]);
-                data[index + 3] = 255;
-            } else {
-                const index = i * 4;
-                data[index + 0] = 0;
-                data[index + 1] = 64;
-                data[index + 2] = 128;
-                data[index + 3] = 255;
-            }
-        }
-        ctx.putImageData(imageData, 0, 0);
-        return canvas.toDataURL();
-    }
-}
+import { WorldMap } from './engine/world_map.ts';
 
 export type JournalDrawRegion = {
     type: 'draw_region';
@@ -195,22 +61,28 @@ The first step is to play a "start card". Click [here](action:play_card type:reg
         this.events.fire('modified');
     }
 
+    _runningActions = false;
+
     async runActions() {
-        if (this._actions.length === 0) {
+        // Serialize the async actions into a linear queue so that
+        // cards get processed in order (i.e. don't have multiple instances of
+        // runActions running at the same time).
+        if (this._runningActions) {
             return;
         }
-        const actions = this._actions.slice();
-        this._actions = [];
 
-        while (actions.length > 0) {
-            const action = actions.shift()!;
+        while (this._actions.length > 0) {
+            this._runningActions = true;
+            const action = this._actions.shift()!;
             switch (action.type) {
                 case 'play_card': {
                     const { selector, params } = action;
+                    console.log('Playing card', selector);
                     await this.playCard(selector, params);
                     break;
                 }
             }
+            this._runningActions = false;
         }
     }
 
@@ -229,7 +101,7 @@ The first step is to play a "start card". Click [here](action:play_card type:reg
                     // instance or card
                     const angle = (params.angle ?? this._rng.range(0, 360)) + rng.range(-20, 20);
                     const cx = params.offsetX ?? 0;
-                    const cy = params.offsetY ?? 0;
+                    const cy = params.offsetY ?? Math.round(512 * 0.75);
                     const pos = await this.worldMap.place(instance, cx, cy, angle);
 
                     this.journal.push({
@@ -238,6 +110,7 @@ The first step is to play a "start card". Click [here](action:play_card type:reg
                         instance,
                         bitmap: this.worldMap.toDataURL(),
                     });
+                    console.log('Placed region', card.title, pos);
 
                     for (const n of card.neighbors) {
                         const neighbor = this._deckRegions._cards.find((c) => c.id === n.id);
@@ -351,6 +224,41 @@ class Deck {
     }
 }
 
+const generateInstance = async (
+    seed: number,
+    card: RegionCard,
+    title: string
+): Promise<RegionInstance> => {
+    const rng = new RNG(seed);
+    let { color } = card;
+
+    // Jitter the hue of the color a little
+    const hsl = chroma(color).hsl();
+    hsl[0] += rng.range(-10, 10);
+    color = chroma.hsl(...hsl).hex();
+
+    const dim = Math.ceil(card.size * rng.range(0.8, 1.2));
+
+    const deg = rng.range(-30, 30);
+    const bitmap = await new ImageMutator(card.image)
+        .rotate(deg)
+        .colorize(color)
+        .autocrop()
+        .resize(dim, dim)
+        .blur(3)
+        .colorize(color)
+        .clampAlpha()
+        .speckleColor()
+        .toDataURL();
+
+    return {
+        title,
+        seed,
+        color,
+        bitmap,
+    };
+};
+
 let _globalCounter = 0;
 
 function normalize(partial: Partial<RegionCard>): RegionCard {
@@ -366,7 +274,7 @@ function normalize(partial: Partial<RegionCard>): RegionCard {
         size: 100,
         image: '',
         neighbors: [],
-        generator: async (seed: number, card: RegionCard) => {
+        generator: (seed: number, card: RegionCard) => {
             throw new Error('Generator not implemented');
         },
     };
@@ -377,47 +285,20 @@ function normalize(partial: Partial<RegionCard>): RegionCard {
     if (partial.description !== undefined) {
         partial.description = partial.description.trim();
     }
+    if (partial.generator === undefined) {
+        partial.generator = (seed: number, card: RegionCard) => {
+            return generateInstance(seed, card, partial.title ?? template.title);
+        };
+    }
 
     const merged = { ...template, ...partial };
+
+    merged.size = Math.round(merged.size * 1.75);
+
     return merged;
 }
 
 function buildDeck(): Deck {
-    const generateInstance = async (
-        seed: number,
-        card: RegionCard,
-        title: string
-    ): Promise<RegionInstance> => {
-        const rng = new RNG(seed);
-        let { color } = card;
-
-        // Jitter the hue of the color a little
-        const hsl = chroma(color).hsl();
-        hsl[0] += rng.range(-10, 10);
-        color = chroma.hsl(...hsl).hex();
-
-        const dim = Math.ceil(card.size * rng.range(0.8, 1.2));
-
-        const deg = rng.range(-30, 30);
-        const bitmap = await new ImageMutator(card.image)
-            .rotate(deg)
-            .colorize(color)
-            .autocrop()
-            .resize(dim, dim)
-            .blur(3)
-            .colorize(color)
-            .clampAlpha()
-            .speckleColor()
-            .toDataURL();
-
-        return {
-            title,
-            seed,
-            color,
-            bitmap,
-        };
-    };
-
     const deck = new Deck();
     deck.add(
         ...[
@@ -437,25 +318,22 @@ Wayland artifacts are prevalent here, reducing the impact of the Maelstrom.
                     {
                         id: 'redrock',
                         angle: 0,
-                        offset_x: 60,
-                        offset_y: 30,
+                        offset_x: 40,
+                        offset_y: 20,
                     },
                     {
                         id: 'crags',
                         angle: 165,
-                        offset_x: -30,
-                        offset_y: 30,
+                        offset_x: -10,
+                        offset_y: 10,
                     },
                     {
                         id: 'midland',
                         angle: 90,
-                        offset_x: 60,
-                        offset_y: 30,
+                        offset_x: 30,
+                        offset_y: 10,
                     },
                 ],
-                generator: async (seed: number, card: RegionCard) => {
-                    return generateInstance(seed, card, 'Haven');
-                },
             },
             {
                 id: 'redrock',
@@ -468,21 +346,23 @@ due to the raw terrain.
                 color: '#ae8030',
                 size: 160,
                 image: '/static/region-bitmap-redrock.png',
-                generator: async (seed: number, card: RegionCard) => {
-                    return generateInstance(seed, card, 'Redrock');
-                },
             },
             {
                 id: 'midland',
                 title: 'Midland',
                 rarity: 500,
                 description: '',
-                color: '#3C3',
-                size: 220,
+                color: '#2b1',
+                size: 200,
                 image: '/static/region-bitmap-midland.png',
-                generator: async (seed: number, card: RegionCard) => {
-                    return generateInstance(seed, card, 'Midland');
-                },
+                neighbors: [
+                    {
+                        id: 'brook-hills',
+                        angle: 80,
+                        offset_x: -20,
+                        offset_y: 10,
+                    },
+                ],
             },
             {
                 id: 'crags',
@@ -496,13 +376,10 @@ due to the raw terrain.
                     {
                         id: 'cores',
                         angle: 110,
-                        offset_x: -60,
-                        offset_y: 60,
+                        offset_x: -30,
+                        offset_y: 30,
                     },
                 ],
-                generator: async (seed: number, card: RegionCard) => {
-                    return generateInstance(seed, card, "Wizard's Crags");
-                },
             },
             {
                 id: 'cores',
@@ -512,9 +389,94 @@ due to the raw terrain.
                 color: '#275',
                 size: 90,
                 image: '/static/region-bitmap-cores.png',
-                generator: async (seed: number, card: RegionCard) => {
-                    return generateInstance(seed, card, "Core's Coast");
-                },
+            },
+            {
+                id: 'brook-hills',
+                title: 'Brook Hills',
+                rarity: 1000,
+                description: '',
+                color: '#7a1',
+                size: 170,
+                image: '/static/region-bitmap-brook-hills.png',
+                neighbors: [
+                    {
+                        id: 'highwall',
+                        angle: 105,
+                        offset_x: 0,
+                        offset_y: 10,
+                    },
+                ],
+            },
+            {
+                id: 'highwall',
+                title: 'Highwall',
+                rarity: 1000,
+                description: '',
+                color: '#952',
+                size: 130,
+                image: '/static/region-bitmap-highwall.png',
+                neighbors: [
+                    {
+                        id: 'forest-stairs',
+                        angle: 103,
+                        offset_x: 5,
+                        offset_y: 1,
+                    },
+                    {
+                        id: 'barrens',
+                        angle: 140,
+                        offset_x: -30,
+                        offset_y: 1,
+                    },
+                    {
+                        id: 'boundary',
+                        angle: 90,
+                        offset_x: 0,
+                        offset_y: 2,
+                    },
+                    {
+                        id: 'far-north',
+                        angle: 90,
+                        offset_x: 0,
+                        offset_y: 3,
+                    },
+                ],
+            },
+            {
+                id: 'forest-stairs',
+                title: 'Forest Stairs',
+                rarity: 1000,
+                description: '',
+                color: '#250',
+                size: 150,
+                image: '/static/region-bitmap-forest-stairs.png',
+            },
+            {
+                id: 'barrens',
+                title: 'Barrens',
+                rarity: 1000,
+                description: '',
+                color: '#534',
+                size: 120,
+                image: '/static/region-bitmap-barrens.png',
+            },
+            {
+                id: 'boundary',
+                title: 'Boundary',
+                rarity: 1000,
+                description: '',
+                color: '#676',
+                size: 120,
+                image: '/static/region-bitmap-boundary.png',
+            },
+            {
+                id: 'far-north',
+                title: 'Far North',
+                rarity: 1000,
+                description: '',
+                color: '#aac',
+                size: 220,
+                image: '/static/region-bitmap-far-north.png',
             },
         ].map(normalize)
     );

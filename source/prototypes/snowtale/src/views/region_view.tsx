@@ -5,23 +5,6 @@ import { ImageMutator } from './image_mutator.tsx';
 import chroma from 'chroma-js';
 import { RegionCard, RegionInstance, World, JournalDrawRegion } from '../world.ts';
 
-class Deck {
-    _cards: RegionCard[] = [];
-
-    add(...partials: Array<RegionCard>) {
-        this._cards.push(...partials);
-    }
-
-    select(rng: RNG): RegionCard {
-        const i = rng.selectIndexWeighted(this._cards, (c) => c.rarity);
-        return this._cards[i];
-    }
-
-    draw(rng: RNG): RegionCard {
-        return rng.pluckWeighted(this._cards, 'rarity');
-    }
-}
-
 function useGoogleFont(url: string) {
     const id = `font-${encodeURIComponent(url)}`;
 
@@ -38,13 +21,7 @@ function useGoogleFont(url: string) {
     }, [url]);
 }
 
-export function DrawRegionView({
-    world,
-    entry,
-}: {
-    world: World;
-    entry: JournalDrawRegion;
-}): JSX.Element {
+export function DrawRegionView({ entry }: { world: World; entry: JournalDrawRegion }): JSX.Element {
     const { card, instance, bitmap } = entry;
 
     return (
@@ -263,6 +240,22 @@ function SmallCard({ card }: { card: RegionCard }): JSX.Element {
                             line-height: 110%;
                             flex-grow: 1;
                             background: #0001;
+
+                            .text {
+                                margin-bottom: 12px;
+                            }
+                            .rules {
+                                .rule {
+                                    margin-bottom: 2px;
+                                    opacity: 0.8;
+                                }
+                            }
+
+                            code {
+                                font-size: 95%;
+                                font-weight: 900;
+                                color: #300;
+                            }
                         }
                     }
 
@@ -314,7 +307,19 @@ function SmallCard({ card }: { card: RegionCard }): JSX.Element {
                     </Div>
                     <Div cl="image-right"></Div>
                 </Div>
-                <Div cl="description serif">{card.description}</Div>
+                <Div cl="description">
+                    <Div cl="text serif">{card.description}</Div>
+                    <Div cl="rules">
+                        {card.neighbors.map((n) => {
+                            return (
+                                <Div cl="rule">
+                                    <strong>♣ Play</strong> <code>{n.id}</code> as a neighbor at{' '}
+                                    {n.angle}°
+                                </Div>
+                            );
+                        })}
+                    </Div>
+                </Div>
             </Div>
             <Div cl="footer">
                 <Div cl="id">{card.id}</Div>
