@@ -310,9 +310,9 @@ function SmallCard({ card }: { card: RegionCard }): JSX.Element {
                 <Div cl="description">
                     <Div cl="text serif">{card.description}</Div>
                     <Div cl="rules">
-                        {card.neighbors.map((n) => {
+                        {card.neighbors.map((n, i) => {
                             return (
-                                <Div cl="rule">
+                                <Div cl="rule" key={i}>
                                     <strong>♣ Play</strong> <code>{n.id}</code> as a neighbor at{' '}
                                     {n.angle}°
                                 </Div>

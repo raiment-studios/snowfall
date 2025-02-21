@@ -1,8 +1,7 @@
 import { RNG } from './raiment-core/index.ts';
 import { EventEmitter } from './raiment-core/index.ts';
-import chroma from 'chroma-js';
-import { ImageMutator } from './views/image_mutator.tsx';
 import { WorldMap } from './engine/world_map.ts';
+import { buildDeck } from './engine/build_deck.ts';
 
 export type JournalDrawRegion = {
     type: 'draw_region';
@@ -24,17 +23,32 @@ export type PlayParams = {
     angle?: number;
 };
 
-export type Action = {
-    type: 'play_card';
-    selector: CardSelector;
-    params?: PlayParams;
-};
+export type Action =
+    | {
+          type: 'play_card';
+          selector: CardSelector;
+          params?: PlayParams;
+      }
+    | {
+          type: 'set_position';
+          selector: string;
+      };
+
+export class Player {
+    // PROTOTYPE NOTE: position is given in sector coordinates.
+    // Eventually this should be finer grain.
+    position = {
+        x: 0,
+        y: 0,
+    };
+}
 
 export class World {
     events: EventEmitter = new EventEmitter();
 
     worldMap = new WorldMap();
     journal = new Array<JournalEntry>();
+    player = new Player();
 
     _rng: RNG;
     _deckRegions = buildDeck();
@@ -73,13 +87,35 @@ The first step is to play a "start card". Click [here](action:play_card type:reg
 
         while (this._actions.length > 0) {
             this._runningActions = true;
-            const action = this._actions.shift()!;
+            const action: Action = this._actions.shift()!;
             switch (action.type) {
-                case 'play_card': {
-                    const { selector, params } = action;
-                    console.log('Playing card', selector);
-                    await this.playCard(selector, params);
+                case 'play_card':
+                    {
+                        const { selector, params } = action;
+                        await this.playCard(selector, params);
+                    }
                     break;
+                case 'set_position':
+                    {
+                        const { selector } = action;
+
+                        const pos = this.worldMap.findRandomRegionPosition(this._rng, selector);
+                        this.player.position.x = pos[0];
+                        this.player.position.y = pos[1];
+
+                        this.journal.push({
+                            type: 'markdown',
+                            content: `You have been placed at ${selector} (${this.player.position.x}, ${this.player.position.y}).`,
+                        });
+
+                        this.events.fire('modified');
+                    }
+                    break;
+
+                default: {
+                    const a = action as any;
+                    console.error(`Unknown action type: ${a.type}`);
+                    debugger;
                 }
             }
             this._runningActions = false;
@@ -90,6 +126,11 @@ The first step is to play a "start card". Click [here](action:play_card type:reg
         const rng = this._rng;
         const card = this._deckRegions.draw(this._rng, selector);
         const seed = rng.d8192();
+
+        if (card.type === undefined) {
+            console.error('Invalid card:', card);
+            throw new Error('Card type is undefined');
+        }
 
         switch (card.type) {
             case 'region':
@@ -108,9 +149,13 @@ The first step is to play a "start card". Click [here](action:play_card type:reg
                         type: 'draw_region',
                         card,
                         instance,
-                        bitmap: this.worldMap.toDataURL(),
+                        bitmap: await this.generateMiniMap(),
                     });
-                    console.log('Placed region', card.title, pos);
+
+                    // Run the actions on the card
+                    for (const action of card.actions.play) {
+                        this.enqueue(action);
+                    }
 
                     for (const n of card.neighbors) {
                         const neighbor = this._deckRegions._cards.find((c) => c.id === n.id);
@@ -137,24 +182,74 @@ The first step is to play a "start card". Click [here](action:play_card type:reg
         }
     }
 
-    async drawRegion() {
-        const card = this._deckRegions.draw(this._rng);
-        const seed = this._rng.d8192();
-        const instance = await card.generator(seed, card);
-        instance.seed = seed;
+    async generateMiniMap() {
+        function hexToRgb(hex: string): [number, number, number] {
+            const match = hex.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
+            return match
+                ? [
+                      parseInt(match[1], 16), //
+                      parseInt(match[2], 16),
+                      parseInt(match[3], 16),
+                  ]
+                : [0, 0, 0];
+        }
 
-        // Eventually the angle should be determined by the neighbors defined by the
-        // instance or card
-        const angle = this._rng.range(0, 360);
-        await this.worldMap.place(instance, 0, 0, angle);
+        const rng = RNG.make_random();
+        const shades = [1.0, 1.0, 0.98, 0.95, 0.92, 0.9, 0.85];
 
-        this.journal.push({
-            type: 'draw_region',
-            card,
-            instance,
-            bitmap: this.worldMap.toDataURL(),
-        });
-        this.events.fire('modified');
+        // Create a canvas the size of the worldMap
+        const canvas = document.createElement('canvas');
+        canvas.width = this.worldMap.width;
+        canvas.height = this.worldMap.height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+            throw new Error('Could not get 2d context');
+        }
+
+        // Draw the worldMap using the region colors for each pixel
+        const map = this.worldMap.map;
+        const palette = this.worldMap.palette;
+        const width = this.worldMap.width;
+        const height = this.worldMap.height;
+        const imageData = ctx.createImageData(width, height);
+        const data = imageData.data;
+        for (let i = 0; i < width * height; i++) {
+            const region = palette[map[i]];
+            const color = region ? region.color : '#3377FF';
+            const rgb = hexToRgb(color);
+            const s = rng.select(shades);
+
+            data[i * 4 + 0] = Math.floor(s * rgb[0]);
+            data[i * 4 + 1] = Math.floor(s * rgb[1]);
+            data[i * 4 + 2] = Math.floor(s * rgb[2]);
+            data[i * 4 + 3] = 255;
+        }
+
+        // Get the player position and color that pixel yellow
+        {
+            const x = this.player.position.x + 512;
+            const y = this.player.position.y + 512;
+
+            const S = 2;
+            for (let dy = -S; dy <= S; dy++) {
+                for (let dx = -S; dx <= S; dx++) {
+                    const ex = x + dx;
+                    const ey = y + dy;
+                    if (ex < 0 || ex >= width || ey < 0 || ey >= height) {
+                        continue;
+                    }
+
+                    const index = ey * width + ex;
+                    data[index * 4 + 0] = 255;
+                    data[index * 4 + 1] = 255;
+                    data[index * 4 + 2] = 0;
+                }
+            }
+        }
+
+        // Copy the image data back to the canvas and return a data URL
+        ctx.putImageData(imageData, 0, 0);
+        return canvas.toDataURL();
     }
 }
 
@@ -162,6 +257,7 @@ The first step is to play a "start card". Click [here](action:play_card type:reg
 export type RegionGenerator = (seed: number, card: RegionCard) => Promise<RegionInstance>;
 
 export type RegionInstance = {
+    id: string;
     title: string;
     seed: number;
     color: string;
@@ -185,6 +281,9 @@ export type RegionCard = {
         offset_y: number;
     }>;
     generator: RegionGenerator;
+    actions: {
+        play: Array<Action>;
+    };
 };
 
 export type CardSelector = {
@@ -193,7 +292,7 @@ export type CardSelector = {
     tag?: string;
 };
 
-class Deck {
+export class Deck {
     _cards: RegionCard[] = [];
 
     add(...partials: Array<RegionCard>) {
@@ -222,264 +321,4 @@ class Deck {
         this._cards = this._cards.filter((c) => c !== card);
         return card;
     }
-}
-
-const generateInstance = async (
-    seed: number,
-    card: RegionCard,
-    title: string
-): Promise<RegionInstance> => {
-    const rng = new RNG(seed);
-    let { color } = card;
-
-    // Jitter the hue of the color a little
-    const hsl = chroma(color).hsl();
-    hsl[0] += rng.range(-10, 10);
-    color = chroma.hsl(...hsl).hex();
-
-    const dim = Math.ceil(card.size * rng.range(0.8, 1.2));
-
-    const deg = rng.range(-30, 30);
-    const bitmap = await new ImageMutator(card.image)
-        .rotate(deg)
-        .colorize(color)
-        .autocrop()
-        .resize(dim, dim)
-        .blur(3)
-        .colorize(color)
-        .clampAlpha()
-        .speckleColor()
-        .toDataURL();
-
-    return {
-        title,
-        seed,
-        color,
-        bitmap,
-    };
-};
-
-let _globalCounter = 0;
-
-function normalize(partial: Partial<RegionCard>): RegionCard {
-    _globalCounter += 1;
-    const template: RegionCard = {
-        type: 'region',
-        id: `unknown-${_globalCounter}`,
-        tags: [],
-        title: 'Untitled',
-        description: '',
-        rarity: 1000,
-        color: '#FF00FF',
-        size: 100,
-        image: '',
-        neighbors: [],
-        generator: (seed: number, card: RegionCard) => {
-            throw new Error('Generator not implemented');
-        },
-    };
-
-    if (partial.id === undefined && partial.title) {
-        partial.id = partial.title.toLowerCase().replace(/\s+/g, '-');
-    }
-    if (partial.description !== undefined) {
-        partial.description = partial.description.trim();
-    }
-    if (partial.generator === undefined) {
-        partial.generator = (seed: number, card: RegionCard) => {
-            return generateInstance(seed, card, partial.title ?? template.title);
-        };
-    }
-
-    const merged = { ...template, ...partial };
-
-    merged.size = Math.round(merged.size * 1.75);
-
-    return merged;
-}
-
-function buildDeck(): Deck {
-    const deck = new Deck();
-    deck.add(
-        ...[
-            {
-                id: 'haven',
-                title: 'Haven',
-                rarity: 1000,
-                tags: ['start_card'],
-                description: `
-The starting point of the game. Lined with small harbor towns to the southwest.
-Wayland artifacts are prevalent here, reducing the impact of the Maelstrom.
-            `,
-                color: '#25b585',
-                size: 70,
-                image: '/static/region-bitmap-haven.png',
-                neighbors: [
-                    {
-                        id: 'redrock',
-                        angle: 0,
-                        offset_x: 40,
-                        offset_y: 20,
-                    },
-                    {
-                        id: 'crags',
-                        angle: 165,
-                        offset_x: -10,
-                        offset_y: 10,
-                    },
-                    {
-                        id: 'midland',
-                        angle: 90,
-                        offset_x: 30,
-                        offset_y: 10,
-                    },
-                ],
-            },
-            {
-                id: 'redrock',
-                title: 'Redrock',
-                rarity: 500,
-                description: `
-A sparsely populated region of sand and coarse dirt. Vegetation is limited here 
-due to the raw terrain.
-                        `,
-                color: '#ae8030',
-                size: 160,
-                image: '/static/region-bitmap-redrock.png',
-            },
-            {
-                id: 'midland',
-                title: 'Midland',
-                rarity: 500,
-                description: '',
-                color: '#2b1',
-                size: 200,
-                image: '/static/region-bitmap-midland.png',
-                neighbors: [
-                    {
-                        id: 'brook-hills',
-                        angle: 80,
-                        offset_x: -20,
-                        offset_y: 10,
-                    },
-                ],
-            },
-            {
-                id: 'crags',
-                title: "Wizard's Crags",
-                rarity: 1000,
-                description: '',
-                color: '#666',
-                size: 70,
-                image: '/static/region-bitmap-crags.png',
-                neighbors: [
-                    {
-                        id: 'cores',
-                        angle: 110,
-                        offset_x: -30,
-                        offset_y: 30,
-                    },
-                ],
-            },
-            {
-                id: 'cores',
-                title: "Core's Coast",
-                rarity: 1000,
-                description: '',
-                color: '#275',
-                size: 90,
-                image: '/static/region-bitmap-cores.png',
-            },
-            {
-                id: 'brook-hills',
-                title: 'Brook Hills',
-                rarity: 1000,
-                description: '',
-                color: '#7a1',
-                size: 170,
-                image: '/static/region-bitmap-brook-hills.png',
-                neighbors: [
-                    {
-                        id: 'highwall',
-                        angle: 105,
-                        offset_x: 0,
-                        offset_y: 10,
-                    },
-                ],
-            },
-            {
-                id: 'highwall',
-                title: 'Highwall',
-                rarity: 1000,
-                description: '',
-                color: '#952',
-                size: 130,
-                image: '/static/region-bitmap-highwall.png',
-                neighbors: [
-                    {
-                        id: 'forest-stairs',
-                        angle: 103,
-                        offset_x: 5,
-                        offset_y: 1,
-                    },
-                    {
-                        id: 'barrens',
-                        angle: 140,
-                        offset_x: -30,
-                        offset_y: 1,
-                    },
-                    {
-                        id: 'boundary',
-                        angle: 90,
-                        offset_x: 0,
-                        offset_y: 2,
-                    },
-                    {
-                        id: 'far-north',
-                        angle: 90,
-                        offset_x: 0,
-                        offset_y: 3,
-                    },
-                ],
-            },
-            {
-                id: 'forest-stairs',
-                title: 'Forest Stairs',
-                rarity: 1000,
-                description: '',
-                color: '#250',
-                size: 150,
-                image: '/static/region-bitmap-forest-stairs.png',
-            },
-            {
-                id: 'barrens',
-                title: 'Barrens',
-                rarity: 1000,
-                description: '',
-                color: '#534',
-                size: 120,
-                image: '/static/region-bitmap-barrens.png',
-            },
-            {
-                id: 'boundary',
-                title: 'Boundary',
-                rarity: 1000,
-                description: '',
-                color: '#676',
-                size: 120,
-                image: '/static/region-bitmap-boundary.png',
-            },
-            {
-                id: 'far-north',
-                title: 'Far North',
-                rarity: 1000,
-                description: '',
-                color: '#aac',
-                size: 220,
-                image: '/static/region-bitmap-far-north.png',
-            },
-        ].map(normalize)
-    );
-
-    return deck;
 }

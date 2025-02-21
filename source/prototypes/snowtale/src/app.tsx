@@ -26,10 +26,6 @@ function Console({
         () =>
             addEntry({ type, seed: rng.d8192(), ...props });
 
-    const handleRegion2 = () => {
-        world.drawRegion();
-    };
-
     return (
         <D
             css={css`
@@ -54,7 +50,6 @@ function Console({
                 <button onClick={handler('dice')}>roll dice</button>
                 <button onClick={handler('scene')}>scene</button>
                 <button onClick={handler('region')}>region</button>
-                <button onClick={handleRegion2}>region2</button>
                 <button onClick={handler('area')}>area</button>
                 <button onClick={handler('location')}>location</button>
                 <button onClick={handler('item')}>item</button>
@@ -1163,7 +1158,7 @@ function JournalEntryView({ world, entry }: { world: World; entry: JournalEntry 
         const action: Action = {
             type: pairs[0][1] as Action['type'],
             selector: args,
-        };
+        } as Action;
         world.enqueue(action);
     };
 

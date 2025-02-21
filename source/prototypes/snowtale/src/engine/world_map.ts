@@ -110,41 +110,22 @@ export class WorldMap {
         return placement as [number, number];
     }
 
-    toDataURL(): string {
-        const rng = RNG.make_random();
-        const shades = [1.0, 1.0, 0.98, 0.95, 0.92, 0.9];
+    findRandomRegionPosition(rng: RNG, regionID: string): [number, number] {
+        const regionIndex = this.palette.findIndex((r) => r && r.id === regionID);
 
-        const canvas = document.createElement('canvas');
-        canvas.width = 1024;
-        canvas.height = 1024;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-            throw new Error('Could not get 2d context');
-        }
-
-        const imageData = ctx.getImageData(0, 0, 1024, 1024);
-        const data = imageData.data;
-
-        for (let i = 0; i < 1024 * 1024; i++) {
-            const region = this.palette[this.map[i]];
-            if (region) {
-                const rgb = hexToRgb(region.color);
-                const s = rng.select(shades);
-                const index = i * 4;
-                data[index + 0] = Math.floor(s * rgb[0]);
-                data[index + 1] = Math.floor(s * rgb[1]);
-                data[index + 2] = Math.floor(s * rgb[2]);
-                data[index + 3] = 255;
-            } else {
-                const index = i * 4;
-                data[index + 0] = 0;
-                data[index + 1] = 64;
-                data[index + 2] = 128;
-                data[index + 3] = 255;
+        let attempts = 10000;
+        while (attempts > 0) {
+            const x = rng.rangei(0, this.width);
+            const y = rng.rangei(0, this.height);
+            const i = x + y * this.width;
+            if (this.map[i] === regionIndex) {
+                return [x - 512, y - 512];
             }
+            attempts -= 1;
         }
-        ctx.putImageData(imageData, 0, 0);
-        return canvas.toDataURL();
+
+        console.error('Could not find region', regionID);
+        return [0, 0];
     }
 }
 
